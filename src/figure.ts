@@ -249,6 +249,57 @@ export function placeable(s: SVGSVGElement, handle: SVGElement, to: (x: number, 
   };
 }
 
+/**
+ * Puts a figure's caption at the top of its text box, above what it is showing
+ * now. A still or a quiz has no live text box, so the caption gets one of its
+ * own; that box is returned, to go under the figure.
+ */
+export function placeCaption(node: HTMLElement, caption: HTMLElement): HTMLElement | null {
+  const box = node.querySelector('.fig-text');
+  if (box) {
+    box.prepend(caption);
+    return null;
+  }
+  return el('div.fig-text', {}, caption);
+}
+
+export interface StandaloneFigure {
+  /** The figure with its caption, as a lesson shows it: a `figure.fig`. */
+  node: HTMLElement;
+  /** Resolves when its task is done, when given a goal it has one for. */
+  done?: Promise<void>;
+  /** Stop it: animations end, and anything it listens to is let go. */
+  close: () => void;
+}
+
+/**
+ * A figure outside a lesson, on a reference page, in a gallery of every
+ * figure, or in a test: live, with its caption in its text box, scoring
+ * nowhere and remembering nothing between visits.
+ */
+export function standaloneFigure(factory: FigureFactory, o: { caption: string; save: Progress; goal?: string; options?: Options }): StandaloneFigure {
+  const ctx = testContext(o.save);
+  const handle = factory(ctx, o.goal, o.options);
+  const own = placeCaption(handle.node, el('p.fig-lead', {}, o.caption));
+  const node = el('figure.fig', {}, handle.node, own);
+  if (handle.done) void handle.done.then(() => node.classList.add('done'));
+  return { node, done: handle.done, close: ctx.close };
+}
+
+export interface TestContext extends FigureContext {
+  /** Every score the figure reported, in order. */
+  scores: [right: number, of: number][];
+  /** Aborts `closed`. */
+  close: () => void;
+}
+
+/** A context to build a figure with by hand: no lesson around it, its scores collected, closed when asked. */
+export function testContext(save: Progress): TestContext {
+  const ac = new AbortController();
+  const scores: [number, number][] = [];
+  return { save, closed: ac.signal, scores, score: (right, of) => void scores.push([right, of]), close: () => ac.abort() };
+}
+
 /** A promise with its resolver, settled once. */
 function promised(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;

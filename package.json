@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -34,6 +34,7 @@
     "./quiz": "./src/quiz.ts",
     "./quiz-view": "./src/quiz-view.ts",
     "./radio": "./src/radio.ts",
+    "./reference": "./src/reference.ts",
     "./resume": "./src/resume.ts",
     "./rng": "./src/rng.ts",
     "./router": "./src/router.ts",

@@ -59,6 +59,14 @@ export declare function courseEdits(o: {
  */
 export declare function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T;
 /**
+ * A reference file (blocks.ts ReferenceFile) in the earlier shape, with
+ * `kind` blocks and "figure" blocks naming a "figure", in the typed shape.
+ * `typeOf` says what each figure is; left out, a figure is taken as
+ * interactive. Every other kind, the course's own among them, just becomes
+ * its type. Files already typed come back as they were.
+ */
+export declare function upgradeReference<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T;
+/**
  * Where a JSON text breaks the lines of one object or array: before its first
  * entry (`open`), between entries (`between`), before its closing bracket
  * (`close`); `flat` when it is all on one line.

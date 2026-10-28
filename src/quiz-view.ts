@@ -29,6 +29,12 @@ export interface QuizViewOptions<C extends Card, S extends Progress> {
   blurb: string;
   /** A picture to show above a card's question, if it has one. */
   media?: (card: C) => Node | null;
+  /**
+   * What the page says when the reader has no cards at all: the deck is empty,
+   * or every card waits on a lesson not yet passed. A course whose lessons are
+   * not written yet might say "Flash cards arrive with the first written lesson."
+   */
+  empty?: string;
   /** Cards in a sitting, and how many of them may be new. */
   sitting?: number;
   fresh?: number;
@@ -51,6 +57,14 @@ export function quizView<C extends Card, S extends Progress>(o: QuizViewOptions<
       const save = getSave();
       const now = Date.now();
       const deck = deckFor(save);
+      if (!deck.length) {
+        page.replaceChildren(
+          el('h1', {}, 'Quiz'),
+          el('p.muted', {}, o.blurb),
+          el('p.quiz-empty', {}, o.empty ?? (o.deck.length ? 'No cards yet: each lesson adds its cards to the deck once it is done.' : 'No cards yet.')),
+        );
+        return;
+      }
       const t = tally(deck, save.quiz, now);
       const ready = Math.min(SITTING, t.due + Math.min(FRESH, t.fresh));
       const next = Object.values(save.quiz).reduce((m, s) => Math.min(m, s.due), Infinity);

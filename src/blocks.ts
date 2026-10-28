@@ -88,3 +88,101 @@ export function lessonShapeProblems(raw: unknown, where: string): string[] {
   });
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// The reference page's file (reference.ts shows it): sections to look things
+// up in, each tied to the lesson it comes from, made of blocks typed like a
+// lesson's. A course can add block types of its own, which it draws itself:
+//
+//   { "sections": [{ "id": "ohms-law", "title": "Ohm's law", "summary": "V, I and R",
+//       "lesson": "what-flows", "blocks": [
+//         { "type": "table", "columns": ["To find", "Formula"], "rows": [["Voltage", "V = I × R"]] },
+//         { "type": "interactive_diagram", "id": "loop", "caption": "Tap a wire to probe it." } ] }] }
+
+/** The reference blocks Didactics draws. */
+export type RefBlock<F extends string = string> =
+  /** A paragraph, with the same markup as lesson text. */
+  | { type: 'text'; text: string }
+  /** Terms and what they mean. */
+  | { type: 'terms'; items: { term: string; means: string }[] }
+  /** A table; the first column is the row's name. */
+  | { type: 'table'; columns: string[]; rows: string[][] }
+  /** Numbered steps. */
+  | { type: 'steps'; items: string[] }
+  /** A course figure by id, live, with no task; a placeholder while the id has no code. */
+  | { type: 'interactive_diagram' | 'diagram'; id: F; caption: string; options?: Record<string, unknown>; aspect_ratio?: number }
+  /** The glossary (glossary.ts), with its search box. */
+  | { type: 'glossary' };
+
+/** A block type of the course's own, such as a table of schematic symbols; the course draws it. */
+export interface CourseBlock {
+  type: string;
+  [field: string]: unknown;
+}
+
+export interface RefSection<B extends { type: string } = RefBlock> {
+  id: string;
+  title: string;
+  /** One line under the title, and the line in the contents. */
+  summary: string;
+  /** The lesson it comes from, by id. */
+  lesson?: string;
+  /** Empty while its lesson is not written: it shows as coming. */
+  blocks: B[];
+}
+
+export interface ReferenceFile<B extends { type: string } = RefBlock> {
+  sections: RefSection<B>[];
+}
+
+export const REF_BLOCK_TYPES: readonly RefBlock['type'][] = ['text', 'terms', 'table', 'steps', 'interactive_diagram', 'diagram', 'glossary'];
+
+/** Whether a value read from JSON looks like a reference file: an object with `sections`. */
+export const isReferenceShaped = (v: unknown): v is { sections: unknown[] } =>
+  typeof v === 'object' && v !== null && Array.isArray((v as { sections?: unknown }).sections);
+
+/**
+ * What is wrong with a reference file read from JSON, in words: sections
+ * missing their words, blocks with no type, or Didactics' own blocks missing
+ * the fields they need. A type Didactics does not know is taken as the
+ * course's own; reference.ts referenceProblems checks those against the course.
+ */
+export function referenceShapeProblems(raw: unknown, where: string): string[] {
+  if (!isReferenceShaped(raw)) return [`${where}: not a reference file (no "sections" list)`];
+  const out: string[] = [];
+  const str = (v: unknown) => typeof v === 'string';
+  const strs = (v: unknown) => Array.isArray(v) && v.every(str);
+  raw.sections.forEach((s, i) => {
+    const sec = (s ?? {}) as Record<string, unknown>;
+    const at = `${where}, section ${str(sec.id) ? `"${sec.id as string}"` : i + 1}`;
+    for (const k of ['id', 'title', 'summary'] as const) if (!str(sec[k])) out.push(`${at}: "${k}" should be text`);
+    if (sec.lesson !== undefined && !str(sec.lesson)) out.push(`${at}: "lesson" should be a lesson's id`);
+    if (!Array.isArray(sec.blocks)) return void out.push(`${at}: "blocks" should be a list`);
+    sec.blocks.forEach((b, j) => {
+      const block = (b ?? {}) as Record<string, unknown>;
+      const bat = `${at}, block ${j + 1}`;
+      if (!str(block.type) || !block.type) return void out.push(`${bat}: a block needs a "type"`);
+      switch (block.type) {
+        case 'text':
+          if (!str(block.text)) out.push(`${bat}: a text block needs "text"`);
+          break;
+        case 'terms':
+          if (!Array.isArray(block.items) || !block.items.every((t) => t && str(t.term) && str(t.means))) out.push(`${bat}: terms needs "items", each a "term" and what it "means"`);
+          break;
+        case 'table':
+          if (!strs(block.columns) || !Array.isArray(block.rows) || !block.rows.every(strs)) out.push(`${bat}: a table needs "columns" and "rows", lists of text`);
+          else if (block.rows.some((r) => (r as string[]).length !== (block.columns as string[]).length)) out.push(`${bat}: every row should have one entry per column`);
+          break;
+        case 'steps':
+          if (!strs(block.items)) out.push(`${bat}: steps needs "items", a list of text`);
+          break;
+        case 'interactive_diagram':
+        case 'diagram':
+          if (!str(block.id) || !block.id) out.push(`${bat}: a ${block.type} needs an "id"`);
+          if (!str(block.caption)) out.push(`${bat}: a ${block.type} needs a "caption"`);
+          break;
+      }
+    });
+  });
+  return out;
+}

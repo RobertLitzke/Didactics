@@ -27,7 +27,7 @@
 
 import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './blocks.ts';
 import { el, type Child } from './dom';
-import type { FigureContext, FigureFactory } from './figure';
+import { placeCaption, type FigureContext, type FigureFactory } from './figure';
 import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, type FootnoteSet, type Footnotes } from './footnote';
 import { finishLesson, type Progress } from './progress';
 import type { Cue, Talk } from './radio';
@@ -116,12 +116,20 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
   home?: string;
   /** What a lesson is called in the headings. Default "Lesson". */
   noun?: string;
+  /**
+   * The N in "Lesson 3 of N", for a lesson with no `code`. By default it
+   * counts the lessons that are written (not `coming`, with parts), so
+   * lessons drafted only as titles do not inflate it.
+   */
+  of?: (lesson: L) => number;
 }
 
 /** The view for a route like /lesson/:id. */
 export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOptions<L, S>): View {
   const home = o.home ?? '/home';
   const noun = o.noun ?? 'Lesson';
+  const written = o.lessons.filter((l) => !l.coming && l.parts.length > 0).length;
+  const of = o.of ?? ((l: L) => Math.max(written, l.n));
 
   /** How a block's figure is remembered between visits; nothing is, in a finished lesson. */
   interface Keeping {
@@ -150,9 +158,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       return fig;
     }
     const handle = factory(ctx, block.goal, block.options);
-    const box = handle.node.querySelector('.fig-text');
-    if (box) box.prepend(caption);
-    const fig = el('figure.fig', { 'data-figure': block.id }, status, handle.node, box ? null : el('div.fig-text', {}, caption));
+    const fig = el('figure.fig', { 'data-figure': block.id }, status, handle.node, placeCaption(handle.node, caption));
     if (keeping) keepSliders(handle.node, keeping);
     if (handle.done) {
       const done = keeping?.done ? Promise.resolve() : handle.done;
@@ -261,7 +267,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
         o.hero ? el('div.article-hero', {}, o.hero(lesson)) : null,
         el('div.paper', {},
           el('div.article-intro', {},
-            el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n} of ${o.lessons.length}`),
+            el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n} of ${of(lesson)}`),
             el('h1.poster-type', {}, lesson.title),
             el('p.lede', {}, /[.!?]$/.test(lesson.teaches) ? lesson.teaches : lesson.teaches + '.'),
             o.intro?.(lesson),
@@ -444,7 +450,8 @@ export function lessonProblems(
 }
 
 /** The box shown for a diagram the course has no code for yet. */
-function placeholder(b: DiagramBlock): HTMLElement {
+/** The box that stands where a diagram goes, while its id has no code. */
+export function placeholder(b: Pick<DiagramBlock, 'type' | 'id' | 'aspect_ratio'>): HTMLElement {
   const words = { interactive_diagram: 'Interactive diagram', diagram: 'Diagram', quiz: 'Quiz' }[b.type] ?? 'Diagram';
   return el('div.fig-placeholder', { style: `aspect-ratio: ${b.aspect_ratio && b.aspect_ratio > 0 ? b.aspect_ratio : 16 / 9}` },
     el('p', {}, `${words} `, el('code', {}, b.id), ' goes here'));

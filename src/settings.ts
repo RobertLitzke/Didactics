@@ -24,8 +24,10 @@ export interface SettingsOptions<S extends Progress> {
   /**
    * The one-file copy of the app (see vite.ts oneFileCopy): its URL and file
    * name, and the bigger copy with every photo inside (vite.ts offlineCopy).
+   * The section speaks of photos (or `offline.noun`) only for an app that has
+   * them, one with `offline` or `oneFile.offline`; `text` replaces its words.
    */
-  oneFile?: { href: string; name: string; offline?: { href: string; name: string } };
+  oneFile?: { href: string; name: string; offline?: { href: string; name: string }; text?: string };
   /**
    * The folder of large files the service worker saves (such as "photos/"),
    * how many there are, and what to call them, for the Offline section.
@@ -66,7 +68,7 @@ export function settingsView<S extends Progress>(o: SettingsOptions<S>): View {
         {},
         el('h1', {}, 'Settings'),
         el('label.field', {}, el('span', {}, 'Name on the logbook'), name),
-        o.units
+        o.units && !save.fixedUnits
           ? el(
               'div.field',
               {},
@@ -120,7 +122,7 @@ export function settingsView<S extends Progress>(o: SettingsOptions<S>): View {
           file,
         ),
         o.offline && !fromDisk ? offlineSection(o.offline) : null,
-        o.oneFile ? oneFileSection(o.oneFile) : null,
+        o.oneFile ? oneFileSection(o.oneFile, o.offline?.noun ?? (o.oneFile.offline ? 'photos' : undefined)) : null,
         o.sections ?? null,
         o.about ? [el('h2', {}, 'About'), o.about] : null,
         el(
@@ -161,14 +163,21 @@ function offlineSection({ folder, total, noun }: NonNullable<SettingsOptions<Pro
   return [el('h2', {}, 'Offline'), bar, line];
 }
 
-function oneFileSection(f: NonNullable<SettingsOptions<Progress>['oneFile']>): Child {
-  const text = selfContained
-    ? 'This is the downloaded copy with every photo inside. It needs no connection at all. Its progress is kept apart from the website’s, so use Save to file to carry progress across.'
-    : fromDisk
-      ? `This is the downloaded copy. It works with no connection; the photos come from the website, so they show only when you are online.${f.offline ? ` ${f.offline.name} has the photos inside.` : ''} Its progress is kept apart from the website’s, so use Save to file to carry progress across.`
-      : f.offline
-        ? `The app in a single page, to keep on a phone or pass to someone. ${f.name} is small and shows the photos only when you are online; ${f.offline.name} is bigger and has every photo inside, so it needs no connection at all. Either keeps its progress apart from this one’s.`
-        : 'Everything but the photos in a single page, to keep on a phone or pass to someone. It works with no connection, and shows the photos whenever you are online. Its progress is kept apart from this one’s.';
+function oneFileSection(f: NonNullable<SettingsOptions<Progress>['oneFile']>, noun?: string): Child {
+  const apart = 'Its progress is kept apart from the website’s, so use Save to file to carry progress across.';
+  const text =
+    f.text ??
+    (selfContained
+      ? `This is the downloaded copy${noun ? ` with all the ${noun} inside` : ''}. It needs no connection at all. ${apart}`
+      : fromDisk
+        ? noun
+          ? `This is the downloaded copy. It works with no connection; the ${noun} come from the website, so they show only when you are online.${f.offline ? ` ${f.offline.name} has the ${noun} inside.` : ''} ${apart}`
+          : `This is the downloaded copy. It works with no connection. ${apart}`
+        : f.offline
+          ? `The app in a single page, to keep on a phone or pass to someone. ${f.name} is small and shows the ${noun} only when you are online; ${f.offline.name} is bigger and has all the ${noun} inside, so it needs no connection at all. Either keeps its progress apart from this one’s.`
+          : noun
+            ? `Everything but the ${noun} in a single page, to keep on a phone or pass to someone. It works with no connection, and shows the ${noun} whenever you are online. Its progress is kept apart from this one’s.`
+            : 'The whole app in a single page, to keep on a phone or pass to someone. It works with no connection. Its progress is kept apart from this one’s.');
   const big = f.offline ? (el('a.btn.btn-ghost', { href: f.offline.href, download: f.offline.name }, `Download ${f.offline.name}`) as HTMLAnchorElement) : null;
   if (big && f.offline) void sizeOf(f.offline.href).then((mb) => mb && (big.textContent = `Download ${f.offline!.name} (${mb})`));
   return [

@@ -3,14 +3,14 @@
 //
 //   didactics-course export src/data [more folders or files] [--title "Clouds"] [--out course.json] [--skip src/data/photos.json]
 //   didactics-course import course.json [--dry-run]
-//   didactics-course upgrade src/data/lessons      lessons in the old `kind` shape to typed blocks
+//   didactics-course upgrade src/data              lessons and reference files in the old `kind` shape to typed blocks
 //
 // Paths are kept relative to the folder it is run in, so run it from the
 // repository root, the same root the app's import.meta.glob paths start from.
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
-import { exportCourse, formatJson, readCourse, upgradeLesson } from '../lib/course.js';
+import { exportCourse, formatJson, readCourse, upgradeLesson, upgradeReference } from '../lib/course.js';
 
 const [command, ...args] = process.argv.slice(2);
 const flags = {};
@@ -66,13 +66,13 @@ if (command === 'export') {
   for (const path of rest.flatMap(jsonUnder)) {
     const text = readFileSync(path, 'utf8');
     const raw = JSON.parse(text);
-    const up = upgradeLesson(raw);
+    const up = upgradeReference(upgradeLesson(raw));
     if (JSON.stringify(up) === JSON.stringify(raw)) continue;
     write(path, formatJson(up, text));
     changed++;
     console.log(`upgraded ${path}`);
   }
-  console.log(`${changed} lesson files upgraded. Check each callout's type: a figure the guess got wrong is reported by lessonProblems.`);
+  console.log(`${changed} files upgraded. Check each callout's type: a figure the guess got wrong is reported by lessonProblems or referenceProblems.`);
 } else {
   fail([
     'didactics-course export <folders or files> [--title T] [--out course.json] [--skip path]',

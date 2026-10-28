@@ -19,7 +19,7 @@
 //
 // This file imports nothing that needs a browser, so the command line can use it.
 
-import { lessonShapeProblems, isLessonShaped, type DiagramType } from './blocks.ts';
+import { isLessonShaped, isReferenceShaped, lessonShapeProblems, referenceShapeProblems, type DiagramType } from './blocks.ts';
 
 export const COURSE_FORMAT = 'didactics-course';
 export const COURSE_VERSION = 1;
@@ -81,6 +81,7 @@ export function readCourse(raw: unknown, known?: CourseFiles): { files: CourseFi
     if (!path.endsWith('.json') || path.split('/').includes('..')) problems.push(`${p}: not a JSON file inside the course`);
     else if (known && !(path in known)) problems.push(`${p}: the course has no such file`);
     else if (isLessonShaped(json) || (known && isLessonShaped(known[path]))) problems.push(...lessonShapeProblems(json, path));
+    else if (isReferenceShaped(json) || (known && isReferenceShaped(known[path]))) problems.push(...referenceShapeProblems(json, path));
     files[path] = json;
   }
   return { files: problems.length ? {} : files, problems };
@@ -191,6 +192,30 @@ export function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | 
     }),
   }));
   return { ...raw, parts };
+}
+
+/**
+ * A reference file (blocks.ts ReferenceFile) in the earlier shape, with
+ * `kind` blocks and "figure" blocks naming a "figure", in the typed shape.
+ * `typeOf` says what each figure is; left out, a figure is taken as
+ * interactive. Every other kind, the course's own among them, just becomes
+ * its type. Files already typed come back as they were.
+ */
+export function upgradeReference<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T {
+  if (!isReferenceShaped(raw)) return raw;
+  const sections = (raw.sections as { blocks?: Record<string, unknown>[] }[]).map((s) => ({
+    ...s,
+    blocks: (s.blocks ?? []).map((b) => {
+      if (!('kind' in b) || 'type' in b) return b;
+      const { kind, ...rest } = b;
+      if (kind !== 'figure') return { type: kind, ...rest };
+      const { figure, ...more } = rest;
+      const id = String(figure);
+      const t = typeOf?.(id);
+      return { type: t === 'diagram' ? 'diagram' : 'interactive_diagram', id, ...more };
+    }),
+  }));
+  return { ...raw, sections };
 }
 
 /**

@@ -32,6 +32,8 @@ export interface Progress {
   /** Journal entries unlocked, by id. */
   journal: string[];
   units: Units;
+  /** The course has one unit system: `units` is always the one emptyProgress set, whatever was stored. */
+  fixedUnits?: true;
   /** Quiz cards seen, by card id: their spaced-repetition box and when each is next due (quiz.ts). */
   quiz: Record<string, { box: number; due: number }>;
   /** Lessons left part way, by id, to pick up again where the reader was (resume.ts). */
@@ -51,14 +53,22 @@ export interface RadioProgress extends Progress {
   heard: Record<string, number[]>;
 }
 
+/** How a new save is made: with the radio's fields or without, and whether the reader can change units. */
+export interface EmptyOptions {
+  radio?: boolean;
+  /** One unit system for the whole course: migrateProgress then never reads `units` from what was stored. */
+  fixedUnits?: boolean;
+}
+
 /**
  * A new save. With `radio: false` it has no radio fields, and migrateProgress
- * given it keeps none from what was stored.
+ * given it keeps none from what was stored. With `fixedUnits: true` its
+ * `units` stay as given, through every migrateProgress.
  */
-export function emptyProgress(units?: Units, o?: { radio?: true }): RadioProgress;
-export function emptyProgress(units: Units, o: { radio: false }): Progress;
-export function emptyProgress(units: Units = 'metric', o: { radio?: boolean } = {}): Progress {
-  const base: Progress = { v: 1, name: '', lessons: {}, journal: [], units, quiz: {}, resume: {} };
+export function emptyProgress(units?: Units, o?: EmptyOptions & { radio?: true }): RadioProgress;
+export function emptyProgress(units: Units, o: EmptyOptions & { radio: false }): Progress;
+export function emptyProgress(units: Units = 'metric', o: EmptyOptions = {}): Progress {
+  const base: Progress = { v: 1, name: '', lessons: {}, journal: [], units, quiz: {}, resume: {}, ...(o.fixedUnits ? { fixedUnits: true as const } : {}) };
   return o.radio === false ? base : { ...base, talk: true, introSeen: false, heard: {} };
 }
 
@@ -69,7 +79,8 @@ export const stringSet = (x: unknown): string[] => (Array.isArray(x) ? [...new S
 
 /**
  * Repair the shared fields of whatever was stored, keeping all that can be
- * kept, onto `empty`. The radio's fields are read only if `empty` has them.
+ * kept, onto `empty`. The radio's fields are read only if `empty` has them,
+ * and `units` only if `empty` does not have `fixedUnits`.
  * Lesson records are read from `lessons`, or from `shifts`, the name Clouds
  * stored them under first.
  */
@@ -79,7 +90,7 @@ export function migrateProgress<P extends Progress = RadioProgress>(raw: unknown
   if (radio) out.heard = {};
   if (!isObj(raw)) return out;
   if (typeof raw.name === 'string') out.name = raw.name.slice(0, 40);
-  if (raw.units === 'metric' || raw.units === 'imperial') out.units = raw.units;
+  if (!empty.fixedUnits && (raw.units === 'metric' || raw.units === 'imperial')) out.units = raw.units;
   if (radio) {
     if (typeof raw.talk === 'boolean') out.talk = raw.talk;
     if (raw.introSeen === true) out.introSeen = true;

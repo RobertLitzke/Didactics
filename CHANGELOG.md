@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.4.0 (2026-10-28)
+
+Gaps found moving a third course (Circuitry) onto Didactics:
+
+- `overflow`: shapes inside an SVG are no longer flagged; an SVG clips its
+  own drawing, so only the svg itself is measured.
+- `reference` (new): `referenceView({ sections, store, prose, figures,
+  lessons?, blocks?, glossary? })`, the reference page Circuitry and Dirt
+  each wrote for themselves: a contents list, then sections tied to lessons,
+  with `text`, `terms`, `table`, `steps`, figure (`interactive_diagram` /
+  `diagram`, by `id`) and `glossary` blocks, and `blocks` for a course's own
+  types. `referenceProblems` for content tests. The file's types and
+  `referenceShapeProblems` are in `blocks`; the course file checks reference
+  files, and `didactics-course upgrade` (`upgradeReference`) turns the old
+  `kind`/`figure` blocks into `type`/`id`. kit.css styles the page.
+- `figure`: `standaloneFigure(factory, { caption, save, goal?, options? })`
+  shows a figure outside a lesson, captioned as a lesson would, with a
+  `close`; `testContext(save)` is a context for tests that collects scores;
+  `placeCaption` is the caption step the lesson player uses.
+- `settings`: the one-file section speaks of photos only for an app that has
+  them (`offline`, or `oneFile.offline`), and `oneFile.text` replaces its
+  words.
+- `lesson`: "Lesson 3 of N" counts only written lessons; `of` lets the course
+  say. `placeholder` is exported.
+- `progress`: `emptyProgress(units, { fixedUnits: true })` marks a course
+  with one unit system; `migrateProgress` then keeps its units whatever was
+  stored, and Settings shows no units switch.
+- `quiz-view`: an `empty` message for a reader with no cards (an empty deck,
+  or every card waiting on a lesson), instead of an empty tally.
+
 ## 0.3.1 (2026-10-28)
 
 - `course`: `formatJson` keeps every object's and list's line breaks, not

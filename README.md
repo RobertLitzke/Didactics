@@ -128,20 +128,21 @@ pin back before committing.
 | `styles/kit.css` | All the styles, themed through CSS custom properties |
 | **Lessons** | |
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
-| `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems` |
+| `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems`; the reference file's (`RefBlock`, `RefSection`, `referenceShapeProblems`) |
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
-| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
+| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
-| `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
+| `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
 | `footnote` | Footnotes that open in a popup: `footnoteSet`, `footnoteMarker`, `openFootnote`, `closeFootnote`, `footnoteLegend`, `footnoteProblems` |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
+| `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
 | **Practice** | |
 | `quiz` | Leitner scheduling: `review`, `deal`, `tally`, `GAPS_DAYS`, the `Card` shape, `conceptCard` for hand-written cards |
-| `quiz-view` | `quizView({ deck, store, blurb, media? })`, the quiz page |
+| `quiz-view` | `quizView({ deck, store, blurb, media?, empty? })`, the quiz page |
 | **Radio** | |
 | `radio` | Talk, Turn and Reply types, `transcript()` |
 | `slip` | `createSlip({ stations, snubs, signOff, onHeard, onOff })` returns `{ play, clear }`, the typewriter slip |
@@ -195,7 +196,9 @@ export const store = createStore({ key: 'levers.save', empty: emptySave, migrate
 
 An app with no radio makes its save with `emptyProgress('metric', { radio:
 false })`: it then has no `talk`, `introSeen` or `heard`, and
-`migrateProgress` given it keeps none of them from an older save. With a
+`migrateProgress` given it keeps none of them from an older save. A course
+with one unit system adds `fixedUnits: true`: its `units` then stay as
+given whatever was stored, and Settings shows no units switch. With a
 radio, the save type is `RadioProgress` (or extends it), which is what
 `emptyProgress` returns by default.
 
