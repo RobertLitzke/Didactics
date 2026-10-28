@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.0 (2026-10-28)
+## 0.1.0 (2026-10-28)
 
 First release, taken out of Clouds (its `packages/lesson-kit`) with no change
 in behaviour. Differences from that copy:

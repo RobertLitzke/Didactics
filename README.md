@@ -52,13 +52,14 @@ own small module with no knowledge of either.
 
 ## Using it in a course
 
-Add it as a git dependency pinned to a release tag:
+Add it as a git dependency pinned to a commit on main (or to a release tag,
+`#v0.1.0`, where one has been pushed):
 
 ```jsonc
 // package.json
 {
   "type": "module",
-  "dependencies": { "didactics": "github:RobertLitzke/Didactics#v0.1.0" },
+  "dependencies": { "didactics": "github:RobertLitzke/Didactics#<commit sha>" },
   "devDependencies": { "@types/node": "^20.19.43", "typescript": "^5.7.2", "vite": "^6.0.5",
                        "vite-plugin-pwa": "^1.0.0", "vite-plugin-singlefile": "^2.3.0",
                        "vitest": "^3.0.0", "happy-dom": "^20.14.6" },
@@ -67,7 +68,7 @@ Add it as a git dependency pinned to a release tag:
 ```
 
 npm records the exact commit in package-lock.json, so `npm ci` (locally, in
-GitHub Actions, anywhere) installs the same code until the tag in
+GitHub Actions, anywhere) installs the same code until the pin in
 package.json is changed. The repository is public, so no token is needed.
 Everything ends up inlined in the app's build, so the one-file and offline
 copies need nothing from this repository at run time.
@@ -102,7 +103,7 @@ declare const __APP_VERSION__: string;
 
 While working on Didactics and a course at once, `npm link` (or
 `npm install ../Didactics`) points the course at a local checkout; put the
-tag back before committing.
+pin back before committing.
 
 ## Modules
 
@@ -553,9 +554,9 @@ every load, so before and after screenshots can be pixel-diffed.
    `lib/vite.d.ts`. A test fails if they are out of date.
 3. `npm run check && npm test`.
 4. Bump `version` in package.json (a breaking change to an export bumps the
-   minor version while it is 0.x), commit, and tag it: `git tag v0.2.0 && git push --tags`.
-   Note the change in CHANGELOG.md.
-5. In each course, change the tag in its package.json, `npm install`, and
-   run its tests and build.
+   minor version while it is 0.x), note the change in CHANGELOG.md, and push
+   to main. Tag it too if you like (`git tag v0.2.0 && git push --tags`).
+5. In each course, run `npm install github:RobertLitzke/Didactics#<new sha or tag>`,
+   then its tests and build.
 
 More ideas for courses are in [docs/topics.md](docs/topics.md).
