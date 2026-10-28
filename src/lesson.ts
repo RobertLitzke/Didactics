@@ -6,7 +6,9 @@
 // score goes into the log at the end, which the reader signs.
 //
 // A lesson's words live in a JSON file (the Lesson shape below, less what the
-// app adds), so they can be edited outside the code. Text takes a little
+// app adds), so they can be edited outside the code. Its blocks are typed
+// (blocks.ts): text, key ideas, and callouts for the course's own diagrams,
+// figures and quizzes by id; an id with no code yet shows as a placeholder. Text takes a little
 // markup (see prose): **bold**, *italic*, [[words|colour]] to tie a word
 // to the same colour in a figure, and [^id] for a footnote from the lesson's
 // `footnotes` table, which opens in a popup (footnote.ts).
@@ -23,6 +25,7 @@
 // Finishing the lesson forgets all that. A lesson already finished opens in
 // full, as before, and keeps no place.
 
+import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './blocks.ts';
 import { el, type Child } from './dom';
 import type { FigureContext, FigureFactory } from './figure';
 import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, type FootnoteSet, type Footnotes } from './footnote';
@@ -32,13 +35,12 @@ import { blockKey, emptyResume, lessonSignature, resumeFor, type LessonResume } 
 import type { View } from './router';
 import type { Store } from './store';
 
-export type Block<F extends string = string> =
-  /** A paragraph of the article. */
-  | { kind: 'text'; text: string }
-  /** The few ideas to hold on to, as a short list set apart from the article. */
-  | { kind: 'key'; title: string; points: string[] }
-  /** A live figure. `task` says what to do with it; `goal` tells the figure when it is done. */
-  | { kind: 'figure'; figure: F; caption: string; task?: string; goal?: string; options?: Record<string, unknown> };
+export { BLOCK_TYPES, DIAGRAM_TYPES, isDiagram, lessonShapeProblems, type Block, type BlockType, type DiagramBlock, type DiagramType } from './blocks.ts';
+
+/** The type a block for this factory should have: a quiz, a live figure, or a still. */
+export function diagramType(f: FigureFactory): DiagramType {
+  return f.quiz ? 'quiz' : f.goals ? 'interactive_diagram' : 'diagram';
+}
 
 export interface Part<F extends string = string> {
   title: string;
@@ -67,7 +69,7 @@ export interface Lesson<F extends string = string> {
 
 /** Every piece of a lesson's text that takes markup, in reading order. */
 export function lessonTexts(lesson: Lesson): string[] {
-  return lesson.parts.flatMap((p) => p.blocks.flatMap((b) => (b.kind === 'text' ? [b.text] : b.kind === 'key' ? b.points : [])));
+  return lesson.parts.flatMap((p) => p.blocks.flatMap((b) => (b.type === 'text' ? [b.text] : b.type === 'key_ideas' ? b.points : [])));
 }
 
 /**
@@ -130,30 +132,32 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
   }
 
   function renderBlock(block: Block, ctx: FigureContext, tasks: Promise<void>[], notes: FootnoteSet, keeping?: Keeping): HTMLElement {
-    switch (block.kind) {
-      case 'text':
-        return o.prose(block.text, notes);
-      case 'key':
-        return el('section.key-ideas', {}, el('p.key-title', {}, block.title), el('ul', {}, ...block.points.map((p) => el('li', {}, o.prose(p, notes)))));
-      case 'figure': {
-        const handle = o.figures[block.figure](ctx, block.goal, block.options);
-        const status = block.task ? el('p.fig-task', {}, el('span.tick', { 'aria-hidden': 'true' }), block.task) : null;
-        // The caption opens the figure's one text box, above what the figure is
-        // showing now; a still or a quiz has no live text, so it gets a box of its own.
-        const caption = el('p.fig-lead', {}, block.caption);
-        const box = handle.node.querySelector('.fig-text');
-        if (box) box.prepend(caption);
-        const fig = el('figure.fig', { 'data-figure': block.figure }, status, handle.node, box ? null : el('div.fig-text', {}, caption));
-        if (keeping) keepSliders(handle.node, keeping);
-        if (handle.done) {
-          const done = keeping?.done ? Promise.resolve() : handle.done;
-          if (keeping && !keeping.done) void handle.done.then(keeping.onDone);
-          tasks.push(done);
-          void done.then(() => fig.classList.add('done'));
-        }
-        return fig;
-      }
+    if (block.type === 'text') return o.prose(block.text, notes);
+    if (block.type === 'key_ideas') {
+      return el('section.key-ideas', {}, el('p.key-title', {}, block.title), el('ul', {}, ...block.points.map((p) => el('li', {}, o.prose(p, notes)))));
     }
+    const status = block.task ? el('p.fig-task', {}, el('span.tick', { 'aria-hidden': 'true' }), block.task) : null;
+    // The caption opens the figure's one text box, above what the figure is
+    // showing now; a still or a quiz has no live text, so it gets a box of its own.
+    const caption = el('p.fig-lead', {}, block.caption);
+    const factory = o.figures[block.id];
+    if (!factory) {
+      // Written before it was drawn: say what goes here, and hold no one up.
+      const fig = el('figure.fig.fig-missing.done', { 'data-figure': block.id }, status, placeholder(block), el('div.fig-text', {}, caption));
+      return fig;
+    }
+    const handle = factory(ctx, block.goal, block.options);
+    const box = handle.node.querySelector('.fig-text');
+    if (box) box.prepend(caption);
+    const fig = el('figure.fig', { 'data-figure': block.id }, status, handle.node, box ? null : el('div.fig-text', {}, caption));
+    if (keeping) keepSliders(handle.node, keeping);
+    if (handle.done) {
+      const done = keeping?.done ? Promise.resolve() : handle.done;
+      if (keeping && !keeping.done) void handle.done.then(keeping.onDone);
+      tasks.push(done);
+      void done.then(() => fig.classList.add('done'));
+    }
+    return fig;
   }
 
   return (root, nav) => {
@@ -412,19 +416,32 @@ function keepSliders(node: HTMLElement, keeping: { sliders?: number[]; onSliders
  * meet, a task on a live figure with no goal (the lesson would stall), or a
  * footnote marker with no note, or a note with no marker.
  */
-export function lessonProblems(lessons: readonly Lesson[], figures: Readonly<Record<string, FigureFactory>>): string[] {
+export function lessonProblems(
+  lessons: readonly Lesson[],
+  figures: Readonly<Record<string, FigureFactory>>,
+  opts: { allowPlaceholders?: boolean } = {},
+): string[] {
   const out: string[] = [];
   for (const l of lessons) {
     out.push(...footnoteProblems(l.id, l.footnotes, lessonTexts(l)));
     for (const p of l.parts) {
       for (const b of p.blocks) {
-        if (b.kind !== 'figure') continue;
-        const f = figures[b.figure];
-        if (!f) out.push(`${l.id}: no figure "${b.figure}"`);
-        else if (b.goal && !f.goals?.includes(b.goal)) out.push(`${l.id}: ${b.figure} does not know the goal "${b.goal}"`);
-        else if (b.task && !b.goal && !f.quiz) out.push(`${l.id}: ${b.figure} has a task but no goal`);
+        if (!isDiagram(b)) continue;
+        const f = figures[b.id];
+        if (!f) {
+          if (!opts.allowPlaceholders) out.push(`${l.id}: no figure "${b.id}"`);
+        } else if (b.type !== diagramType(f)) out.push(`${l.id}: ${b.id} should have "type": "${diagramType(f)}", not "${b.type}"`);
+        else if (b.goal && !f.goals?.includes(b.goal)) out.push(`${l.id}: ${b.id} does not know the goal "${b.goal}"`);
+        else if (b.task && !b.goal && !f.quiz) out.push(`${l.id}: ${b.id} has a task but no goal`);
       }
     }
   }
   return out;
+}
+
+/** The box shown for a diagram the course has no code for yet. */
+function placeholder(b: DiagramBlock): HTMLElement {
+  const words = { interactive_diagram: 'Interactive diagram', diagram: 'Diagram', quiz: 'Quiz' }[b.type] ?? 'Diagram';
+  return el('div.fig-placeholder', { style: `aspect-ratio: ${b.aspect_ratio && b.aspect_ratio > 0 ? b.aspect_ratio : 16 / 9}` },
+    el('p', {}, `${words} `, el('code', {}, b.id), ' goes here'));
 }

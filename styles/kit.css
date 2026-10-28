@@ -3,8 +3,8 @@
    the quiz. Colours and type come from the custom properties below; an app
    imports this file first and then sets its own values for them (see Clouds'
    src/app/styles/tokens.css), along with @font-face rules for the families it
-   names. The radio slip types in 'Special Elite' and the log is handwritten
-   in var(--hand). */
+   names. The radio slip types in var(--type) and the log is handwritten in
+   var(--hand). README.md lists every property. */
 
 :root {
   --bg: #1b172f;
@@ -28,6 +28,10 @@
   --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Arial Narrow', system-ui, sans-serif;
   --hand: 'Segoe Print', 'Bradley Hand', cursive;
+  /* The radio slip and transcripts. */
+  --type: 'Special Elite', 'Courier New', monospace;
+  /* How wide the ordinary pages run. */
+  --page-width: 720px;
 }
 
 * { box-sizing: border-box; }
@@ -109,22 +113,30 @@ p { margin: 0 0 0.75em; }
   line-height: 1.05;
 }
 .wordmark span { font-size: 0.62rem; letter-spacing: 0.14em; color: var(--sun); white-space: nowrap; }
-.topbar nav { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
-.topbar nav a {
-  color: var(--muted);
-  text-decoration: none;
-  font-family: var(--display);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.8rem;
-  padding: 6px 8px;
-  border-radius: 8px;
+/* The page menu (shell.ts pageMenu): the current page's name, opening a short list. */
+.navmenu { position: relative; }
+.navmenu summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  font: 600 0.8rem/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text); background: var(--bg-2); padding: 8px 12px; border-radius: 999px;
 }
-.topbar nav a.here { color: var(--text); background: var(--bg-2); }
+.navmenu summary::-webkit-details-marker { display: none; }
+.navmenu summary::after { content: ''; width: 6px; height: 6px; border: solid var(--sun); border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg); }
+.navmenu[open] summary::after { transform: translateY(1px) rotate(-135deg); }
+.navmenu nav {
+  position: absolute; right: 0; top: calc(100% + 6px); min-width: 160px; z-index: 6;
+  display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--bg-2); border-radius: 12px; box-shadow: 0 10px 30px rgba(10, 6, 24, 0.5);
+}
+.navmenu nav a {
+  color: var(--muted); text-decoration: none; font-family: var(--display); text-transform: uppercase;
+  letter-spacing: 0.08em; padding: 10px 12px; font-size: 0.8rem; border-radius: 8px;
+}
+.navmenu nav a.here { background: var(--bg); color: var(--sun); }
 body.in-lesson .topbar { display: none; }
 
 main { display: block; }
-.page { max-width: 720px; margin: 0 auto; padding: 16px; }
+.page { max-width: var(--page-width); margin: 0 auto; padding: 16px; }
 
 /* ---- Buttons ---------------------------------------------------------- */
 .btn {
@@ -243,7 +255,7 @@ main { display: block; }
   background: #f4ead2;
   background-image: repeating-linear-gradient(0deg, transparent 0 25px, rgba(42, 37, 71, 0.06) 25px 26px);
   color: #2b2620;
-  font: 15px/1.55 'Special Elite', 'Courier New', monospace;
+  font: 15px/1.55 var(--type);
   padding: 18px 16px calc(12px + env(safe-area-inset-bottom));
   clip-path: polygon(0.0% 2.1px, 3.6% 0.9px, 7.1% 3.6px, 10.7% 1.4px, 14.3% 0.6px, 17.9% 3.6px, 21.4% 8.3px, 25.0% 7.2px, 28.6% 6.9px, 32.1% 2.0px, 35.7% 4.8px, 39.3% 2.5px, 42.9% 1.6px, 46.4% 1.0px, 50.0% 1.9px, 53.6% 8.3px, 57.1% 7.5px, 60.7% 7.3px, 64.3% 7.2px, 67.9% 1.7px, 71.4% 2.8px, 75.0% 5.6px, 78.6% 6.6px, 82.1% 7.7px, 85.7% 7.9px, 89.3% 0.8px, 92.9% 5.5px, 96.4% 6.0px, 100.0% 4.6px, 100% 100%, 0% 100%);
 }
@@ -291,7 +303,7 @@ body.radio-up main { padding-bottom: 50vh; }
   width: min(520px, 100vw - 32px);
   background: #fbe7a6;
   color: #2b2620;
-  font: 14px/1.4 'Special Elite', 'Courier New', monospace;
+  font: 14px/1.4 var(--type);
   padding: 10px 14px;
   border-radius: 4px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -302,7 +314,7 @@ body.radio-up main { padding-bottom: 50vh; }
 @media (prefers-reduced-motion: reduce) {
   .radio-slip { transition: none; }
 }
-.radio-transcript { background: #f4ead2; color: #2b2620; font: 14px/1.5 'Special Elite', 'Courier New', monospace; padding: 10px 14px; border-radius: 3px; }
+.radio-transcript { background: #f4ead2; color: #2b2620; font: 14px/1.5 var(--type); padding: 10px 14px; border-radius: 3px; }
 .radio-transcript summary { cursor: pointer; margin-bottom: 4px; }
 
 /* A live figure: task line, drawing, one text box (caption, then readout), controls. */
@@ -355,7 +367,7 @@ body.radio-up main { padding-bottom: 50vh; }
 .check-wire {
   background: #f4ead2;
   color: #2b2620;
-  font: 14px/1.5 'Special Elite', 'Courier New', monospace;
+  font: 14px/1.5 var(--type);
   padding: 10px 12px;
   border-radius: 3px;
   margin-top: 12px;
@@ -731,3 +743,14 @@ body.sheet-up { overflow: hidden; }
 .tree-rail[hidden] { display: none; }
 .tree-leaf .tree-rail { margin-top: 0; }
 .tree-leaf-title { margin: 6px 0 4px 22px; font: 500 0.85rem/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--branch); }
+
+/* ---- A callout with no code yet (lesson.ts) ---------------------------- */
+.fig-placeholder {
+  display: grid; place-items: center; margin: 0 14px; border: 2px dashed var(--ink-soft); border-radius: 10px;
+  color: var(--ink-soft); font: 600 0.85rem/1.3 var(--display); letter-spacing: 0.06em; text-transform: uppercase; text-align: center; padding: 12px;
+}
+.fig-placeholder code { font: 600 0.95rem var(--font); text-transform: none; letter-spacing: 0; color: var(--ink); }
+
+/* ---- Course text, in settings (course-view.ts) ------------------------- */
+.course-problems { margin: 8px 0 0; padding-left: 20px; color: var(--bad); font-size: 0.9rem; }
+.course-problems:empty { display: none; }

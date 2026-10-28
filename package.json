@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -11,13 +11,17 @@
   "files": [
     "src",
     "lib",
+    "bin",
     "styles",
     "tsconfig.json",
     "README.md"
   ],
   "exports": {
     "./asset": "./src/asset.ts",
+    "./blocks": "./src/blocks.ts",
     "./check": "./src/check.ts",
+    "./course": "./src/course.ts",
+    "./course-view": "./src/course-view.ts",
     "./dom": "./src/dom.ts",
     "./draw": "./src/draw.ts",
     "./figure": "./src/figure.ts",
@@ -34,6 +38,7 @@
     "./rng": "./src/rng.ts",
     "./router": "./src/router.ts",
     "./settings": "./src/settings.ts",
+    "./shell": "./src/shell.ts",
     "./slip": "./src/slip.ts",
     "./splash": "./src/splash.ts",
     "./store": "./src/store.ts",
@@ -45,8 +50,8 @@
       "types": "./lib/vite.d.ts",
       "default": "./lib/vite.js"
     },
-    "./styles/kit.css": "./styles/kit.css",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./styles/kit.css": "./styles/kit.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json",
@@ -66,5 +71,8 @@
     "vite-plugin-pwa": "^1.0.0",
     "vite-plugin-singlefile": "^2.3.0",
     "vitest": "^3.0.0"
+  },
+  "bin": {
+    "didactics-course": "./bin/didactics-course.mjs"
   }
 }

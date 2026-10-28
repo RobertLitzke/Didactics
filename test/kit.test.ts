@@ -64,8 +64,8 @@ describe('Didactics', () => {
     const lessons: Lesson[] = [{
       id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', learned: ['Pushes move things'], next: 'Next: pulling.', journal: [],
       parts: [
-        { title: 'Push', blocks: [{ kind: 'text', text: 'A **push** in [[red|warm]].' }, { kind: 'figure', figure: 'push', caption: 'A block', task: 'Push it far', goal: 'far' }] },
-        { title: 'Check', blocks: [{ kind: 'figure', figure: 'check', caption: 'One question', task: 'Answer' }] },
+        { title: 'Push', blocks: [{ type: 'text', text: 'A **push** in [[red|warm]].' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal: 'far' }] },
+        { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'One question', task: 'Answer' }] },
       ],
     }];
     const figures = { push, check };
@@ -178,7 +178,7 @@ describe('Didactics', () => {
       const played: string[] = [];
       const lesson: Lesson = {
         id: 'sums', n: 1, title: 'Sums', teaches: 'Adding', learned: [], next: '', journal: [],
-        parts: [{ title: 'Check', blocks: [{ kind: 'figure', figure: 'check', caption: 'Sums', task: 'Answer' }] }],
+        parts: [{ title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Sums', task: 'Answer' }] }],
       };
       const store = createStore({ key: 'check-test', empty: emptyProgress, migrate: migrateProgress });
       const root = el('div');
@@ -227,8 +227,8 @@ describe('Didactics', () => {
     const lesson = (goal = 'far'): Lesson => ({
       id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', learned: [], next: '', journal: [],
       parts: [
-        { title: 'Push', blocks: [{ kind: 'text', text: 'Push it.' }, { kind: 'figure', figure: 'push', caption: 'A block', task: 'Push it far', goal }] },
-        { title: 'Check', blocks: [{ kind: 'figure', figure: 'check', caption: 'Two questions', task: 'Answer' }] },
+        { title: 'Push', blocks: [{ type: 'text', text: 'Push it.' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal }] },
+        { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Two questions', task: 'Answer' }] },
       ],
     });
     const open = (lessons: Lesson[], store: ReturnType<typeof createStore<ReturnType<typeof emptyProgress>>>) => {
@@ -297,7 +297,7 @@ describe('Didactics', () => {
       await tick();
       v.close();
       const reworded = lesson();
-      reworded.parts[0].blocks[0] = { kind: 'text', text: 'Push it hard.' };
+      reworded.parts[0].blocks[0] = { type: 'text', text: 'Push it hard.' };
       expect(lessonSignature(reworded)).toBe(lessonSignature(lesson()));
       v = open([reworded], store);
       await tick();

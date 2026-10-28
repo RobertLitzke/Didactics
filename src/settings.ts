@@ -31,6 +31,8 @@ export interface SettingsOptions<S extends Progress> {
    * how many there are, and what to call them, for the Offline section.
    */
   offline?: { folder: string; total: number; noun: string };
+  /** More sections, after Progress and before About, such as course-view.ts courseSection. */
+  sections?: Child;
   /** More, under About, before the erase button. */
   about?: Child;
   home?: string;
@@ -119,6 +121,7 @@ export function settingsView<S extends Progress>(o: SettingsOptions<S>): View {
         ),
         o.offline && !fromDisk ? offlineSection(o.offline) : null,
         o.oneFile ? oneFileSection(o.oneFile) : null,
+        o.sections ?? null,
         o.about ? [el('h2', {}, 'About'), o.about] : null,
         el(
           'button.btn.btn-danger',

@@ -37,7 +37,7 @@ export interface LessonResume {
 
 /** What the resume needs to know of a lesson: its figures, in order. */
 interface Shape {
-  parts: readonly { blocks: readonly { kind: string; figure?: string; goal?: string; task?: string; options?: unknown }[] }[];
+  parts: readonly { blocks: readonly { type: string; id?: string; goal?: string; task?: string; options?: unknown }[] }[];
 }
 
 export const blockKey = (part: number, block: number) => `${part}.${block}`;
@@ -53,7 +53,9 @@ export function emptyResume(sig: string): LessonResume {
  */
 export function lessonSignature(lesson: Shape): string {
   const text = JSON.stringify(lesson.parts.map((p) => p.blocks.map((b) =>
-    b.kind === 'figure' ? [b.figure, b.goal ?? '', b.task ? 1 : 0, b.options ?? null] : b.kind)));
+    // Hashed as the blocks were named before they had types (figure, key,
+    // text), so places kept under the old names still fit.
+    b.type === 'text' ? 'text' : b.type === 'key_ideas' ? 'key' : [b.id, b.goal ?? '', b.task ? 1 : 0, b.options ?? null])));
   // FNV-1a, 32 bits.
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);

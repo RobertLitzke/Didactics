@@ -19,10 +19,11 @@ describe('package', () => {
     }
   });
 
-  it('ships lib/vite.js and lib/vite.d.ts built from src/vite.ts (run npm run build)', () => {
+  it('ships lib/ built from src (run npm run build)', () => {
     const out = mkdtempSync(join(tmpdir(), 'didactics-lib-'));
     execFileSync(process.execPath, [join(ROOT, 'node_modules/typescript/bin/tsc'), '-p', join(ROOT, 'tsconfig.lib.json'), '--outDir', out]);
-    for (const f of ['vite.js', 'vite.d.ts']) {
+    expect(readdirSync(join(ROOT, 'lib')).sort()).toEqual(readdirSync(out).sort());
+    for (const f of readdirSync(out)) {
       expect(readFileSync(join(ROOT, 'lib', f), 'utf8'), f).toBe(readFileSync(join(out, f), 'utf8'));
     }
   }, 60_000);

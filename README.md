@@ -38,9 +38,9 @@ example:
   after importing it.
 
 Each module can be used without the others above it. `dom`, `rng`, `store`,
-`units`, `radio`, `resume`, `asset`, `offline` and `vite` import nothing from
-the rest; `quiz` only `rng`; `router`, `ui`, `draw`, `footnote`, `splash`,
-`update` and `overflow` only `dom`. The lesson player (`lesson`) is the one
+`units`, `radio`, `resume`, `blocks`, `asset`, `offline` and `vite` import
+nothing from the rest; `course` only `blocks`; `quiz` only `rng`; `router`, `ui`, `shell`, `draw`, `footnote`,
+`splash`, `update` and `overflow` only `dom`. The lesson player (`lesson`) is the one
 that brings the most together.
 
 **What belongs to the course, not here:** its interactive diagrams and live
@@ -116,8 +116,9 @@ pin back before committing.
 | `units` | `Units`, `height(m, units)`, `feet`, `deg`, `temp` |
 | `router` | `new Router(outlet, hooks).add('/x/:id', view).start('/home')`, hash routes, views return a teardown |
 | **Shell** | |
+| `shell` | `appShell({ mount, title, subtitle?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
-| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, about? })`; `offline` shows how many photos are saved on the device, `oneFile.offline` offers the copy with photos inside |
+| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline` shows how many photos are saved on the device, `oneFile.offline` offers the copy with photos inside |
 | `update` | `watchForUpdates({ title, text, icon?, beforeReload? })`, gets a new deploy into the installed app, with a "new version" banner |
 | `splash` | `showSplash({ src, alt })`, a poster as the loading screen |
 | `asset` | `assetFrom(siteUrl)`, `fromDisk` (lets the one-file copy fetch photos from the live site), `selfContained` (the offline copy, photos inlined) |
@@ -127,7 +128,10 @@ pin back before committing.
 | `styles/kit.css` | All the styles, themed through CSS custom properties |
 | **Lessons** | |
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
-| `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests |
+| `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems` |
+| `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
+| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`; the command line `didactics-course` |
+| `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
 | `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
@@ -304,7 +308,7 @@ skipped one can still be started. Finishing it later replaces the skip.
 Clouds' home view shows both (a Skip button on the lesson that is next).
 
 A resume belongs to one version of a lesson. `lessonSignature` hashes the
-kind of every block and each figure's name, goal, task and options, but not
+type of every block and each figure's name, goal, task and options, but not
 the words, so editing text keeps readers' places, while adding, moving or
 re-optioning a figure drops them (they start that lesson over). The record
 has its own `v: 1`; one that can't be read is dropped and the rest of the
@@ -318,11 +322,12 @@ save loads as before.
   "teaches": "How a lever trades distance for force",
   "parts": [
     { "title": "The seesaw", "blocks": [
-      { "kind": "text", "text": "Push near the **pivot** and it barely moves; push at the [[end|effort]] and it swings." },
-      { "kind": "figure", "figure": "lever", "caption": "A plank on a pivot", "task": "Find the balance point", "goal": "balance" },
-      { "kind": "key", "title": "Hold on to", "points": ["Turning = force × distance from the pivot."] }
+      { "type": "text", "text": "Push near the **pivot** and it barely moves; push at the [[end|effort]] and it swings." },
+      { "type": "interactive_diagram", "id": "lever", "caption": "A plank on a pivot", "task": "Find the balance point", "goal": "balance", "aspect_ratio": 2 },
+      { "type": "diagram", "id": "crowbar", "caption": "A crowbar is a lever too", "aspect_ratio": 1.66 },
+      { "type": "key_ideas", "title": "Hold on to", "points": ["Turning = force × distance from the pivot."] }
     ]},
-    { "title": "Check", "blocks": [ { "kind": "figure", "figure": "check", "caption": "Three questions", "task": "Answer them" } ] }
+    { "title": "Check", "blocks": [ { "type": "quiz", "id": "check", "caption": "Three questions", "task": "Answer them" } ] }
   ],
   "learned": ["A lever trades distance for force."],
   "next": "Next: pulleys.",
@@ -330,10 +335,74 @@ save loads as before.
 }
 ```
 
+Every block has a `type` (`blocks.ts`):
+
+| `type` | Fields | What it is |
+| --- | --- | --- |
+| `text` | `text` | A paragraph |
+| `key_ideas` | `title`, `points` | The few ideas to hold on to, set apart |
+| `interactive_diagram` | `id`, `caption`, `task?`, `goal?`, `options?`, `aspect_ratio?` | A live figure the course draws (made with `figure`) |
+| `diagram` | the same | A still (a plain factory) |
+| `quiz` | the same | A quiz or the check (made with `quiz` or `check`) |
+
+The last three are callouts: the lesson names the thing by `id`, and the
+course maps each id to its code (the `figures` map handed to `lessonView`).
+An id with no code yet shows as a dashed box, `aspect_ratio` (width / height)
+wide, reading "Diagram crowbar goes here", and holds no one up, so a lesson
+can be written and read before its drawings exist. `lessonProblems` lists
+such ids (pass `{ allowPlaceholders: true }` while drafting), and a callout
+whose `type` does not match its code.
+
 Text markup: `**bold**`, `*italic*`, `[[words|key]]`, which colours the
 words with `COL[key]`, and `[^id]`, a footnote. A part opens once every task
 in the part before it is done. The last part is the check, and its score goes
 into the log.
+
+Lessons written in the earlier shape (`"kind": "text" | "key" | "figure"`)
+convert with `npx didactics-course upgrade <folder>`, or `upgradeLesson` in
+`course`; readers' places in a lesson survive the change.
+
+### The whole course as one JSON file
+
+To revise a course in one place, put all its words in one file and back:
+
+```sh
+npx didactics-course export src/data --title Levers --out course.json   # every .json under src/data
+npx didactics-course import course.json                                 # each file back to its path
+npx didactics-course import course.json --dry-run                       # say what would change
+```
+
+The file is `{ "format": "didactics-course", "version": 1, "title", "exported", "_howTo", "files" }`,
+with each JSON file of the course under its path from the repository root
+(lessons, and anything else kept in JSON, such as radio talks, quiz cards or
+a glossary). Import checks every lesson's blocks before it writes anything.
+Run both from the repository root.
+
+The same file works inside the app, so a reader without the repository (on
+a phone, say) can download the course, edit it, and read the edited text in
+the real lessons before anyone commits it. Make the edits first thing the
+app does, in a module the entry imports before anything else:
+
+```ts
+// src/course.ts
+import { courseEdits, courseFiles } from 'didactics/course';
+export const COURSE = courseEdits({
+  key: 'levers.course', title: 'Levers',
+  files: courseFiles(import.meta.glob('/src/data/**/*.json', { eager: true, import: 'default' })),
+});
+
+// src/main.ts
+import './course';            // first: the edited words go in before any module reads them
+…
+import { courseSection } from 'didactics/course-view';
+settingsView({ …, sections: courseSection({ edits: COURSE, fileName: 'levers-course.json' }) });
+```
+
+`courseEdits` keeps a loaded file in localStorage (only the files that
+differ) and puts its words into the very objects the course's modules
+import, so nothing else in the course needs to know about it. Settings then
+has **Download the course**, **Load edited text** (which reports what is
+wrong with a file instead of loading it) and **Back to the built-in text**.
 
 ### Footnotes
 
@@ -343,7 +412,7 @@ page. Put the marker straight after the word or sentence it belongs to, with
 no space, and the note in the lesson's `footnotes` table under the same id:
 
 ```json
-{ "kind": "text", "text": "A longer handle turns the nut more easily.[^torque]" }
+{ "type": "text", "text": "A longer handle turns the nut more easily.[^torque]" }
 
 "footnotes": {
   "torque": { "kind": "technical", "title": "Torque", "text": "Engineers call turning force **torque**: force × distance." },
@@ -386,6 +455,7 @@ import './tokens.css';                         // your colours and fonts (see be
 import { el } from 'didactics/dom';
 import { lessonView } from 'didactics/lesson';
 import { Router } from 'didactics/router';
+import { appShell } from 'didactics/shell';
 import { settingsView } from 'didactics/settings';
 import { watchForUpdates } from 'didactics/update';
 import levers from './lessons/levers.json';
@@ -398,9 +468,12 @@ import { store } from './store';
 const LESSONS = [levers];
 const FIGURES = { lever: leverFigure, check: checkFigure };
 
-const outlet = el('main');
-document.getElementById('app')!.replaceChildren(outlet);
-new Router(outlet, { before: (p) => document.body.classList.toggle('in-lesson', p.startsWith('/lesson/')) })
+const shell = appShell({
+  mount: document.getElementById('app')!, title: 'Levers', subtitle: 'Why a long handle helps',
+  nav: [{ path: '/home', label: 'Home' }, { path: '/settings', label: 'Settings' }],
+  fullScreen: (p) => p.startsWith('/lesson/'),
+});
+new Router(shell.outlet, { before: shell.before })
   .add('/home', (root) => { root.append(el('div.page', {}, LESSONS.map((l) => el('p', {}, el('a', { href: `#/lesson/${l.id}` }, l.title))))); })
   .add('/lesson/:id', lessonView({ lessons: LESSONS, figures: FIGURES, store, prose }))
   .add('/settings', settingsView({ store, empty: emptySave, appName: 'Levers', saveFile: 'levers-save.json' }))
@@ -410,6 +483,11 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.st
   watchForUpdates({ title: 'New version', text: 'A fresh version of Levers is ready.' });
 }
 ```
+
+`appShell` is the top bar: the wordmark on the left (a link home) and a
+dropdown of the pages on the right, showing the current page's name. Pages
+for which `fullScreen` is true hide the bar. Its parts, `topBar` and
+`pageMenu`, can be used on their own, for a bar with more in it.
 
 How updates reach an installed app: a waiting service worker only takes over
 once no page uses the old one, and an installed app (on Android especially)
@@ -465,16 +543,42 @@ A pill shows how many of its lessons are done. The pill holding Next starts open
 `remember` keeps the others as they were left on this device. Test the shape
 with `treeProblems(lessons, branches)`. Its styles are in kit.css.
 
-### Theme
+### Layout and theme
 
-`kit.css` sets default values for every custom property it uses. Override
-them in your own `:root` after importing it, and add `@font-face` rules for
-the fonts you name. Clouds' `src/app/styles/tokens.css` is the example. The
-properties are `--bg`, `--bg-2`, `--panel`, `--panel-2`, `--ink`,
-`--ink-soft`, `--text`, `--muted`, `--sun`, `--sun-deep`, `--rose`,
-`--teal`, `--title`, `--paper`, `--good`, `--bad`, `--radius`, `--font`,
-`--display` and `--hand`. The slip's typewriter face is named
-'Special Elite'.
+The page layout (top bar, `.page` column, buttons, the lesson on paper,
+figures, slip, log, quiz, settings) is all in `kit.css`, and everything a
+course would change about it is a custom property with a default there.
+Import `kit.css`, then set your own values in a `:root` rule, and add
+`@font-face` rules for the fonts you name. Clouds' `src/app/styles/tokens.css`
+is a full example.
+
+| Property | What it colours or sets |
+| --- | --- |
+| `--bg`, `--bg-2` | The page behind everything, and raised parts of it (the menu, chips) |
+| `--panel`, `--panel-2` | Cards and fields on the page |
+| `--paper`, `--ink`, `--ink-soft` | A lesson's paper and its writing |
+| `--text`, `--muted`, `--title` | Writing on the page, quieter writing, the wordmark |
+| `--sun`, `--sun-deep`, `--rose`, `--teal` | Accents: links and headings, part numbers, highlights |
+| `--good`, `--bad` | Right and wrong answers |
+| `--fn-technical`, `--fn-digression` | The two kinds of footnote |
+| `--font` | Body text |
+| `--display` | Headings, buttons, the menu, labels |
+| `--hand` | The handwritten log |
+| `--type` | The typewritten radio slip |
+| `--radius` | Card corners |
+| `--page-width` | How wide ordinary pages run (720px) |
+
+```css
+/* src/styles/tokens.css, imported after didactics/styles/kit.css */
+@font-face { font-family: 'Inter'; font-display: swap; src: url('…/inter.woff2') format('woff2'); }
+:root {
+  --bg: #102027; --bg-2: #1c313a; --paper: #fbf8f1; --ink: #20302f; --sun: #f4b860;
+  --font: 'Inter', system-ui, sans-serif; --display: 'Inter', system-ui, sans-serif;
+}
+```
+
+Fonts are inlined into the one-file build, so name few, and Latin-only
+subsets keep the page small.
 
 ### Quiz (optional)
 
@@ -548,10 +652,10 @@ every load, so before and after screenshots can be pixel-diffed.
 ## Releasing
 
 1. Make the change here, with a test in `test/`.
-2. If `src/vite.ts` changed, run `npm run build`. Node will not run
-   TypeScript from inside node_modules, and an app's vite.config.ts is run by
-   Node, so that one module also ships compiled as `lib/vite.js` and
-   `lib/vite.d.ts`. A test fails if they are out of date.
+2. If `src/vite.ts`, `src/course.ts` or `src/blocks.ts` changed, run
+   `npm run build`. Node will not run TypeScript from inside node_modules,
+   and those run in Node (an app's vite.config.ts, and the command line), so
+   they also ship compiled in `lib/`. A test fails if lib is out of date.
 3. `npm run check && npm test`.
 4. Bump `version` in package.json (a breaking change to an export bumps the
    minor version while it is 0.x), note the change in CHANGELOG.md, and push
