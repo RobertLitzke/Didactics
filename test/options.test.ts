@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { formatJson, oneLinePaths, upgradeLesson } from '../src/course';
+import { formatJson, jsonLayouts, upgradeLesson } from '../src/course';
 import { el } from '../src/dom';
 import { lessonProblems, lessonView, prose, type Lesson } from '../src/lesson';
 import { emptyProgress, finishLesson, migrateProgress } from '../src/progress';
@@ -80,8 +80,16 @@ describe('lesson file layout', () => {
   "journal": ["a", "b"],
   "parts": [
     { "title": "Push", "blocks": [
+      { "kind": "key", "title": "Big ideas", "points": [
+        "One.",
+        "Two."
+      ] },
       { "kind": "text", "text": "Push it." },
       { "kind": "figure", "figure": "push", "caption": "A block", "options": { "n": 3 } },
+      { "kind": "figure", "figure": "check", "caption": "Check", "options": { "items": [
+        { "q": "Why?", "a": 1 },
+        { "q": "How?", "a": 0 }
+      ] } },
       {
         "kind": "text",
         "text": "Long."
@@ -90,30 +98,59 @@ describe('lesson file layout', () => {
   ]
 }
 `;
+  const upgraded = `{
+  "id": "push",
+  "title": "Pushing",
+  "journal": ["a", "b"],
+  "parts": [
+    { "title": "Push", "blocks": [
+      { "type": "key_ideas", "title": "Big ideas", "points": [
+        "One.",
+        "Two."
+      ] },
+      { "type": "text", "text": "Push it." },
+      { "type": "diagram", "id": "push", "caption": "A block", "options": { "n": 3 } },
+      { "type": "diagram", "id": "check", "caption": "Check", "options": { "items": [
+        { "q": "Why?", "a": 1 },
+        { "q": "How?", "a": 0 }
+      ] } },
+      {
+        "type": "text",
+        "text": "Long."
+      }
+    ] }
+  ]
+}
+`;
 
-  it('finds what is written on one line', () => {
-    expect(oneLinePaths(compact)).toEqual(new Set([
-      '["journal"]',
-      '["parts",0,"blocks",0]',
-      '["parts",0,"blocks",1]',
-      '["parts",0,"blocks",1,"options"]',
-    ]));
-    expect(oneLinePaths('{ not json').size).toBe(0);
+  it('reads where a file breaks its lines', () => {
+    const l = jsonLayouts(compact);
+    expect(l.get('["journal"]')).toEqual({ open: false, between: false, close: false, flat: true });
+    expect(l.get('["parts",0]')).toEqual({ open: false, between: false, close: false, flat: false });
+    expect(l.get('["parts",0,"blocks",0,"points"]')).toEqual({ open: true, between: true, close: true, flat: false });
+    expect(l.get('["parts",0,"blocks",4]')).toEqual({ open: true, between: true, close: true, flat: false });
+    expect(jsonLayouts('{ not json').size).toBe(0);
   });
 
-  it('keeps one-line blocks on one line through an upgrade', () => {
-    const up = formatJson(upgradeLesson(JSON.parse(compact)), compact);
-    expect(up).toContain('\n        { "type": "text", "text": "Push it." },\n');
-    expect(up).toContain('\n        { "type": "diagram", "id": "push", "caption": "A block", "options": { "n": 3 } },\n');
-    expect(up).toContain('"journal": ["a", "b"]');
-    expect(up).toContain('\n          "type": "text",\n          "text": "Long."\n');
-    expect(JSON.parse(up)).toEqual(upgradeLesson(JSON.parse(compact)));
+  it('keeps every block laid out as it was through an upgrade', () => {
+    expect(formatJson(upgradeLesson(JSON.parse(compact)), compact)).toBe(upgraded);
+  });
+
+  it('lays out what was not there like its neighbours', () => {
+    const more = JSON.parse(compact);
+    more.parts[0].blocks[0].points.push('Three.');
+    more.parts[0].blocks[2].options.m = [1, 2];
+    const out = formatJson(more, compact);
+    expect(out).toContain('"Two.",\n        "Three."\n      ] },');
+    expect(out).toContain('"options": { "n": 3, "m": [1, 2] } },');
+    expect(JSON.parse(out)).toEqual(more);
   });
 
   it('is JSON.stringify layout with nothing to match', () => {
     const v = { a: [1, { b: 'c' }], d: {}, e: [] };
     expect(formatJson(v)).toBe(`${JSON.stringify(v, null, 2)}\n`);
     expect(formatJson(v, JSON.stringify(v, null, 2))).toBe(`${JSON.stringify(v, null, 2)}\n`);
+    expect(formatJson({ a: 1, b: 2 }, '{\n  "a": 1\n}')).toBe('{\n  "a": 1,\n  "b": 2\n}\n');
   });
 
   it('is kept by the command line', () => {
@@ -122,8 +159,7 @@ describe('lesson file layout', () => {
     writeFileSync(join(dir, 'src/data/push.json'), compact);
     const cli = (...a: string[]) => execFileSync(process.execPath, [resolve(__dirname, '../bin/didactics-course.mjs'), ...a], { cwd: dir, encoding: 'utf8' });
     cli('upgrade', 'src/data');
-    const upgraded = readFileSync(join(dir, 'src/data/push.json'), 'utf8');
-    expect(upgraded).toContain('\n        { "type": "text", "text": "Push it." },\n');
+    expect(readFileSync(join(dir, 'src/data/push.json'), 'utf8')).toBe(upgraded);
     cli('export', 'src/data');
     expect(cli('import', 'course.json')).toMatch(/already matches/);
   });

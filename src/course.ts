@@ -194,35 +194,60 @@ export function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | 
 }
 
 /**
- * JSON text for a course file, laid out like the file it replaces: two-space
- * indents, but every object or array that `like` (the file's text before)
- * wrote on one line stays on one line, so hand-compact blocks keep their one
- * line each through an upgrade or an import. Containers are matched by where
- * they sit (parts 0, blocks 3), so they may change inside. With no `like`,
- * it is JSON.stringify's layout. Ends with a newline.
+ * Where a JSON text breaks the lines of one object or array: before its first
+ * entry (`open`), between entries (`between`), before its closing bracket
+ * (`close`); `flat` when it is all on one line.
+ */
+export interface JsonLayout {
+  open: boolean;
+  between: boolean;
+  close: boolean;
+  flat: boolean;
+}
+
+/**
+ * JSON text for a course file, laid out like the file it replaces (`like`,
+ * its text before), with two-space indents. Each object or array keeps where
+ * it broke its lines: one written on one line stays on one line, and one that
+ * opened on the line of its parent, such as
+ *
+ *   { "type": "key_ideas", "title": "The big ideas", "points": [
+ *     "First.",
+ *     "Second."
+ *   ] },
+ *
+ * comes back that way. So hand-laid blocks keep their layout through an
+ * upgrade or an import. Containers are matched by where they sit (parts 0,
+ * blocks 3), so what they hold may change. One `like` does not have is laid
+ * out flat inside a flat one, and expanded elsewhere; with no `like`, the
+ * text is JSON.stringify's layout. Ends with a newline.
  */
 export function formatJson(value: unknown, like?: string): string {
-  const compact = like ? oneLinePaths(like) : new Set<string>();
-  const inline = (v: unknown): string => {
-    if (Array.isArray(v)) return v.length ? `[${v.map(inline).join(', ')}]` : '[]';
-    if (isPlainObject(v)) {
-      const entries = Object.entries(v).filter(([, x]) => x !== undefined);
-      return entries.length ? `{ ${entries.map(([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`).join(', ')} }` : '{}';
-    }
-    return JSON.stringify(v) ?? 'null';
-  };
-  const write = (v: unknown, path: (string | number)[], indent: string): string => {
+  const layouts = like ? jsonLayouts(like) : new Map<string, JsonLayout>();
+  const EXPANDED: JsonLayout = { open: true, between: true, close: true, flat: false };
+  const FLAT: JsonLayout = { open: false, between: false, close: false, flat: true };
+  /** `indent` is the indent of the line the value starts on. */
+  const write = (v: unknown, path: (string | number)[], indent: string, inFlat: boolean): string => {
     if (!Array.isArray(v) && !isPlainObject(v)) return JSON.stringify(v) ?? 'null';
-    if (compact.has(JSON.stringify(path))) return inline(v);
+    const entries: [string | number, unknown][] = Array.isArray(v) ? v.map((x, i) => [i, x]) : Object.entries(v).filter(([, x]) => x !== undefined);
+    const [l, r] = Array.isArray(v) ? ['[', ']'] : ['{', '}'];
+    if (!entries.length) return l + r;
+    const layout = layouts.get(JSON.stringify(path)) ?? (inFlat ? FLAT : EXPANDED);
+    const pad = Array.isArray(v) ? '' : ' ';
     const inner = `${indent}  `;
-    if (Array.isArray(v)) {
-      return v.length ? `[\n${v.map((x, i) => inner + write(x, [...path, i], inner)).join(',\n')}\n${indent}]` : '[]';
-    }
-    const entries = Object.entries(v).filter(([, x]) => x !== undefined);
-    if (!entries.length) return '{}';
-    return `{\n${entries.map(([k, x]) => `${inner}${JSON.stringify(k)}: ${write(x, [...path, k], inner)}`).join(',\n')}\n${indent}}`;
+    let out = l;
+    let broken = false;
+    entries.forEach(([k, x], i) => {
+      const brk = i === 0 ? layout.open : layout.between;
+      if (i) out += ',';
+      out += brk ? `\n${inner}` : i === 0 ? pad : ' ';
+      broken ||= brk;
+      if (typeof k === 'string') out += `${JSON.stringify(k)}: `;
+      out += write(x, [...path, k], broken ? inner : indent, layout.flat);
+    });
+    return out + (layout.close ? `\n${indent}` : pad) + r;
   };
-  return `${write(value, [], '')}\n`;
+  return `${write(value, [], '', false)}\n`;
 }
 
 const STRING = /"(?:[^"\\]|\\.)*"/y;
@@ -231,14 +256,17 @@ const WORD = /[-+.\w]+/y;
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /**
- * Where JSON text writes a non-empty object or array on a single line, as
- * JSON-encoded paths (`["parts",0,"blocks",3]`). Text that is not JSON gives none.
+ * How a JSON text lays out each non-empty object and array, by JSON-encoded
+ * path (`["parts",0,"blocks",3]`). Text that is not JSON gives none.
  */
-export function oneLinePaths(text: string): Set<string> {
-  const out = new Set<string>();
+export function jsonLayouts(text: string): Map<string, JsonLayout> {
+  const out = new Map<string, JsonLayout>();
   let at = 0;
-  const space = () => {
+  /** Skip spaces; whether they held a line break. */
+  const space = (): boolean => {
+    const from = at;
     while (at < text.length && ' \t\r\n'.includes(text[at])) at++;
+    return text.slice(from, at).includes('\n');
   };
   const string = (): string => {
     STRING.lastIndex = at;
@@ -253,14 +281,14 @@ export function oneLinePaths(text: string): Set<string> {
     const c = text[at];
     if (c === '{' || c === '[') {
       at++;
-      space();
+      const layout: JsonLayout = { open: space(), between: false, close: false, flat: false };
       const close = c === '{' ? '}' : ']';
       let n = 0;
       while (text[at] !== close) {
         if (n) {
           if (text[at] !== ',') throw new Error('bad list');
           at++;
-          space();
+          if (space()) layout.between = true;
         }
         if (c === '{') {
           const key = string();
@@ -269,11 +297,16 @@ export function oneLinePaths(text: string): Set<string> {
           value([...path, key]);
         } else value([...path, n]);
         n++;
-        space();
+        layout.close = space();
         if (at >= text.length) throw new Error('unclosed');
       }
       at++;
-      if (n && !text.slice(start, at).includes('\n')) out.add(JSON.stringify(path));
+      // With one entry, there is nothing between: a new one goes as the first did.
+      if (n === 1) layout.between = layout.open;
+      if (n) {
+        layout.flat = !text.slice(start, at).includes('\n');
+        out.set(JSON.stringify(path), layout);
+      }
     } else if (c === '"') string();
     else {
       WORD.lastIndex = at;
@@ -284,7 +317,7 @@ export function oneLinePaths(text: string): Set<string> {
   try {
     value([]);
   } catch {
-    return new Set();
+    return new Map();
   }
   return out;
 }

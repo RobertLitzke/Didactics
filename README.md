@@ -130,7 +130,7 @@ pin back before committing.
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
 | `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems` |
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
-| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `formatJson` (keeps a file's one-line blocks on one line); the command line `didactics-course` |
+| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
 | `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
@@ -369,8 +369,10 @@ into the log.
 Lessons written in the earlier shape (`"kind": "text" | "key" | "figure"`)
 convert with `npx didactics-course upgrade <folder>`, or `upgradeLesson` in
 `course`; readers' places in a lesson survive the change. The command line
-keeps each file's layout: a block written on one line stays on one line
-(`formatJson`), and so does any other object or list that was.
+keeps each file's layout (`formatJson`): every block and list keeps its line
+breaks, so one written on one line stays on one line, and one opened on its
+parent's line, like `{ "type": "key_ideas", "title": "…", "points": [` with
+a point on each line after it, comes back that way.
 
 ### The whole course as one JSON file
 

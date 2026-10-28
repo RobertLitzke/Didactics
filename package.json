@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",

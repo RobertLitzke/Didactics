@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 (2026-10-28)
+
+- `course`: `formatJson` keeps every object's and list's line breaks, not
+  just the one-line ones, so a block opened on its parent's line and spread
+  over several (a key-ideas list, a check's questions) comes back as it was.
+  `oneLinePaths` became `jsonLayouts`, which says where each one breaks.
+
 ## 0.3.0 (2026-10-28)
 
 Gaps found moving a second course (Dirt) onto Didactics:
@@ -15,8 +22,7 @@ Gaps found moving a second course (Dirt) onto Didactics:
   radio types its save as `RadioProgress` (breaking only for code
   that reads `heard` from a plain `Progress`).
 - `course`: `didactics-course upgrade` and `import` keep each file's layout,
-  so hand-compact one-line blocks stay on one line (`formatJson`,
-  `oneLinePaths`).
+  so hand-compact one-line blocks stay on one line (`formatJson`).
 - `vite`: `manifest.icons` adds icons after the three PNGs.
 
 ## 0.2.0 (2026-10-28)

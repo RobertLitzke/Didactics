@@ -59,16 +59,36 @@ export declare function courseEdits(o: {
  */
 export declare function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T;
 /**
- * JSON text for a course file, laid out like the file it replaces: two-space
- * indents, but every object or array that `like` (the file's text before)
- * wrote on one line stays on one line, so hand-compact blocks keep their one
- * line each through an upgrade or an import. Containers are matched by where
- * they sit (parts 0, blocks 3), so they may change inside. With no `like`,
- * it is JSON.stringify's layout. Ends with a newline.
+ * Where a JSON text breaks the lines of one object or array: before its first
+ * entry (`open`), between entries (`between`), before its closing bracket
+ * (`close`); `flat` when it is all on one line.
+ */
+export interface JsonLayout {
+    open: boolean;
+    between: boolean;
+    close: boolean;
+    flat: boolean;
+}
+/**
+ * JSON text for a course file, laid out like the file it replaces (`like`,
+ * its text before), with two-space indents. Each object or array keeps where
+ * it broke its lines: one written on one line stays on one line, and one that
+ * opened on the line of its parent, such as
+ *
+ *   { "type": "key_ideas", "title": "The big ideas", "points": [
+ *     "First.",
+ *     "Second."
+ *   ] },
+ *
+ * comes back that way. So hand-laid blocks keep their layout through an
+ * upgrade or an import. Containers are matched by where they sit (parts 0,
+ * blocks 3), so what they hold may change. One `like` does not have is laid
+ * out flat inside a flat one, and expanded elsewhere; with no `like`, the
+ * text is JSON.stringify's layout. Ends with a newline.
  */
 export declare function formatJson(value: unknown, like?: string): string;
 /**
- * Where JSON text writes a non-empty object or array on a single line, as
- * JSON-encoded paths (`["parts",0,"blocks",3]`). Text that is not JSON gives none.
+ * How a JSON text lays out each non-empty object and array, by JSON-encoded
+ * path (`["parts",0,"blocks",3]`). Text that is not JSON gives none.
  */
-export declare function oneLinePaths(text: string): Set<string>;
+export declare function jsonLayouts(text: string): Map<string, JsonLayout>;
