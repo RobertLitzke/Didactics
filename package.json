@@ -1,0 +1,70 @@
+{
+  "name": "didactics",
+  "version": "0.1.0",
+  "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RobertLitzke/Didactics.git"
+  },
+  "files": [
+    "src",
+    "lib",
+    "styles",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "exports": {
+    "./asset": "./src/asset.ts",
+    "./check": "./src/check.ts",
+    "./dom": "./src/dom.ts",
+    "./draw": "./src/draw.ts",
+    "./figure": "./src/figure.ts",
+    "./footnote": "./src/footnote.ts",
+    "./glossary": "./src/glossary.ts",
+    "./lesson": "./src/lesson.ts",
+    "./offline": "./src/offline.ts",
+    "./overflow": "./src/overflow.ts",
+    "./progress": "./src/progress.ts",
+    "./quiz": "./src/quiz.ts",
+    "./quiz-view": "./src/quiz-view.ts",
+    "./radio": "./src/radio.ts",
+    "./resume": "./src/resume.ts",
+    "./rng": "./src/rng.ts",
+    "./router": "./src/router.ts",
+    "./settings": "./src/settings.ts",
+    "./slip": "./src/slip.ts",
+    "./splash": "./src/splash.ts",
+    "./store": "./src/store.ts",
+    "./tree": "./src/tree.ts",
+    "./ui": "./src/ui.ts",
+    "./units": "./src/units.ts",
+    "./update": "./src/update.ts",
+    "./vite": {
+      "types": "./lib/vite.d.ts",
+      "default": "./lib/vite.js"
+    },
+    "./styles/kit.css": "./styles/kit.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-pwa": "^1.0.0",
+    "vite-plugin-singlefile": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "happy-dom": "^20.14.6",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-pwa": "^1.0.0",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^3.0.0"
+  }
+}

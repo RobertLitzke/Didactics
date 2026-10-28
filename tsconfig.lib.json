@@ -1,0 +1,16 @@
+{
+  // The build helper (src/vite.ts) runs in Node when an app's vite.config.ts
+  // loads it, and Node will not run TypeScript from node_modules, so it is
+  // also shipped compiled, as lib/vite.js and lib/vite.d.ts. `npm run build`
+  // writes them; a test fails if they are out of date.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "allowImportingTsExtensions": false,
+    "types": ["node"],
+    "outDir": "lib",
+    "rootDir": "src"
+  },
+  "include": ["src/vite.ts"]
+}
