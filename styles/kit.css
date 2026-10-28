@@ -113,6 +113,10 @@ p { margin: 0 0 0.75em; }
   line-height: 1.05;
 }
 .wordmark span { font-size: 0.62rem; letter-spacing: 0.14em; color: var(--sun); white-space: nowrap; }
+/* A logo before the words (topBar's `mark`). */
+.wordmark.with-mark { flex-direction: row; align-items: center; gap: 10px; }
+.wordmark.with-mark > :first-child { flex: none; height: 2.2em; width: auto; }
+.wordmark-words { display: flex; flex-direction: column; }
 /* The page menu (shell.ts pageMenu): the current page's name, opening a short list. */
 .navmenu { position: relative; }
 .navmenu summary {

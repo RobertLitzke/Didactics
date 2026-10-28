@@ -117,9 +117,11 @@ export interface LessonAppOptions {
    * The manifest. `id` is what the browser knows an installed app by; it
    * defaults to start_url. Changing it makes the browser treat the app as a
    * new one, which is how to get past an install the browser remembers but
-   * the phone no longer has.
+   * the phone no longer has. `icons` are listed after the three PNGs every app
+   * has (public/icons/icon-192.png, icon-512.png, icon-512-maskable.png), such
+   * as an SVG: `{ src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' }`.
    */
-  manifest: { name: string; short_name: string; description: string; theme_color: string; background_color?: string; id?: string };
+  manifest: { name: string; short_name: string; description: string; theme_color: string; background_color?: string; id?: string; icons?: ManifestIcon[] };
   /**
    * Files besides index.html and the icons that the service worker downloads
    * when it installs, as globs under dist/: a poster, 'photos/*.webp'. A file
@@ -128,8 +130,17 @@ export interface LessonAppOptions {
   precache?: string[];
 }
 
+/** An icon in the web app manifest, with `src` relative to the built page. */
+export interface ManifestIcon {
+  src: string;
+  sizes: string;
+  type?: string;
+  purpose?: string;
+}
+
 /** The whole Vite config for a lesson app. */
 export function lessonApp(o: LessonAppOptions): UserConfig {
+  const { icons = [], ...manifest } = o.manifest;
   return {
     // Relative, so index.html works from file:// and from a GitHub Pages sub-path.
     base: './',
@@ -162,8 +173,8 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
           dontCacheBustURLsMatching: /^(?!)/,
         },
         manifest: {
-          ...o.manifest,
-          background_color: o.manifest.background_color ?? o.manifest.theme_color,
+          ...manifest,
+          background_color: manifest.background_color ?? manifest.theme_color,
           display: 'standalone',
           orientation: 'portrait',
           start_url: '.',
@@ -172,6 +183,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
             { src: 'icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            ...icons,
           ],
         },
         devOptions: { enabled: false },

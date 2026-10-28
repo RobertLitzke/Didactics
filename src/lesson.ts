@@ -56,7 +56,10 @@ export interface Lesson<F extends string = string> {
   title: string;
   /** One line for the lesson board, and the lede under the title. */
   teaches: string;
+  /** Empty for a lesson not written yet, which the player sends back home (see `coming`). */
   parts: Part<F>[];
+  /** Not written yet: listed (tree.ts shows it greyed), but opening it goes back home. */
+  coming?: boolean;
   /** What was learned, written into the log. */
   learned: string[];
   /** A line at the foot of the log, on what comes next. */
@@ -162,7 +165,8 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
 
   return (root, nav) => {
     const lesson = o.lessons.find((l) => l.id === nav.params.id);
-    if (!lesson) {
+    // No such lesson, or one not written yet: back home rather than a blank page.
+    if (!lesson || lesson.coming || lesson.parts.length === 0) {
       nav.replace(home);
       return;
     }
@@ -202,7 +206,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     const talks = o.radio?.talks(lesson.id) ?? [];
     const talking = Boolean(o.radio) && save.talk && !replay;
     /** The talk on this cue, if the radio is on and it has not been heard. */
-    const waiting = (c: Cue) => (talking ? talks.find((t) => t.cue === c && !o.store.get().heard[t.id]) : undefined);
+    const waiting = (c: Cue) => (talking ? talks.find((t) => t.cue === c && !o.store.get().heard?.[t.id]) : undefined);
     const ctx: FigureContext = { save, closed: closed.signal, score: () => {} };
     /** A block's own context: its score, and its memory between visits. */
     // The check's talk frames the check itself, whenever the radio is on.

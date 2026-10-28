@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0 (2026-10-28)
+
+Gaps found moving a second course (Dirt) onto Didactics:
+
+- `shell`: `topBar` and `appShell` take a `mark` (a logo before the words,
+  which then stack beside it), and `title` can be a node.
+- `lesson`: a lesson marked `coming`, or with no parts, sends the reader back
+  `home` instead of opening blank.
+- `progress`: the radio's fields (`talk`, `introSeen`, `heard`) are optional
+  on `Progress` and required on `RadioProgress`, which extends it. `emptyProgress(units, { radio:
+  false })` leaves them out, and `migrateProgress` keeps them only when its
+  empty save has them. `emptyProgress()` still returns them, so an app with a
+  radio types its save as `RadioProgress` (breaking only for code
+  that reads `heard` from a plain `Progress`).
+- `course`: `didactics-course upgrade` and `import` keep each file's layout,
+  so hand-compact one-line blocks stay on one line (`formatJson`,
+  `oneLinePaths`).
+- `vite`: `manifest.icons` adds icons after the three PNGs.
+
 ## 0.2.0 (2026-10-28)
 
 - Lesson blocks are typed: `text`, `key_ideas`, and callouts by `id` for

@@ -7,6 +7,7 @@
 // Use the pieces on their own (pageMenu, topBar) or all of it (appShell):
 //
 //   const shell = appShell({ mount: document.getElementById('app')!, title: 'Levers', subtitle: 'How a long handle helps',
+//     mark: el('img.logo', { src: 'icons/icon.svg', alt: '' }),
 //     nav: [{ path: '/home', label: 'Home' }, { path: '/settings', label: 'Settings' }], fullScreen: (p) => p.startsWith('/lesson/') });
 //   new Router(shell.outlet, { before: shell.before }).add(…).start('/home');
 
@@ -43,19 +44,32 @@ export function pageMenu(links: readonly NavLink[], fallback = 'Menu'): PageMenu
   return { node, mark };
 }
 
-/** The bar itself: the wordmark (a link home) and whatever goes on the right, usually a pageMenu. */
-export function topBar(o: { title: string; subtitle?: string; home?: string; right?: Child }): HTMLElement {
-  return el('header.topbar', {},
-    el('a.wordmark', { href: `#${o.home ?? '/home'}` }, o.title, o.subtitle ? el('span', {}, o.subtitle) : null),
-    o.right ?? null);
+export interface TopBarOptions {
+  /** The app's name: words, or any node, such as a styled logotype. */
+  title: Child;
+  subtitle?: string;
+  /** A logo before the title, such as an <img> or <svg>, inside the link home. */
+  mark?: Child;
+  home?: string;
 }
 
-export interface AppShellOptions {
+/**
+ * The bar itself: the wordmark (a link home: the mark, the title, the
+ * subtitle) and whatever goes on the right, usually a pageMenu.
+ */
+export function topBar(o: TopBarOptions & { right?: Child }): HTMLElement {
+  const words: Child[] = [o.title, o.subtitle ? el('span', {}, o.subtitle) : null];
+  const href = `#${o.home ?? '/home'}`;
+  // With a mark, the words stack beside it rather than under it.
+  const wordmark = o.mark
+    ? el('a.wordmark.with-mark', { href }, o.mark, el('div.wordmark-words', {}, words))
+    : el('a.wordmark', { href }, words);
+  return el('header.topbar', {}, wordmark, o.right ?? null);
+}
+
+export interface AppShellOptions extends TopBarOptions {
   /** The element the app fills, such as #app. */
   mount: HTMLElement;
-  title: string;
-  subtitle?: string;
-  home?: string;
   nav: readonly NavLink[];
   /** Pages shown without the bar; the body gets the class `in-lesson` on them. */
   fullScreen?: (path: string) => boolean;
@@ -72,7 +86,7 @@ export interface AppShell {
 
 export function appShell(o: AppShellOptions): AppShell {
   const menu = pageMenu(o.nav);
-  const header = topBar({ title: o.title, subtitle: o.subtitle, home: o.home, right: menu.node });
+  const header = topBar({ title: o.title, subtitle: o.subtitle, mark: o.mark, home: o.home, right: menu.node });
   const outlet = el('main');
   o.mount.replaceChildren(header, outlet);
   return {

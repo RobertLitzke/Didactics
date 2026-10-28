@@ -10,7 +10,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';
-import { exportCourse, readCourse, upgradeLesson } from '../lib/course.js';
+import { exportCourse, formatJson, readCourse, upgradeLesson } from '../lib/course.js';
 
 const [command, ...args] = process.argv.slice(2);
 const flags = {};
@@ -26,9 +26,11 @@ const rel = (p) => relative(process.cwd(), resolve(p)).split(sep).join('/');
 const jsonUnder = (p) => (statSync(p).isDirectory()
   ? readdirSync(p).sort().flatMap((f) => jsonUnder(`${p}/${f}`))
   : p.endsWith('.json') ? [rel(p)] : []);
-const write = (path, json) => {
+// A file written over keeps its layout: what it had on one line stays on one line.
+const layout = (path, json) => formatJson(json, existsSync(path) ? readFileSync(path, 'utf8') : undefined);
+const write = (path, text) => {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(json, null, 2)}\n`);
+  writeFileSync(path, text);
 };
 
 function fail(lines) {
@@ -42,7 +44,7 @@ if (command === 'export') {
   const files = {};
   for (const path of rest.flatMap(jsonUnder)) if (!skip.has(path)) files[path] = JSON.parse(readFileSync(path, 'utf8'));
   const out = flags.out?.[0] ?? 'course.json';
-  write(out, exportCourse(flags.title?.[0] ?? 'Course', files));
+  write(out, formatJson(exportCourse(flags.title?.[0] ?? 'Course', files)));
   console.log(`Wrote ${Object.keys(files).length} files into ${out}.`);
 } else if (command === 'import') {
   const [file] = rest;
@@ -52,20 +54,21 @@ if (command === 'export') {
   let changed = 0;
   for (const [path, json] of Object.entries(files)) {
     const now = existsSync(path) ? readFileSync(path, 'utf8') : null;
-    const next = `${JSON.stringify(json, null, 2)}\n`;
+    const next = layout(path, json);
     if (now === next) continue;
     changed++;
     console.log(`${now === null ? 'new    ' : 'changed'} ${path}`);
-    if (!flags.dryRun) write(path, json);
+    if (!flags.dryRun) write(path, next);
   }
   console.log(changed ? `${flags.dryRun ? 'Would write' : 'Wrote'} ${changed} of ${Object.keys(files).length} files.` : 'Every file already matches.');
 } else if (command === 'upgrade') {
   let changed = 0;
   for (const path of rest.flatMap(jsonUnder)) {
-    const raw = JSON.parse(readFileSync(path, 'utf8'));
+    const text = readFileSync(path, 'utf8');
+    const raw = JSON.parse(text);
     const up = upgradeLesson(raw);
     if (JSON.stringify(up) === JSON.stringify(raw)) continue;
-    write(path, up);
+    write(path, formatJson(up, text));
     changed++;
     console.log(`upgraded ${path}`);
   }

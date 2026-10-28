@@ -38,7 +38,9 @@ export interface LessonAppOptions {
      * The manifest. `id` is what the browser knows an installed app by; it
      * defaults to start_url. Changing it makes the browser treat the app as a
      * new one, which is how to get past an install the browser remembers but
-     * the phone no longer has.
+     * the phone no longer has. `icons` are listed after the three PNGs every app
+     * has (public/icons/icon-192.png, icon-512.png, icon-512-maskable.png), such
+     * as an SVG: `{ src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' }`.
      */
     manifest: {
         name: string;
@@ -47,6 +49,7 @@ export interface LessonAppOptions {
         theme_color: string;
         background_color?: string;
         id?: string;
+        icons?: ManifestIcon[];
     };
     /**
      * Files besides index.html and the icons that the service worker downloads
@@ -54,6 +57,13 @@ export interface LessonAppOptions {
      * whose contents have not changed is not downloaded again by a new version.
      */
     precache?: string[];
+}
+/** An icon in the web app manifest, with `src` relative to the built page. */
+export interface ManifestIcon {
+    src: string;
+    sizes: string;
+    type?: string;
+    purpose?: string;
 }
 /** The whole Vite config for a lesson app. */
 export declare function lessonApp(o: LessonAppOptions): UserConfig;

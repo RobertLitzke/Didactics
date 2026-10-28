@@ -58,3 +58,17 @@ export declare function courseEdits(o: {
  * without as a still. Files already typed come back as they were.
  */
 export declare function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T;
+/**
+ * JSON text for a course file, laid out like the file it replaces: two-space
+ * indents, but every object or array that `like` (the file's text before)
+ * wrote on one line stays on one line, so hand-compact blocks keep their one
+ * line each through an upgrade or an import. Containers are matched by where
+ * they sit (parts 0, blocks 3), so they may change inside. With no `like`,
+ * it is JSON.stringify's layout. Ends with a newline.
+ */
+export declare function formatJson(value: unknown, like?: string): string;
+/**
+ * Where JSON text writes a non-empty object or array on a single line, as
+ * JSON-encoded paths (`["parts",0,"blocks",3]`). Text that is not JSON gives none.
+ */
+export declare function oneLinePaths(text: string): Set<string>;

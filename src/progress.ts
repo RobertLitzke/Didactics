@@ -1,5 +1,6 @@
 // The part of the save file every lesson app shares: lessons finished and how
-// they went, unlocked journal entries, units, the radio, and the quiz. An app
+// they went, unlocked journal entries, units, the quiz, and, for an app with a
+// radio (radio.ts), the radio's setting and what was heard. An app
 // adds its own fields alongside these (Clouds' core/save.ts is an example) and repairs them
 // after migrateProgress has done these.
 
@@ -19,6 +20,10 @@ export interface LessonRecord {
   skipped?: boolean;
 }
 
+/**
+ * The shared save. The radio's fields are there only in an app with a radio,
+ * whose save is a RadioProgress, as emptyProgress's is by default.
+ */
 export interface Progress {
   v: 1;
   /** The player's name, as signed on the log. Empty until given. */
@@ -27,20 +32,34 @@ export interface Progress {
   /** Journal entries unlocked, by id. */
   journal: string[];
   units: Units;
-  /** Radio talks on. Off, the lessons are a plain workbook. */
-  talk: boolean;
-  /** The opening talk has been offered once. */
-  introSeen: boolean;
-  /** Talks heard to the end, with the reply picked at each turn. */
-  heard: Record<string, number[]>;
   /** Quiz cards seen, by card id: their spaced-repetition box and when each is next due (quiz.ts). */
   quiz: Record<string, { box: number; due: number }>;
   /** Lessons left part way, by id, to pick up again where the reader was (resume.ts). */
   resume: Record<string, LessonResume>;
+  /** Radio talks on. Off, the lessons are a plain workbook. */
+  talk?: boolean;
+  /** The opening talk has been offered once. */
+  introSeen?: boolean;
+  /** Talks heard to the end, with the reply picked at each turn. */
+  heard?: Record<string, number[]>;
 }
 
-export function emptyProgress(units: Units = 'metric'): Progress {
-  return { v: 1, name: '', lessons: {}, journal: [], units, talk: true, introSeen: false, heard: {}, quiz: {}, resume: {} };
+/** The save of an app with a radio (radio.ts): the radio's fields are always there. */
+export interface RadioProgress extends Progress {
+  talk: boolean;
+  introSeen: boolean;
+  heard: Record<string, number[]>;
+}
+
+/**
+ * A new save. With `radio: false` it has no radio fields, and migrateProgress
+ * given it keeps none from what was stored.
+ */
+export function emptyProgress(units?: Units, o?: { radio?: true }): RadioProgress;
+export function emptyProgress(units: Units, o: { radio: false }): Progress;
+export function emptyProgress(units: Units = 'metric', o: { radio?: boolean } = {}): Progress {
+  const base: Progress = { v: 1, name: '', lessons: {}, journal: [], units, quiz: {}, resume: {} };
+  return o.radio === false ? base : { ...base, talk: true, introSeen: false, heard: {} };
 }
 
 export const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -50,19 +69,24 @@ export const stringSet = (x: unknown): string[] => (Array.isArray(x) ? [...new S
 
 /**
  * Repair the shared fields of whatever was stored, keeping all that can be
- * kept. Lesson records are read from `lessons`, or from `shifts`, the name
- * Clouds stored them under first.
+ * kept, onto `empty`. The radio's fields are read only if `empty` has them.
+ * Lesson records are read from `lessons`, or from `shifts`, the name Clouds
+ * stored them under first.
  */
-export function migrateProgress(raw: unknown, empty: Progress = emptyProgress()): Progress {
-  const out: Progress = { ...empty, lessons: {}, journal: [], heard: {}, quiz: {}, resume: {} };
+export function migrateProgress<P extends Progress = RadioProgress>(raw: unknown, empty: P = emptyProgress() as P): P {
+  const out: P = { ...empty, lessons: {}, journal: [], quiz: {}, resume: {} };
+  const radio = typeof empty.talk === 'boolean';
+  if (radio) out.heard = {};
   if (!isObj(raw)) return out;
   if (typeof raw.name === 'string') out.name = raw.name.slice(0, 40);
   if (raw.units === 'metric' || raw.units === 'imperial') out.units = raw.units;
-  if (typeof raw.talk === 'boolean') out.talk = raw.talk;
-  if (raw.introSeen === true) out.introSeen = true;
-  if (isObj(raw.heard)) {
-    for (const [id, picks] of Object.entries(raw.heard)) {
-      if (Array.isArray(picks)) out.heard[id] = picks.map((n) => Math.max(0, Math.floor(Number(n) || 0)));
+  if (radio) {
+    if (typeof raw.talk === 'boolean') out.talk = raw.talk;
+    if (raw.introSeen === true) out.introSeen = true;
+    if (isObj(raw.heard)) {
+      for (const [id, picks] of Object.entries(raw.heard)) {
+        if (Array.isArray(picks)) out.heard![id] = picks.map((n) => Math.max(0, Math.floor(Number(n) || 0)));
+      }
     }
   }
   if (isObj(raw.quiz)) {

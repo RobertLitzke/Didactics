@@ -116,7 +116,7 @@ pin back before committing.
 | `units` | `Units`, `height(m, units)`, `feet`, `deg`, `temp` |
 | `router` | `new Router(outlet, hooks).add('/x/:id', view).start('/home')`, hash routes, views return a teardown |
 | **Shell** | |
-| `shell` | `appShell({ mount, title, subtitle?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
+| `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
 | `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline` shows how many photos are saved on the device, `oneFile.offline` offers the copy with photos inside |
 | `update` | `watchForUpdates({ title, text, icon?, beforeReload? })`, gets a new deploy into the installed app, with a "new version" banner |
@@ -127,10 +127,10 @@ pin back before committing.
 | `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `globRegExp` |
 | `styles/kit.css` | All the styles, themed through CSS custom properties |
 | **Lessons** | |
-| `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
+| `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
 | `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems` |
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
-| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`; the command line `didactics-course` |
+| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `formatJson` (keeps a file's one-line blocks on one line); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
 | `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
@@ -176,6 +176,8 @@ export default defineConfig(lessonApp({
 exist. If `public/icons/icon.svg` exists and index.html links it as the
 favicon (`href="./icons/icon.svg"`), the build inlines it, so the one-file
 copy has a tab icon too. Clouds makes all of them with `tools/icons.mjs`.
+More icons for the manifest go in `manifest.icons`, listed after those three,
+such as `[{ src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' }]`.
 
 ### The save
 
@@ -190,6 +192,12 @@ export const migrate = (raw: unknown): SaveData => migrateProgress(raw, emptySav
 import { createStore } from 'didactics/store';
 export const store = createStore({ key: 'levers.save', empty: emptySave, migrate });
 ```
+
+An app with no radio makes its save with `emptyProgress('metric', { radio:
+false })`: it then has no `talk`, `introSeen` or `heard`, and
+`migrateProgress` given it keeps none of them from an older save. With a
+radio, the save type is `RadioProgress` (or extends it), which is what
+`emptyProgress` returns by default.
 
 If you add your own fields, repair them in `migrate` after
 `migrateProgress` runs. Clouds' `src/core/save.ts` shows how. Rename a lesson
@@ -360,7 +368,9 @@ into the log.
 
 Lessons written in the earlier shape (`"kind": "text" | "key" | "figure"`)
 convert with `npx didactics-course upgrade <folder>`, or `upgradeLesson` in
-`course`; readers' places in a lesson survive the change.
+`course`; readers' places in a lesson survive the change. The command line
+keeps each file's layout: a block written on one line stays on one line
+(`formatJson`), and so does any other object or list that was.
 
 ### The whole course as one JSON file
 
@@ -486,7 +496,10 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.st
 
 `appShell` is the top bar: the wordmark on the left (a link home) and a
 dropdown of the pages on the right, showing the current page's name. Pages
-for which `fullScreen` is true hide the bar. Its parts, `topBar` and
+for which `fullScreen` is true hide the bar. `title` can be words or a node,
+and `mark` puts a logo before it, such as
+`el('img', { src: 'icons/icon.svg', alt: '' })`, with the words stacked
+beside it (kit.css sizes the mark to the words). Its parts, `topBar` and
 `pageMenu`, can be used on their own, for a bar with more in it.
 
 How updates reach an installed app: a waiting service worker only takes over
@@ -509,6 +522,9 @@ the URL hash; save anything else, such as the step a lesson is on, in
 - `radio`: the lesson's talks (see below).
 - `home`: the route the back arrow goes to.
 - `noun`: what a lesson is called. The default is "Lesson".
+
+A lesson marked `coming`, or with no parts, is not written yet: opening it
+goes back to `home`, so a tree or list can show it without a guard of its own.
 
 If you put extra fields on your lessons, such as Clouds' `clouds` and `sky`,
 type them as `interface MyLesson extends Lesson<FigureId> { … }`.
