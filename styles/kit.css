@@ -334,8 +334,9 @@ body.radio-up main { padding-bottom: 50vh; }
 .fig.done .tick { background: var(--good); box-shadow: none; }
 .fig.done .tick::after { content: '✓'; color: #fff; font-size: 12px; display: grid; place-items: center; height: 100%; }
 .fig-body { padding: 0 0 4px; }
-.fig-body > :not(.fig-svg, .fig-scene, .sky-strip) { margin-left: 14px; margin-right: 14px; }
+.fig-body > :not(.fig-svg, .fig-drawing, .fig-scene, .sky-strip) { margin-left: 14px; margin-right: 14px; }
 .fig-svg { display: block; width: 100%; height: auto; background: var(--paper); touch-action: pan-y; }
+.fig-drawing { display: block; width: 100%; height: auto; background: var(--paper); touch-action: pan-y; }
 .fig-scene .scene, .fig-scene .photo { display: block; width: 100%; }
 .fig-scene .scene { height: auto; aspect-ratio: 400 / 260; }
 /* The text box keeps a fixed height for its readout (sized per figure in lines,

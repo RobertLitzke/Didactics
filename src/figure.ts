@@ -39,19 +39,42 @@ export interface FigureHandle {
   node: HTMLElement;
   /** Resolves when the figure's task is done; absent when it has none. */
   done?: Promise<void>;
+  /**
+   * Resolves once the figure has drawn what it first shows, for a figure that
+   * waits on something (an image, a depth map); absent when it draws at once.
+   * Screenshots, tests and the gallery wait on it (`figureReady`).
+   */
+  ready?: Promise<void>;
 }
 
 export type Options = Record<string, unknown>;
 
+/** What is wrong with a block's options for this figure, or an empty list. */
+export type OptionsCheck = (options: Options | undefined) => string[];
+
 /**
  * Makes a figure for a lesson block. A live figure lists the `goals` a lesson
  * may set it, so the content test can catch a goal that no figure would ever
- * meet; a quiz is always a task. Stills have neither.
+ * meet; a quiz is always a task. Stills have neither. Any of them may carry
+ * an `options` check, which `lessonProblems` and `referenceProblems` run on
+ * each block that uses it (a still adds one with `Object.assign`).
  */
 export type FigureFactory = ((ctx: FigureContext, goal?: string, options?: Options) => FigureHandle) & {
   goals?: readonly string[];
   quiz?: true;
+  options?: OptionsCheck;
 };
+
+/** What a figure says about itself beyond how it is built. */
+export interface FigureSpec {
+  /** Checks a block's options, so a wrong id in a lesson's JSON fails the content test, not the reader. */
+  options?: OptionsCheck;
+}
+
+/** The figure's ready promise, or a settled one when it draws at once. */
+export function figureReady(handle: Pick<FigureHandle, 'ready'>): Promise<void> {
+  return handle.ready ?? Promise.resolve();
+}
 
 /** A figure's task, as the figure sees it. */
 export interface Task {
@@ -71,57 +94,102 @@ export interface Task {
   keep: (state: unknown) => void;
   /** The task was done on an earlier visit; the lesson counts it done already. */
   readonly restored: boolean;
+  /**
+   * Say the figure is not finished drawing until `p` settles (an image
+   * loading, say). Call it while building; the figure's `ready` waits on every
+   * promise given, and settles even if one fails.
+   */
+  waitFor: (p: Promise<unknown>) => void;
 }
 
-const task = (ctx: FigureContext, goal: string | undefined, p: { promise: Promise<void>; resolve: () => void }): Task => ({
+const task = (ctx: FigureContext, goal: string | undefined, p: { promise: Promise<void>; resolve: () => void }, waits: Promise<unknown>[]): Task => ({
   goal,
   done: p.resolve,
   promise: p.promise,
   kept: ctx.memo?.kept,
   keep: ctx.memo?.keep ?? (() => {}),
   restored: ctx.memo?.restored ?? false,
+  waitFor: (w) => void waits.push(w),
 });
 
-/** A live figure, which knows the goals in `goals`. */
-export function figure(goals: readonly string[], build: (ctx: FigureContext, t: Task, options?: Options) => HTMLElement): FigureFactory {
+const settled = (waits: Promise<unknown>[]): Promise<void> | undefined =>
+  waits.length ? Promise.allSettled(waits).then(() => {}) : undefined;
+
+/**
+ * A live figure, which knows the goals in `goals`. `O` is the shape of its
+ * options; give `spec.options` a check, so the content test holds lessons to it.
+ */
+export function figure<O extends Options = Options>(goals: readonly string[], build: (ctx: FigureContext, t: Task, options?: O) => HTMLElement, spec: FigureSpec = {}): FigureFactory {
   const make = (ctx: FigureContext, goal?: string, options?: Options): FigureHandle => {
     const p = promised();
-    const node = build(ctx, task(ctx, goal, p), options);
-    return { node, done: goal ? p.promise : undefined };
+    const waits: Promise<unknown>[] = [];
+    const node = build(ctx, task(ctx, goal, p, waits), options as O | undefined);
+    return { node, done: goal ? p.promise : undefined, ready: settled(waits) };
   };
-  return Object.assign(make, { goals });
+  return Object.assign(make, { goals }, spec.options ? { options: spec.options } : {});
 }
 
 /** A figure that is a test: its task is to be answered, whatever the lesson says. */
-export function quiz(build: (ctx: FigureContext, t: Task, options?: Options) => HTMLElement): FigureFactory {
+export function quiz<O extends Options = Options>(build: (ctx: FigureContext, t: Task, options?: O) => HTMLElement, spec: FigureSpec = {}): FigureFactory {
   const make = (ctx: FigureContext, _goal?: string, options?: Options): FigureHandle => {
     const p = promised();
-    const node = build(ctx, task(ctx, undefined, p), options);
-    return { node, done: p.promise };
+    const waits: Promise<unknown>[] = [];
+    const node = build(ctx, task(ctx, undefined, p, waits), options as O | undefined);
+    return { node, done: p.promise, ready: settled(waits) };
   };
-  return Object.assign(make, { quiz: true as const });
+  return Object.assign(make, { quiz: true as const }, spec.options ? { options: spec.options } : {});
 }
 
-export interface Frame {
+/** A figure's frame around a drawing of any kind. */
+export interface DrawingFrame<D extends Element = Element> {
   node: HTMLElement;
-  svg: SVGSVGElement;
+  /** What the figure draws on, as given. */
+  drawing: D;
   controls: HTMLElement;
   /** The live part of the text box under the drawing: what the figure is showing now. */
   readout: HTMLElement;
+}
+
+/** The standard frame, around an SVG drawing. */
+export interface Frame extends DrawingFrame<SVGSVGElement> {
+  svg: SVGSVGElement;
 }
 
 /**
  * The standard figure: a drawing `w` by `h` units, scaled to the column. The
  * text box under it keeps room for `lines` lines of readout at phone width, so
  * the controls below stay put while the text changes; the lesson puts the
- * figure's caption at the top of the same box (views/shift.ts).
+ * figure's caption at the top of the same box (placeCaption).
+ *
+ * `frame({ drawing, lines?, extra? })` puts the same text box and controls
+ * under any other drawing: a canvas (see canvasFrame), a video, a photo.
+ * The drawing gets the class `fig-drawing`, which spans the column.
  */
-export function frame(w: number, h: number, lines = 3, ...extra: Child[]): Frame {
-  const s = svg('svg', { viewBox: `0 0 ${w} ${h}`, class: 'fig-svg', role: 'img' }) as SVGSVGElement;
+export function frame(w: number, h: number, lines?: number, ...extra: Child[]): Frame;
+export function frame<D extends Element>(o: { drawing: D; lines?: number; extra?: Child[] }): DrawingFrame<D>;
+export function frame(a: number | { drawing: Element; lines?: number; extra?: Child[] }, h = 0, lines = 3, ...extra: Child[]): Frame | DrawingFrame {
+  if (typeof a === 'object') return around(a.drawing, a.lines ?? 3, a.extra ?? []);
+  const s = svg('svg', { viewBox: `0 0 ${a} ${h}`, class: 'fig-svg', role: 'img' }) as SVGSVGElement;
+  return { ...around(s, lines, extra), svg: s };
+}
+
+function around<D extends Element>(drawing: D, lines: number, extra: Child[]): DrawingFrame<D> {
+  if (!drawing.classList.contains('fig-svg')) drawing.classList.add('fig-drawing');
   const readout = el('p.fig-readout');
   const controls = el('div.fig-controls');
-  const node = el('div.fig-body', {}, s, textBox(readout, lines), controls, ...extra);
-  return { node, svg: s, controls, readout };
+  const node = el('div.fig-body', {}, drawing, textBox(readout, lines), controls, ...extra);
+  return { node, drawing, controls, readout };
+}
+
+/** A frame around a canvas `w` by `h` pixels (times `scale`, for sharp lines on a dense screen), scaled to the column. */
+export function canvasFrame(w: number, h: number, lines = 3, o: { scale?: number; extra?: Child[] } = {}): DrawingFrame<HTMLCanvasElement> & { ctx: CanvasRenderingContext2D | null } {
+  const scale = o.scale ?? 1;
+  const canvas = el('canvas', { width: Math.round(w * scale), height: Math.round(h * scale), role: 'img' }) as HTMLCanvasElement;
+  canvas.style.aspectRatio = `${w} / ${h}`;
+  const f = frame({ drawing: canvas, lines, extra: o.extra });
+  const ctx = canvas.getContext?.('2d') ?? null;
+  if (ctx && scale !== 1) ctx.scale(scale, scale);
+  return { ...f, ctx };
 }
 
 /** The box a figure's text lives in, `lines` lines of readout tall. */
@@ -137,27 +205,80 @@ export interface Slider {
   set: (v: number) => void;
 }
 
-/** A labelled range input that shows its value with `show`; `color` is any CSS colour, for the thumb. */
-export function slider(label: string, min: number, max: number, step: number, value: number, show: (v: number) => string, onInput: (v: number) => void, color?: string): Slider {
-  const input = el('input', { type: 'range', min, max, step, value, 'aria-label': label }) as HTMLInputElement;
-  if (color) input.style.setProperty('--thumb', color);
-  const out = el('output', {}, show(value));
+export interface SliderOptions {
+  /** The value it starts at. With `steps`, the nearest step. */
+  value: number;
+  show: (v: number) => string;
+  onInput: (v: number) => void;
+  /** Any CSS colour, for the thumb. */
+  color?: string;
+  min?: number;
+  max?: number;
+  /** Rounds the value to a multiple of this (on a log scale too). Default 1, or none on a log scale. */
+  step?: number;
+  /** Set values to walk through, in order (camera stops: 1/250, 1/500); `min`, `max` and `step` are not used. */
+  steps?: readonly number[];
+  /** 'log' spreads min to max evenly by ratio, as a zoom from 24 to 2000 mm reads. Default 'linear'. */
+  scale?: 'linear' | 'log';
+}
+
+/** How far along a log slider runs: this many positions from min to max. */
+const LOG_POSITIONS = 1000;
+
+/**
+ * A labelled range input that shows its value with `show`; `color` is any CSS
+ * colour, for the thumb. `slider(label, { value, show, onInput, steps | scale, ... })`
+ * makes one that walks a list of set values, or runs on a log scale; either
+ * way `show`, `onInput`, `value` and `set` deal in real values, and the input
+ * itself in positions (which is what a lesson keeps and puts back).
+ */
+export function slider(label: string, min: number, max: number, step: number, value: number, show: (v: number) => string, onInput: (v: number) => void, color?: string): Slider;
+export function slider(label: string, o: SliderOptions): Slider;
+export function slider(label: string, a: number | SliderOptions, max?: number, step?: number, value?: number, show?: (v: number) => string, onInput?: (v: number) => void, color?: string): Slider {
+  const o: SliderOptions = typeof a === 'object' ? a : { min: a, max, step, value: value!, show: show!, onInput: onInput!, color };
+  const scale = positions(o);
+  const input = el('input', { type: 'range', min: scale.min, max: scale.max, step: scale.step, value: scale.to(o.value), 'aria-label': label }) as HTMLInputElement;
+  if (o.color) input.style.setProperty('--thumb', o.color);
+  const current = () => scale.from(Number(input.value));
+  const out = el('output', {}, o.show(current()));
   const node = el('label.fig-slider', {}, el('span', {}, label), input, out);
   const fire = () => {
-    const v = Number(input.value);
-    out.textContent = show(v);
-    onInput(v);
+    const v = current();
+    out.textContent = o.show(v);
+    o.onInput(v);
   };
   input.addEventListener('input', fire);
   return {
     node,
     input,
-    value: () => Number(input.value),
+    value: current,
     set: (v) => {
-      input.value = String(v);
+      input.value = String(scale.to(v));
       fire();
     },
   };
+}
+
+/** The input's own range, and the way between its positions and real values. */
+function positions(o: SliderOptions): { min: number; max: number; step: number | 'any'; to: (v: number) => number; from: (pos: number) => number } {
+  const round = (v: number, step?: number) => (step ? Math.round(v / step) * step : v);
+  if (o.steps?.length) {
+    const steps = o.steps;
+    const nearest = (v: number) => steps.reduce((best, s, i) => (Math.abs(s - v) < Math.abs(steps[best] - v) ? i : best), 0);
+    return { min: 0, max: steps.length - 1, step: 1, to: nearest, from: (i) => steps[Math.max(0, Math.min(steps.length - 1, Math.round(i)))] };
+  }
+  const min = o.min ?? 0;
+  const max = o.max ?? 100;
+  if (o.scale === 'log') {
+    if (!(min > 0 && max > min)) throw new Error(`a log slider needs 0 < min < max, not ${min} to ${max}`);
+    const span = Math.log(max / min);
+    return {
+      min: 0, max: LOG_POSITIONS, step: 1,
+      to: (v) => Math.round((Math.log(Math.max(min, Math.min(max, v)) / min) / span) * LOG_POSITIONS),
+      from: (pos) => Math.max(min, Math.min(max, round(min * Math.exp((pos / LOG_POSITIONS) * span), o.step))),
+    };
+  }
+  return { min, max, step: o.step ?? 1, to: (v) => v, from: (v) => v };
 }
 
 // ---------------------------------------------------------------------------
@@ -268,6 +389,8 @@ export interface StandaloneFigure {
   node: HTMLElement;
   /** Resolves when its task is done, when given a goal it has one for. */
   done?: Promise<void>;
+  /** Resolves once it has drawn what it first shows (at once, for most figures). */
+  ready: Promise<void>;
   /** Stop it: animations end, and anything it listens to is let go. */
   close: () => void;
 }
@@ -283,7 +406,7 @@ export function standaloneFigure(factory: FigureFactory, o: { caption: string; s
   const own = placeCaption(handle.node, el('p.fig-lead', {}, o.caption));
   const node = el('figure.fig', {}, handle.node, own);
   if (handle.done) void handle.done.then(() => node.classList.add('done'));
-  return { node, done: handle.done, close: ctx.close };
+  return { node, done: handle.done, ready: figureReady(handle), close: ctx.close };
 }
 
 export interface TestContext extends FigureContext {

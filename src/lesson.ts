@@ -122,6 +122,11 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
    * lessons drafted only as titles do not inflate it.
    */
   of?: (lesson: L) => number;
+  /**
+   * Count every lesson in `lessons` for N, written or not: for a course that
+   * shows its whole plan on the home page. Ignored when `of` is given.
+   */
+  countComing?: boolean;
 }
 
 /** The view for a route like /lesson/:id. */
@@ -129,7 +134,8 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
   const home = o.home ?? '/home';
   const noun = o.noun ?? 'Lesson';
   const written = o.lessons.filter((l) => !l.coming && l.parts.length > 0).length;
-  const of = o.of ?? ((l: L) => Math.max(written, l.n));
+  const total = o.countComing ? o.lessons.length : written;
+  const of = o.of ?? ((l: L) => Math.max(total, l.n));
 
   /** How a block's figure is remembered between visits; nothing is, in a finished lesson. */
   interface Keeping {
@@ -423,8 +429,9 @@ function keepSliders(node: HTMLElement, keeping: { sliders?: number[]; onSliders
 /**
  * What is wrong with a set of lessons and the figures they use, for an app's
  * content test: a figure that does not exist, a goal its figure would never
- * meet, a task on a live figure with no goal (the lesson would stall), or a
- * footnote marker with no note, or a note with no marker.
+ * meet, a task on a live figure with no goal (the lesson would stall),
+ * options the figure's own check refuses, or a footnote marker with no note,
+ * or a note with no marker.
  */
 export function lessonProblems(
   lessons: readonly Lesson[],
@@ -443,6 +450,7 @@ export function lessonProblems(
         } else if (b.type !== diagramType(f)) out.push(`${l.id}: ${b.id} should have "type": "${diagramType(f)}", not "${b.type}"`);
         else if (b.goal && !f.goals?.includes(b.goal)) out.push(`${l.id}: ${b.id} does not know the goal "${b.goal}"`);
         else if (b.task && !b.goal && !f.quiz) out.push(`${l.id}: ${b.id} has a task but no goal`);
+        if (f?.options) for (const p of f.options(b.options)) out.push(`${l.id}: ${b.id} ${p}`);
       }
     }
   }

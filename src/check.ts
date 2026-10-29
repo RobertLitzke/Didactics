@@ -10,7 +10,7 @@
 // the score. With the radio off the same questions come plain.
 
 import { el } from './dom';
-import { quiz, type FigureContext, type FigureFactory, type Options } from './figure';
+import { quiz, type FigureContext, type FigureFactory, type FigureSpec, type Options } from './figure';
 import { makeRng, type Rng } from './rng';
 import { freshSeed } from './ui';
 
@@ -39,8 +39,9 @@ const WORDS = {
  * A lesson's check, as a figure. `steps` makes its questions from the block's
  * options and a random source, the same each time for the same seed, so a
  * reader coming back finds the same questions and goes on from where they were.
+ * `spec.options` checks the block's options in the content test.
  */
-export function check(steps: (ctx: FigureContext, options: Options | undefined, rng: Rng) => CheckStep[]): FigureFactory {
+export function check(steps: (ctx: FigureContext, options: Options | undefined, rng: Rng) => CheckStep[], spec: FigureSpec = {}): FigureFactory {
   return quiz((ctx, t, options) => {
     const kept = t.kept as { seed?: unknown; picks?: unknown } | undefined;
     const seed = typeof kept?.seed === 'number' ? kept.seed : freshSeed();
@@ -107,5 +108,5 @@ export function check(steps: (ctx: FigureContext, options: Options | undefined, 
     };
     next();
     return node;
-  });
+  }, spec);
 }

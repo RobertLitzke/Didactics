@@ -10,7 +10,7 @@
 
 import { REF_BLOCK_TYPES, type RefBlock, type RefSection } from './blocks.ts';
 import { el, type Child } from './dom';
-import { standaloneFigure, type FigureFactory } from './figure';
+import { standaloneFigure, type FigureFactory, type Options } from './figure';
 import { glossaryView, type GlossaryViewOptions } from './glossary';
 import { diagramType, placeholder } from './lesson';
 import type { Progress } from './progress';
@@ -147,8 +147,8 @@ export function referenceView<S extends Progress, X extends { type: string } = n
  * What is wrong with a reference file against the course, for a content
  * test: sections with the same id, lessons that do not exist, block types
  * neither Didactics nor the course draws, a glossary block with no glossary,
- * and figure blocks whose type does not match the figure (a quiz has no
- * place here). With `allowPlaceholders`, a figure id with no code is fine.
+ * figure blocks whose type does not match the figure (a quiz has no
+ * place here), and options the figure's own check refuses. With `allowPlaceholders`, a figure id with no code is fine.
  */
 export function referenceProblems(
   sections: readonly RefSection<{ type: string }>[],
@@ -172,6 +172,7 @@ export function referenceProblems(
           if (!o.allowPlaceholders) out.push(`${at}: no figure "${id}"`);
         } else if (f.quiz) out.push(`${at}: ${id} is a quiz, which belongs in a lesson`);
         else if (b.type !== diagramType(f)) out.push(`${at}: ${id} should have "type": "${diagramType(f)}", not "${b.type}"`);
+        if (f?.options && !f.quiz) for (const p of f.options((b as { options?: Options }).options)) out.push(`${at}: ${id} ${p}`);
       }
     }
   }

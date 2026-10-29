@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.0 (2026-10-29)
+
+Gaps found moving a fourth course (Out of Auto, photography) onto Didactics:
+
+- `figure`: `frame({ drawing, lines?, extra? })` puts the text box and
+  controls under any drawing (a canvas, a video, a photo), which gets the
+  class `fig-drawing`; `canvasFrame(w, h, lines, { scale? })` makes the
+  canvas. `frame(w, h, lines)` is unchanged, and its result now also has
+  `drawing` (the svg).
+- `figure`: `slider(label, { value, show, onInput, steps | min, max, step,
+  scale, color })`. `steps` walks a list of set values; `scale: 'log'` runs
+  min to max by ratio. `show`, `onInput`, `value` and `set` deal in real
+  values, the input in positions, so resume keeps working. The positional
+  form is unchanged.
+- `units`: `length(m, units)`, a distance in cm, m or km, or in, ft or mi.
+- `figure`: a figure can check its block's options, `figure<O>(goals,
+  build, { options: (o) => problems })` (also `quiz` and `check`, and a
+  still by `Object.assign`); `lessonProblems` and `referenceProblems` run it.
+  `O` types the options the build function gets.
+- `figure`: a figure that draws once something loads calls
+  `t.waitFor(promise)`; `FigureHandle.ready` and `standaloneFigure(...).ready`
+  settle when everything it waited for has (failed or not), and
+  `figureReady(handle)` gives a promise for any figure.
+- `photos` (new): `LICENSES`, `isLicenseId`, the `Photo` credit fields (a
+  course extends the type with what its photos are of), `credit(photo)`,
+  `creditsView({ photos, name?, intro?, after?, empty?, title? })` and
+  `photoProblems`. Fetching and subjects stay in each course.
+- `gallery` (new): `galleryPage({ figures, lessons, save, only? })`, every
+  figure on one page with its lesson caption and `data-figure`, and
+  `data-ready` once all are ready. `frozen` (new): imported first, `?frozen`
+  seeds `Math.random` and runs animation on a fake clock; `freezeClock()`.
+- `lesson`: `countComing: true` counts every lesson for "Lesson 3 of N", for
+  a course whose home page shows its whole plan.
+- kit.css: `.fig-drawing` spans the figure like `.fig-svg`.
+
 ## 0.4.0 (2026-10-28)
 
 Gaps found moving a third course (Circuitry) onto Didactics:

@@ -113,7 +113,7 @@ pin back before committing.
 | `dom` | `el('div.card', props, ...children)` and `svg(tag, attrs, ...children)` |
 | `rng` | `makeRng(seed)` (mulberry32), `shuffle(items, rng)` |
 | `store` | `createStore({ key, empty, migrate })`, localStorage with repair, export and import |
-| `units` | `Units`, `height(m, units)`, `feet`, `deg`, `temp` |
+| `units` | `Units`, `height(m, units)`, `length(m, units)` (cm to km, in to mi), `feet`, `deg`, `temp` |
 | `router` | `new Router(outlet, hooks).add('/x/:id', view).start('/home')`, hash routes, views return a teardown |
 | **Shell** | |
 | `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
@@ -132,13 +132,16 @@ pin back before committing.
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
 | `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
-| `figure` | What a figure is: `figure(goals, build)`, `quiz(build)`, `frame`, `slider`, `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
+| `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
 | `footnote` | Footnotes that open in a popup: `footnoteSet`, `footnoteMarker`, `openFootnote`, `closeFootnote`, `footnoteLegend`, `footnoteProblems` |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
 | `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
+| `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
+| `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
+| `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
 | **Practice** | |
 | `quiz` | Leitner scheduling: `review`, `deal`, `tally`, `GAPS_DAYS`, the `Card` shape, `conceptCard` for hand-written cards |
@@ -269,6 +272,17 @@ export const checkFigure = check((ctx, options, rng) => shuffle(options!.items a
   picture: () => drawing(q), ask: q.question, choices: q.options, answer: q.answer, why: q.why,
 })));
 ```
+
+A figure that draws on a canvas, a video or a photo uses `frame({ drawing,
+lines })` (or `canvasFrame(w, h, lines)`), which puts the same text box and
+controls under it. A slider can walk set values (`slider('Shutter', { steps:
+[1/250, 1/500], value, show, onInput })`) or run on a log scale (`{ min: 24,
+max: 2000, scale: 'log', ... }`). A figure whose options name things (a
+photo, a subject) gives them a check, `figure<{ photo: string }>(goals,
+build, { options: (o) => problems })`, and `lessonProblems` runs it on every
+block. A figure that paints only once something loads calls
+`t.waitFor(promise)`; its `ready` (and `standaloneFigure(...).ready`) settles
+when that has, so a test, a screenshot or the gallery can wait for it.
 
 Use `animate(node, ctx, dt => …)` for motion. It runs only while the figure
 is on screen and stops when the lesson closes. Guess-first figures lock
@@ -499,6 +513,10 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.st
 }
 ```
 
+"Lesson 3 of N" counts the lessons that are written. A course whose home
+page shows its whole plan, drafted lessons too, passes `countComing: true`
+to `lessonView` (or `of: (lesson) => n` to say exactly).
+
 `appShell` is the top bar: the wordmark on the left (a link home) and a
 dropdown of the pages on the right, showing the current page's name. Pages
 for which `fullScreen` is true hide the bar. `title` can be words or a node,
@@ -649,9 +667,17 @@ expect(lessonProblems(LESSONS, FIGURES)).toEqual([]);   // unknown figures, unkn
 
 Clouds' `test/figures.test.ts` builds every figure in both unit systems and
 checks that none of them throws, and that the guess-first figures and checks
-come back as they were from what they kept. `figures.html` with `tools/gallery`
-renders every figure on one page, and `?frozen` makes the page the same on
-every load, so before and after screenshots can be pixel-diffed.
+come back as they were from what they kept. A gallery of every figure is a
+few lines with `galleryPage`, and `?frozen` makes it the same on every load,
+so before and after screenshots can be pixel-diffed:
+
+```ts
+// tools/gallery/main.ts, loaded by figures.html (served by the dev server only)
+import 'didactics/frozen';                     // first, before any figure
+import { galleryPage } from 'didactics/gallery';
+const g = galleryPage({ figures: FIGURES, lessons: LESSONS, save: emptySave() });
+document.getElementById('app')!.append(g.node); // [data-ready] once every figure has drawn
+```
 
 ---
 
