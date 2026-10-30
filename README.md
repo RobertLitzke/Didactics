@@ -130,8 +130,8 @@ pin back before committing.
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
 | `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems`; the reference file's (`RefBlock`, `RefSection`, `referenceShapeProblems`) |
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
-| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
-| `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
+| `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `pieceOf`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
+| `course-view` | `courseSection({ edits, fileName, pieces? })`, the Settings section to download (all, or one piece such as a lesson), load and reset the course's text; `pieceFileName` |
 | `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
@@ -466,6 +466,10 @@ differ) and puts its words into the very objects the course's modules
 import, so nothing else in the course needs to know about it. Settings then
 has **Download the course**, **Load edited text** (which reports what is
 wrong with a file instead of loading it) and **Back to the built-in text**.
+Pass `pieces` (`{ label, files, code?, fileName? }`, such as one per
+lesson) and Settings offers a menu instead: **All**, or any one piece, each
+downloaded as its own course file with `"part"` set. Loading a piece's file
+changes only what it holds; other edits stay.
 Edited words from the code are swapped in as the page shows them
 (`liveCodeText`), so they read right in the page and its SVG drawings, but
 not in words painted on a canvas; import them in the repository to make

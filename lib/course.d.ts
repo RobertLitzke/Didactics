@@ -11,6 +11,8 @@ export interface CourseFile {
     /** When it was exported, as an ISO date. */
     exported: string;
     _howTo: string;
+    /** Which part of the course this is, such as one lesson; absent for the whole course. */
+    part?: string;
     files: CourseFiles;
     /** The words written in the course's code, by source file: as written → as edited (code-text.ts). */
     code?: CodeText;
@@ -40,13 +42,31 @@ export interface CourseEdits {
     readonly edited: readonly string[];
     /** Whether the course file holds the words in the course's code too. */
     readonly hasCode: boolean;
-    /** The course as it reads now, edits and all. */
-    file: () => Promise<CourseFile>;
-    /** Keeps an edited course file's words in this browser. Returns what is wrong with it, and keeps nothing then; reload to see it. */
+    /** The course as it reads now, edits and all; with `piece`, only that part of it. */
+    file: (piece?: CoursePiece) => Promise<CourseFile>;
+    /**
+     * Keeps an edited course file's words in this browser, the whole course or
+     * a piece of it: what it holds replaces earlier edits of the same files and
+     * strings, and other edits stay. Returns what is wrong with it, and keeps
+     * nothing then; reload to see it.
+     */
     load: (text: string) => Promise<string[]>;
     /** Forgets the edits; reload to see the built-in words again. */
     reset: () => void;
 }
+/** A part of the course to download on its own, such as one lesson. */
+export interface CoursePiece {
+    /** As the reader picks it, such as "Lesson 1: Morning fog". */
+    label: string;
+    /** The JSON files it holds, by path. */
+    files: string[];
+    /** The source files whose words it holds, by path (code-text.ts). */
+    code?: string[];
+    /** The downloaded file's name; courseSection makes one from the label when left out. */
+    fileName?: string;
+}
+/** Only the files and code tables of `file` that `piece` names. */
+export declare function pieceOf(file: CourseFile, piece: CoursePiece): CourseFile;
 export interface CourseEditsOptions {
     /** The localStorage key edits are kept under. */
     key: string;

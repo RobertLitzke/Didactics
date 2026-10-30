@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { codeTable, rewriteCode, scanCode } from '../src/code-scan';
 import { codeSwaps, codeTextProblems, isProse, liveCodeText, swapCodeText, templateParts } from '../src/code-text';
 import { courseEdits } from '../src/course';
+import { pieceFileName } from '../src/course-view';
 
 const SOURCE = `import { el } from 'didactics/dom';
 // 'A comment is not words'
@@ -126,6 +127,31 @@ describe('edited words in the running page', () => {
     expect(await next.load(JSON.stringify(file))).toHaveLength(1);
     const plain = courseEdits({ key: 'plain.course', title: 'Push', files: make() });
     expect((await plain.file()).code).toBeUndefined();
+  });
+
+  it('downloads one piece, and loading a piece keeps the edits of the others', async () => {
+    const code = { 'src/fog.ts': { 'Fog forms': 'Fog forms' }, 'src/rain.ts': { 'Rain falls': 'Rain falls' } };
+    const make = () => ({ 'src/fog.json': { title: 'Fog' }, 'src/rain.json': { title: 'Rain' } });
+    const edits = courseEdits({ key: 'piece.course', title: 'Sky', files: make(), code: () => code });
+    const fog = { label: 'Lesson 1: Fog', files: ['src/fog.json'], code: ['src/fog.ts'] };
+    const rain = { label: 'Lesson 2: Rain', files: ['src/rain.json'], code: ['src/rain.ts'] };
+    const fogFile = await edits.file(fog);
+    expect(fogFile.part).toBe('Lesson 1: Fog');
+    expect(fogFile.files).toEqual({ 'src/fog.json': { title: 'Fog' } });
+    expect(fogFile.code).toEqual({ 'src/fog.ts': { 'Fog forms': 'Fog forms' } });
+    expect(pieceFileName('sky.json', fog)).toBe('sky-lesson-1-fog.json');
+    (fogFile.files['src/fog.json'] as { title: string }).title = 'Mist';
+    expect(await edits.load(JSON.stringify(fogFile))).toEqual([]);
+    const rainFile = await edits.file(rain);
+    rainFile.code!['src/rain.ts']['Rain falls'] = 'Rain pours';
+    expect(await edits.load(JSON.stringify(rainFile))).toEqual([]);
+    expect(edits.edited).toEqual(['src/fog.json', 'src/rain.ts']);
+    // The fog piece again, back as it was built: its edit goes, the rain's stays.
+    expect(await edits.load(JSON.stringify(await edits.file(fog)).replace('Mist', 'Fog'))).toEqual([]);
+    expect(edits.edited).toEqual(['src/rain.ts']);
+    const files = make();
+    courseEdits({ key: 'piece.course', title: 'Sky', files, code: () => code });
+    expect(files['src/fog.json'].title).toBe('Fog');
   });
 
   it('round-trips through the command line', () => {

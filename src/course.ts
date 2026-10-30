@@ -39,6 +39,8 @@ export interface CourseFile {
   /** When it was exported, as an ISO date. */
   exported: string;
   _howTo: string;
+  /** Which part of the course this is, such as one lesson; absent for the whole course. */
+  part?: string;
   files: CourseFiles;
   /** The words written in the course's code, by source file: as written → as edited (code-text.ts). */
   code?: CodeText;
@@ -128,12 +130,37 @@ export interface CourseEdits {
   readonly edited: readonly string[];
   /** Whether the course file holds the words in the course's code too. */
   readonly hasCode: boolean;
-  /** The course as it reads now, edits and all. */
-  file: () => Promise<CourseFile>;
-  /** Keeps an edited course file's words in this browser. Returns what is wrong with it, and keeps nothing then; reload to see it. */
+  /** The course as it reads now, edits and all; with `piece`, only that part of it. */
+  file: (piece?: CoursePiece) => Promise<CourseFile>;
+  /**
+   * Keeps an edited course file's words in this browser, the whole course or
+   * a piece of it: what it holds replaces earlier edits of the same files and
+   * strings, and other edits stay. Returns what is wrong with it, and keeps
+   * nothing then; reload to see it.
+   */
   load: (text: string) => Promise<string[]>;
   /** Forgets the edits; reload to see the built-in words again. */
   reset: () => void;
+}
+
+/** A part of the course to download on its own, such as one lesson. */
+export interface CoursePiece {
+  /** As the reader picks it, such as "Lesson 1: Morning fog". */
+  label: string;
+  /** The JSON files it holds, by path. */
+  files: string[];
+  /** The source files whose words it holds, by path (code-text.ts). */
+  code?: string[];
+  /** The downloaded file's name; courseSection makes one from the label when left out. */
+  fileName?: string;
+}
+
+/** Only the files and code tables of `file` that `piece` names. */
+export function pieceOf(file: CourseFile, piece: CoursePiece): CourseFile {
+  const pick = <T>(table: Record<string, T>, paths: string[]) => Object.fromEntries(paths.filter((p) => p in table).map((p) => [p, table[p]]));
+  const out: CourseFile = { ...file, part: piece.label, files: pick(file.files, piece.files) };
+  if (file.code) out.code = pick(file.code, piece.code ?? []);
+  return out;
 }
 
 export interface CourseEditsOptions {
@@ -158,16 +185,20 @@ export interface CourseEditsOptions {
  */
 export function courseEdits(o: CourseEditsOptions): CourseEdits {
   const built = structuredClone(o.files);
-  let edited: string[] = [];
+  // What this browser keeps: only the files and strings that differ from the built-in ones.
+  let keptFiles: CourseFiles = {};
   let keptCode: CodeText = {};
+  let edited: string[] = [];
   try {
     const kept = localStorage.getItem(o.key);
     if (kept) {
       const { files, code, problems } = readCourse(JSON.parse(kept), o.files);
       if (problems.length) localStorage.removeItem(o.key);
       else {
-        edited = [...injectCourse(o.files, files), ...Object.keys(code)];
+        injectCourse(o.files, files);
+        keptFiles = files;
         keptCode = code;
+        edited = [...Object.keys(files), ...Object.keys(code)];
         if (typeof document !== 'undefined') liveCodeText(code);
       }
     }
@@ -180,9 +211,10 @@ export function courseEdits(o: CourseEditsOptions): CourseEdits {
       return edited;
     },
     hasCode: !!o.code,
-    async file() {
+    async file(piece) {
       const code = await codeTable();
-      return exportCourse(o.title, o.files, new Date(), code && withCodeEdits(code, keptCode));
+      const all = exportCourse(o.title, o.files, new Date(), code && withCodeEdits(code, keptCode));
+      return piece ? pieceOf(all, piece) : all;
     },
     async load(text) {
       let raw: unknown;
@@ -191,20 +223,34 @@ export function courseEdits(o: CourseEditsOptions): CourseEdits {
       } catch (e) {
         return [`That file is not JSON: ${(e as Error).message}`];
       }
-      const { files, code, problems } = readCourse(raw, built, (await codeTable()) ?? {});
+      const { files, problems } = readCourse(raw, built, (await codeTable()) ?? {});
       if (problems.length) return problems;
-      // Keep only what differs from the built-in words: storage is small.
-      const changed: CourseFiles = {};
-      for (const [path, json] of Object.entries(files)) if (JSON.stringify(json) !== JSON.stringify(built[path])) changed[path] = json;
-      const some = Object.keys(changed).length + Object.keys(code).length > 0;
+      // What the file holds replaces what was kept for the same files and
+      // strings; only what differs from the built-in words is kept, since
+      // storage is small.
+      const nextFiles = { ...keptFiles };
+      for (const [path, json] of Object.entries(files)) {
+        if (JSON.stringify(json) !== JSON.stringify(built[path])) nextFiles[path] = json;
+        else delete nextFiles[path];
+      }
+      const nextCode = structuredClone(keptCode);
+      for (const [path, strings] of Object.entries((raw as CourseFile).code ?? {})) {
+        for (const [written, now] of Object.entries(strings)) {
+          if (now !== written) (nextCode[path] ??= {})[written] = now;
+          else if (nextCode[path]) delete nextCode[path][written];
+        }
+        if (nextCode[path] && !Object.keys(nextCode[path]).length) delete nextCode[path];
+      }
+      const some = Object.keys(nextFiles).length + Object.keys(nextCode).length > 0;
       try {
-        if (some) localStorage.setItem(o.key, JSON.stringify(exportCourse(o.title, changed, new Date(), code)));
+        if (some) localStorage.setItem(o.key, JSON.stringify(exportCourse(o.title, nextFiles, new Date(), nextCode)));
         else localStorage.removeItem(o.key);
       } catch (e) {
         return [`This browser would not keep it: ${(e as Error).message}`];
       }
-      edited = [...Object.keys(changed), ...Object.keys(code)];
-      keptCode = code;
+      keptFiles = nextFiles;
+      keptCode = nextCode;
+      edited = [...Object.keys(nextFiles), ...Object.keys(nextCode)];
       return [];
     },
     reset() {
@@ -214,6 +260,7 @@ export function courseEdits(o: CourseEditsOptions): CourseEdits {
         // Nothing kept, then.
       }
       edited = [];
+      keptFiles = {};
       keptCode = {};
     },
   };

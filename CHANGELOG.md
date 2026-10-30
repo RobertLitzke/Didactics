@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 (2026-10-30)
+
+Downloading the course a piece at a time:
+
+- `course-view`: `courseSection({ …, pieces?, allLabel? })`. With pieces
+  (such as one per lesson) Settings shows a menu, "All" first, and one
+  Download button for what is picked. `pieceFileName(fileName, piece)`.
+- `course`: `CoursePiece { label, files, code?, fileName? }`;
+  `CourseEdits.file(piece?)` and `pieceOf(file, piece)` give only its JSON
+  files and code tables, with `"part"` set to its label.
+- `course`: `CourseEdits.load` merges: what a loaded file holds replaces the
+  edits of the same files and strings, and other edits stay, so loading one
+  lesson keeps another's edits. (It used to replace every edit.)
+
 ## 0.6.0 (2026-10-30)
 
 All of a course's text in one JSON file, the words written in its code too:

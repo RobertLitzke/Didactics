@@ -799,3 +799,4 @@ body.sheet-up { overflow: hidden; }
 /* ---- Course text, in settings (course-view.ts) ------------------------- */
 .course-problems { margin: 8px 0 0; padding-left: 20px; color: var(--bad); font-size: 0.9rem; }
 .course-problems:empty { display: none; }
+.course-piece { font: 1rem var(--font); padding: 10px 12px; border-radius: 10px; border: 0; background: var(--panel); color: var(--ink); width: min(320px, 100%); margin-bottom: 8px; }

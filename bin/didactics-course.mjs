@@ -74,7 +74,8 @@ if (command === 'export') {
       const now = readFileSync(path, 'utf8');
       const next = rewriteCode(path, now, edits);
       problems.push(...next.problems);
-      if (next.source !== now) sources.push([path, next.source, Object.keys(edits).length]);
+      const n = Object.entries(edits).filter(([written, edited]) => written !== edited).length;
+      if (next.source !== now) sources.push([path, next.source, n]);
     }
   }
   if (problems.length) fail(['Nothing was written. The course file has these problems:', ...problems.map((p) => `  ${p}`)]);
