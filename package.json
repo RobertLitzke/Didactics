@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -20,6 +20,8 @@
     "./asset": "./src/asset.ts",
     "./blocks": "./src/blocks.ts",
     "./check": "./src/check.ts",
+    "./code-scan": "./src/code-scan.ts",
+    "./code-text": "./src/code-text.ts",
     "./course": "./src/course.ts",
     "./course-view": "./src/course-view.ts",
     "./dom": "./src/dom.ts",
@@ -65,7 +67,11 @@
   "peerDependencies": {
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^1.0.0",
-    "vite-plugin-singlefile": "^2.3.0"
+    "vite-plugin-singlefile": "^2.3.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": { "optional": true }
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

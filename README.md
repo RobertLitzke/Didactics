@@ -124,7 +124,7 @@ pin back before committing.
 | `asset` | `assetFrom(siteUrl)`, `fromDisk` (lets the one-file copy fetch photos from the live site), `selfContained` (the offline copy, photos inlined) |
 | `offline` | `savedCount(folder)`, `retireWhenSaved(folder, total, oldCaches)` |
 | `overflow` | Dev only: flags anything wider than the screen |
-| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `globRegExp` |
+| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `codeTextModule`, `globRegExp` |
 | `styles/kit.css` | All the styles, themed through CSS custom properties |
 | **Lessons** | |
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
@@ -132,6 +132,8 @@ pin back before committing.
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
 | `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName })`, the Settings section to download, load and reset the course's text |
+| `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
+| `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
@@ -397,6 +399,7 @@ To revise a course in one place, put all its words in one file and back:
 
 ```sh
 npx didactics-course export src/data --title Levers --out course.json   # every .json under src/data
+npx didactics-course export src/data --code src                         # and the words written in the code under src
 npx didactics-course import course.json                                 # each file back to its path
 npx didactics-course import course.json --dry-run                       # say what would change
 ```
@@ -406,6 +409,29 @@ with each JSON file of the course under its path from the repository root
 (lessons, and anything else kept in JSON, such as radio talks, quiz cards or
 a glossary). Import checks every lesson's blocks before it writes anything.
 Run both from the repository root.
+
+With `--code`, the file also has `"code"`: the words the course writes in
+its source files (a figure's labels and running commentary, headings,
+buttons, a check's feedback), one table per file, each string as written →
+as edited:
+
+```json
+"code": {
+  "src/figures/lever.ts": {
+    "Push down here": "Push down here",
+    "The load rises ${height(h)}": "The load rises ${height(h)}"
+  }
+}
+```
+
+Edit the right-hand side only; the left finds the string in the code. A
+template keeps its `${...}` parts (they may move), and a string the code
+uses twice is listed once. Import writes each edited string back into its
+source file, in the quotes it had, after checking all of them. Which strings
+are words is a guess (`isProse` in `code-text`: a capitalised word, or
+letters with a space), so ids, class names, CSS and paths stay out; the
+course's `typescript` package reads the code, so nothing in a comment is
+taken for words.
 
 The same file works inside the app, so a reader without the repository (on
 a phone, say) can download the course, edit it, and read the edited text in
@@ -418,7 +444,15 @@ import { courseEdits, courseFiles } from 'didactics/course';
 export const COURSE = courseEdits({
   key: 'levers.course', title: 'Levers',
   files: courseFiles(import.meta.glob('/src/data/**/*.json', { eager: true, import: 'default' })),
+  // Optional: the words in the code too, from lessonApp's build (its own chunk, loaded on download).
+  code: () => import('virtual:didactics/code-text').then((m) => m.default),
 });
+
+// src/env.d.ts, for the line above
+declare module 'virtual:didactics/code-text' {
+  const code: import('didactics/code-text').CodeText;
+  export default code;
+}
 
 // src/main.ts
 import './course';            // first: the edited words go in before any module reads them
@@ -432,6 +466,11 @@ differ) and puts its words into the very objects the course's modules
 import, so nothing else in the course needs to know about it. Settings then
 has **Download the course**, **Load edited text** (which reports what is
 wrong with a file instead of loading it) and **Back to the built-in text**.
+Edited words from the code are swapped in as the page shows them
+(`liveCodeText`), so they read right in the page and its SVG drawings, but
+not in words painted on a canvas; import them in the repository to make
+them stick. `lessonApp` scans `src` by default; `codeText: ['src', 'lib']`
+or `codeText: false` changes that.
 
 ### Footnotes
 

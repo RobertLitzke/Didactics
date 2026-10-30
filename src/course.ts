@@ -2,11 +2,15 @@
 // lesson, and any other words the course keeps in JSON (radio talks, quiz
 // cards, a glossary), each under the path of the file it came from. Lessons
 // keep their diagram callouts (blocks.ts), so the file reads as the text with
-// "interactive_diagram parcel goes here" where each drawing sits.
+// "interactive_diagram parcel goes here" where each drawing sits. Optionally
+// it also holds the words the course writes in its code, under "code": a
+// figure's labels and commentary, buttons, headings (code-text.ts), so one
+// file has all of the course's text.
 //
 // The same file goes back in two ways:
 // - in the repository, `npx didactics-course import course.json` writes each
-//   file back to its path (bin/didactics-course.mjs; `export` makes one);
+//   file back to its path, and each edited string of "code" into its source
+//   file (bin/didactics-course.mjs; `export` makes one);
 // - in the app, `courseEdits` keeps an edited file in this browser and puts
 //   its words in place of the built-in ones as the app starts, so a revision
 //   can be read in the real lessons before it is committed (course-view.ts
@@ -19,6 +23,7 @@
 //
 // This file imports nothing that needs a browser, so the command line can use it.
 
+import { changedCode, codeTextProblems, liveCodeText, withCodeEdits, type CodeText } from './code-text.ts';
 import { isLessonShaped, isReferenceShaped, lessonShapeProblems, referenceShapeProblems, type DiagramType } from './blocks.ts';
 
 export const COURSE_FORMAT = 'didactics-course';
@@ -35,6 +40,8 @@ export interface CourseFile {
   exported: string;
   _howTo: string;
   files: CourseFiles;
+  /** The words written in the course's code, by source file: as written → as edited (code-text.ts). */
+  code?: CodeText;
 }
 
 const HOW_TO =
@@ -43,7 +50,10 @@ const HOW_TO =
   'or a callout for something the course draws, by "id": "interactive_diagram", "diagram" (a still) or "quiz". ' +
   'A callout\'s "caption" and "task" are words to edit; its "id", "goal" and "options" wire it to the code, so keep them unless the code changes too. ' +
   'Blocks can be added, removed and moved. A callout with an id the course has no code for yet shows as a box saying that the diagram goes there, ' +
-  '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]] and [^footnote].';
+  '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]] and [^footnote]. ' +
+  '"code", when there is one, has the words written in the course\'s code (labels, commentary, buttons), one table per source file: ' +
+  'edit the words on the right of each line and keep the ones on the left, which find the string in the code. ' +
+  'Keep every ${...} in a line: it is filled in by the code, and may move within the line.';
 
 /**
  * The files from `import.meta.glob('/src/data/**\/*.json', { eager: true, import: 'default' })`
@@ -58,23 +68,31 @@ export function courseFiles(found: Record<string, unknown>): CourseFiles {
 const cleanPath = (p: string) => p.replace(/\\/g, '/').replace(/^(\.\/|\/)+/, '');
 
 /** The course as one file. */
-export function exportCourse(title: string, files: CourseFiles, now = new Date()): CourseFile {
-  const sorted: CourseFiles = {};
-  for (const path of Object.keys(files).sort()) sorted[path] = files[path];
-  return { format: COURSE_FORMAT, version: COURSE_VERSION, title, exported: now.toISOString(), _howTo: HOW_TO, files: structuredClone(sorted) };
+export function exportCourse(title: string, files: CourseFiles, now = new Date(), code?: CodeText): CourseFile {
+  const out: CourseFile = { format: COURSE_FORMAT, version: COURSE_VERSION, title, exported: now.toISOString(), _howTo: HOW_TO, files: structuredClone(sorted(files)) };
+  if (code) out.code = structuredClone(sorted(code));
+  return out;
+}
+
+function sorted<T>(table: Record<string, T>): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const path of Object.keys(table).sort()) out[path] = table[path];
+  return out;
 }
 
 /**
  * Reads a course file. `known`, the course's own files, limits it to them:
  * a path the course does not have is a problem, since nothing would read it.
- * Returns the files only when there are no problems.
+ * `knownCode`, the course's own code table, does the same for "code".
+ * Returns the files, and the code strings it changes, only when there are no problems.
  */
-export function readCourse(raw: unknown, known?: CourseFiles): { files: CourseFiles; problems: string[] } {
+export function readCourse(raw: unknown, known?: CourseFiles, knownCode?: CodeText): { files: CourseFiles; code: CodeText; problems: string[] } {
   const f = raw as Partial<CourseFile> | null;
-  if (!f || typeof f !== 'object' || f.format !== COURSE_FORMAT) return { files: {}, problems: ['This is not a course file (its "format" is not "didactics-course").'] };
-  if (f.version !== COURSE_VERSION) return { files: {}, problems: [`This course file is version ${String(f.version)}; this app reads version ${COURSE_VERSION}.`] };
-  if (!f.files || typeof f.files !== 'object') return { files: {}, problems: ['The course file has no "files".'] };
-  const problems: string[] = [];
+  const none = (problem: string) => ({ files: {}, code: {}, problems: [problem] });
+  if (!f || typeof f !== 'object' || f.format !== COURSE_FORMAT) return none('This is not a course file (its "format" is not "didactics-course").');
+  if (f.version !== COURSE_VERSION) return none(`This course file is version ${String(f.version)}; this app reads version ${COURSE_VERSION}.`);
+  if (!f.files || typeof f.files !== 'object') return none('The course file has no "files".');
+  const problems: string[] = codeTextProblems(f.code, knownCode);
   const files: CourseFiles = {};
   for (const [p, json] of Object.entries(f.files)) {
     const path = cleanPath(p);
@@ -84,7 +102,7 @@ export function readCourse(raw: unknown, known?: CourseFiles): { files: CourseFi
     else if (isReferenceShaped(json) || (known && isReferenceShaped(known[path]))) problems.push(...referenceShapeProblems(json, path));
     files[path] = json;
   }
-  return { files: problems.length ? {} : files, problems };
+  return problems.length ? { files: {}, code: {}, problems } : { files, code: changedCode(f.code), problems };
 }
 
 /** Puts each of `files` in place of the one at its path in `into`, keeping the same object. Returns the paths changed. */
@@ -106,58 +124,87 @@ export function injectCourse(into: CourseFiles, files: CourseFiles): string[] {
 }
 
 export interface CourseEdits {
-  /** The paths whose words in this browser are edited ones. */
+  /** The paths whose words in this browser are edited ones: JSON files, and source files with edited strings. */
   readonly edited: readonly string[];
+  /** Whether the course file holds the words in the course's code too. */
+  readonly hasCode: boolean;
   /** The course as it reads now, edits and all. */
-  file: () => CourseFile;
+  file: () => Promise<CourseFile>;
   /** Keeps an edited course file's words in this browser. Returns what is wrong with it, and keeps nothing then; reload to see it. */
-  load: (text: string) => string[];
+  load: (text: string) => Promise<string[]>;
   /** Forgets the edits; reload to see the built-in words again. */
   reset: () => void;
+}
+
+export interface CourseEditsOptions {
+  /** The localStorage key edits are kept under. */
+  key: string;
+  title: string;
+  files: CourseFiles;
+  /**
+   * The words in the course's code, so the course file holds them too:
+   * `() => import('virtual:didactics/code-text').then((m) => m.default)`,
+   * the table the build makes (vite.ts codeTextModule). Left out, the course
+   * file has the JSON files only.
+   */
+  code?: () => CodeText | Promise<CodeText>;
 }
 
 /**
  * The course's words as this browser has them: the built-in `files`, with any
  * edits loaded earlier (kept in localStorage under `key`) put in their place
- * now, in place. Call it before anything reads the files.
+ * now, in place, and edited code strings swapped in as the page shows them
+ * (code-text.ts liveCodeText). Call it before anything reads the files.
  */
-export function courseEdits(o: { key: string; title: string; files: CourseFiles }): CourseEdits {
+export function courseEdits(o: CourseEditsOptions): CourseEdits {
   const built = structuredClone(o.files);
   let edited: string[] = [];
+  let keptCode: CodeText = {};
   try {
     const kept = localStorage.getItem(o.key);
     if (kept) {
-      const { files, problems } = readCourse(JSON.parse(kept), o.files);
+      const { files, code, problems } = readCourse(JSON.parse(kept), o.files);
       if (problems.length) localStorage.removeItem(o.key);
-      else edited = injectCourse(o.files, files);
+      else {
+        edited = [...injectCourse(o.files, files), ...Object.keys(code)];
+        keptCode = code;
+        if (typeof document !== 'undefined') liveCodeText(code);
+      }
     }
   } catch {
     // Storage blocked, or a file that no longer reads: the built-in words stand.
   }
+  const codeTable = async () => (o.code ? await o.code() : undefined);
   return {
     get edited() {
       return edited;
     },
-    file: () => exportCourse(o.title, o.files),
-    load(text) {
+    hasCode: !!o.code,
+    async file() {
+      const code = await codeTable();
+      return exportCourse(o.title, o.files, new Date(), code && withCodeEdits(code, keptCode));
+    },
+    async load(text) {
       let raw: unknown;
       try {
         raw = JSON.parse(text);
       } catch (e) {
         return [`That file is not JSON: ${(e as Error).message}`];
       }
-      const { files, problems } = readCourse(raw, built);
+      const { files, code, problems } = readCourse(raw, built, (await codeTable()) ?? {});
       if (problems.length) return problems;
       // Keep only what differs from the built-in words: storage is small.
       const changed: CourseFiles = {};
       for (const [path, json] of Object.entries(files)) if (JSON.stringify(json) !== JSON.stringify(built[path])) changed[path] = json;
+      const some = Object.keys(changed).length + Object.keys(code).length > 0;
       try {
-        if (Object.keys(changed).length) localStorage.setItem(o.key, JSON.stringify(exportCourse(o.title, changed)));
+        if (some) localStorage.setItem(o.key, JSON.stringify(exportCourse(o.title, changed, new Date(), code)));
         else localStorage.removeItem(o.key);
       } catch (e) {
         return [`This browser would not keep it: ${(e as Error).message}`];
       }
-      edited = Object.keys(changed);
+      edited = [...Object.keys(changed), ...Object.keys(code)];
+      keptCode = code;
       return [];
     },
     reset() {
@@ -167,6 +214,7 @@ export function courseEdits(o: { key: string; title: string; files: CourseFiles 
         // Nothing kept, then.
       }
       edited = [];
+      keptCode = {};
     },
   };
 }

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 (2026-10-30)
+
+All of a course's text in one JSON file, the words written in its code too:
+
+- `code-text` (new): a course file can carry `"code"`, the strings that read
+  as words in the course's source files (labels, commentary, buttons,
+  headings), one table per file, as written → as edited. `isProse`,
+  `templateParts`, `codeTextProblems`, `liveCodeText`, which swaps edited
+  words into the page as it shows them (DOM and SVG text, not canvas).
+- `code-scan` (new, Node only, uses the course's `typescript`): `scanCode`,
+  `codeTable`, `readSources`, `rewriteCode`.
+- `didactics-course export … --code src` adds the code's words; `import`
+  writes edited strings back into their source files, checking every one
+  first (a string no longer in its file, a template that lost a `${...}`).
+- `vite`: `lessonApp` serves `virtual:didactics/code-text`, the table for
+  `src` (option `codeText`: folders, or `false`); also `codeTextModule`.
+- `course`: `exportCourse(title, files, now?, code?)`; `readCourse(raw,
+  known?, knownCode?)` also returns `code` (only the changed strings);
+  `courseEdits({ …, code? })` puts the code table in the downloaded file and
+  keeps and shows edited strings. **Breaking:** `CourseEdits.file()` and
+  `load()` now return promises; new `hasCode`.
+- `course-view`: the Settings text says the download has the words in the
+  drawings and pages too, when it does.
+- `styles/kit.css`: a hidden `.btn` stays hidden (Settings showed "Reload
+  to read it" and "Back to the built-in text" when there was nothing to do).
+
 ## 0.5.0 (2026-10-29)
 
 Gaps found moving a fourth course (Out of Auto, photography) onto Didactics:

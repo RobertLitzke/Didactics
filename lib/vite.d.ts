@@ -5,6 +5,15 @@ import type { Plugin, UserConfig } from 'vite';
  * the service worker serves.
  */
 export declare function oneFileCopy(root: string, name: string): Plugin;
+/** The module a course imports for the words in its code: `import('virtual:didactics/code-text')`. */
+export declare const CODE_TEXT_MODULE = "virtual:didactics/code-text";
+/**
+ * Serves CODE_TEXT_MODULE: every string that reads as words in the source
+ * files under `dirs` (code-text.ts), as a table the course file carries.
+ * Import it with a dynamic import(), so the table is its own chunk, loaded
+ * only when someone downloads the course.
+ */
+export declare function codeTextModule(root: string, dirs: string[]): Plugin;
 /** A glob as workbox reads it (`*` within a folder, `{a,b}`) as a RegExp. */
 export declare function globRegExp(glob: string): RegExp;
 /**
@@ -57,6 +66,11 @@ export interface LessonAppOptions {
      * whose contents have not changed is not downloaded again by a new version.
      */
     precache?: string[];
+    /**
+     * The folders whose source files' words the course file carries
+     * (codeTextModule), from `root`; `false` for none. Defaults to ['src'].
+     */
+    codeText?: string[] | false;
 }
 /** An icon in the web app manifest, with `src` relative to the built page. */
 export interface ManifestIcon {

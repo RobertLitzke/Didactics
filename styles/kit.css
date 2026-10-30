@@ -161,6 +161,7 @@ main { display: block; }
   gap: 8px;
   min-height: 44px;
 }
+.btn[hidden] { display: none; }
 .btn:hover { background: #ffc46b; }
 .btn:disabled { opacity: 0.45; cursor: default; }
 .btn-big { width: 100%; font-size: 1.1rem; padding: 16px; margin: 8px 0 4px; }

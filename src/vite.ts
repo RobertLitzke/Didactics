@@ -29,6 +29,30 @@ export function oneFileCopy(root: string, name: string): Plugin {
   };
 }
 
+/** The module a course imports for the words in its code: `import('virtual:didactics/code-text')`. */
+export const CODE_TEXT_MODULE = 'virtual:didactics/code-text';
+
+/**
+ * Serves CODE_TEXT_MODULE: every string that reads as words in the source
+ * files under `dirs` (code-text.ts), as a table the course file carries.
+ * Import it with a dynamic import(), so the table is its own chunk, loaded
+ * only when someone downloads the course.
+ */
+export function codeTextModule(root: string, dirs: string[]): Plugin {
+  const id = `\0${CODE_TEXT_MODULE}`;
+  return {
+    name: 'didactics-code-text',
+    resolveId: (source) => (source === CODE_TEXT_MODULE ? id : null),
+    async load(source) {
+      if (source !== id) return null;
+      const { codeTable, readSources } = await import('./code-scan.ts');
+      const sources = readSources(root, dirs);
+      for (const path of Object.keys(sources)) this.addWatchFile(resolve(root, path));
+      return `export default ${JSON.stringify(codeTable(sources))};`;
+    },
+  };
+}
+
 /** Media types for the files an offline copy may inline. */
 const TYPES: Record<string, string> = {
   '.webp': 'image/webp',
@@ -128,6 +152,11 @@ export interface LessonAppOptions {
    * whose contents have not changed is not downloaded again by a new version.
    */
   precache?: string[];
+  /**
+   * The folders whose source files' words the course file carries
+   * (codeTextModule), from `root`; `false` for none. Defaults to ['src'].
+   */
+  codeText?: string[] | false;
 }
 
 /** An icon in the web app manifest, with `src` relative to the built page. */
@@ -153,6 +182,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
     build: { target: 'es2022' },
     plugins: [
       viteSingleFile(),
+      o.codeText === false ? null : codeTextModule(o.root, o.codeText ?? ['src']),
       inlineFavicon(o.root),
       oneFileCopy(o.root, o.oneFile),
       o.offlineFile ? offlineCopy(o.root, o.offlineFile, o.precache ?? []) : null,

@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // The course as one JSON file, from the repository (src/course.ts has the format).
 //
-//   didactics-course export src/data [more folders or files] [--title "Clouds"] [--out course.json] [--skip src/data/photos.json]
+//   didactics-course export src/data [more folders or files] [--title "Clouds"] [--out course.json] [--skip src/data/photos.json] [--code src]
 //   didactics-course import course.json [--dry-run]
+//
+// --code adds the words written in the source files under each folder it
+// names (src/code-text.ts), and import writes edited ones back into them.
 //   didactics-course upgrade src/data              lessons and reference files in the old `kind` shape to typed blocks
 //
 // Paths are kept relative to the folder it is run in, so run it from the
@@ -21,6 +24,9 @@ for (let i = 0; i < args.length; i++) {
   else if (a.startsWith('--')) (flags[a.slice(2)] ??= []).push(args[++i]);
   else rest.push(a);
 }
+
+// TypeScript reads the code, so only load it when there is code to read.
+const codeScan = () => import('../lib/code-scan.js');
 
 const rel = (p) => relative(process.cwd(), resolve(p)).split(sep).join('/');
 const jsonUnder = (p) => (statSync(p).isDirectory()
@@ -44,12 +50,33 @@ if (command === 'export') {
   const files = {};
   for (const path of rest.flatMap(jsonUnder)) if (!skip.has(path)) files[path] = JSON.parse(readFileSync(path, 'utf8'));
   const out = flags.out?.[0] ?? 'course.json';
-  write(out, formatJson(exportCourse(flags.title?.[0] ?? 'Course', files)));
-  console.log(`Wrote ${Object.keys(files).length} files into ${out}.`);
+  let code;
+  if (flags.code) {
+    const { codeTable, readSources } = await codeScan();
+    code = codeTable(readSources(process.cwd(), flags.code));
+  }
+  write(out, formatJson(exportCourse(flags.title?.[0] ?? 'Course', files, new Date(), code)));
+  const strings = code ? Object.values(code).reduce((n, t) => n + Object.keys(t).length, 0) : 0;
+  console.log(`Wrote ${Object.keys(files).length} files${code ? ` and ${strings} strings from ${Object.keys(code).length} source files` : ''} into ${out}.`);
 } else if (command === 'import') {
   const [file] = rest;
   if (!file || !existsSync(file)) fail('Name the course file to read, such as: didactics-course import course.json');
-  const { files, problems } = readCourse(JSON.parse(readFileSync(file, 'utf8')));
+  const { files, code, problems } = readCourse(JSON.parse(readFileSync(file, 'utf8')));
+  // Every source file is rewritten in memory first, so a problem in one writes none.
+  const sources = [];
+  if (Object.keys(code).length) {
+    const { rewriteCode } = await codeScan();
+    for (const [path, edits] of Object.entries(code)) {
+      if (path.split('/').includes('..') || !existsSync(path)) {
+        problems.push(`code ${path}: no such source file here`);
+        continue;
+      }
+      const now = readFileSync(path, 'utf8');
+      const next = rewriteCode(path, now, edits);
+      problems.push(...next.problems);
+      if (next.source !== now) sources.push([path, next.source, Object.keys(edits).length]);
+    }
+  }
   if (problems.length) fail(['Nothing was written. The course file has these problems:', ...problems.map((p) => `  ${p}`)]);
   let changed = 0;
   for (const [path, json] of Object.entries(files)) {
@@ -60,7 +87,13 @@ if (command === 'export') {
     console.log(`${now === null ? 'new    ' : 'changed'} ${path}`);
     if (!flags.dryRun) write(path, next);
   }
-  console.log(changed ? `${flags.dryRun ? 'Would write' : 'Wrote'} ${changed} of ${Object.keys(files).length} files.` : 'Every file already matches.');
+  for (const [path, text, n] of sources) {
+    changed++;
+    console.log(`changed ${path} (${n} string${n === 1 ? '' : 's'})`);
+    if (!flags.dryRun) write(path, text);
+  }
+  const all = Object.keys(files).length + sources.length;
+  console.log(changed ? `${flags.dryRun ? 'Would write' : 'Wrote'} ${changed} of ${all} files.` : 'Every file already matches.');
 } else if (command === 'upgrade') {
   let changed = 0;
   for (const path of rest.flatMap(jsonUnder)) {
@@ -75,7 +108,7 @@ if (command === 'export') {
   console.log(`${changed} files upgraded. Check each callout's type: a figure the guess got wrong is reported by lessonProblems or referenceProblems.`);
 } else {
   fail([
-    'didactics-course export <folders or files> [--title T] [--out course.json] [--skip path]',
+    'didactics-course export <folders or files> [--title T] [--out course.json] [--skip path] [--code src]',
     'didactics-course import <course.json> [--dry-run]',
     'didactics-course upgrade <folders or files>',
   ]);

@@ -28,7 +28,7 @@ export function courseSection(o: CourseSectionOptions): Child[] {
     const n = o.edits.edited.length;
     status.textContent = n
       ? `This device reads an edited course: ${n} file${n === 1 ? ' differs' : 's differ'} from the built-in text.`
-      : 'Download the whole course as one JSON file to revise it. Load an edited file to read it here; only this device sees it.';
+      : `Download all of the course's text as one JSON file to revise it${o.edits.hasCode ? ': the lessons, and the words in its drawings, pages and buttons' : ''}. Load an edited file to read it here; only this device sees it.`;
     reset.hidden = n === 0;
   };
 
@@ -37,7 +37,7 @@ export function courseSection(o: CourseSectionOptions): Child[] {
     const f = file.files?.[0];
     file.value = '';
     if (!f) return;
-    const wrong = o.edits.load(await f.text());
+    const wrong = await o.edits.load(await f.text());
     problems.replaceChildren(...wrong.slice(0, 12).map((w) => el('li', {}, w)), ...(wrong.length > 12 ? [el('li', {}, `and ${wrong.length - 12} more`)] : []));
     if (wrong.length) return void toast('That file was not loaded.');
     paint();
@@ -45,8 +45,8 @@ export function courseSection(o: CourseSectionOptions): Child[] {
     toast('Loaded. Reload to read it.');
   });
 
-  const download = () => {
-    const blob = new Blob([JSON.stringify(o.edits.file(), null, 2)], { type: 'application/json' });
+  const download = async () => {
+    const blob = new Blob([JSON.stringify(await o.edits.file(), null, 2)], { type: 'application/json' });
     const a = el('a', { href: URL.createObjectURL(blob), download: o.fileName }) as HTMLAnchorElement;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);

@@ -35,7 +35,7 @@ describe('course file', () => {
     expect(Object.keys(files)).toEqual(['src/data/push.json', 'src/data/quiz.json']);
     const out = JSON.parse(JSON.stringify(exportCourse('Push', files)));
     expect(out.format).toBe('didactics-course');
-    expect(readCourse(out, files)).toEqual({ files, problems: [] });
+    expect(readCourse(out, files)).toEqual({ files, code: {}, problems: [] });
   });
 
   it('refuses files the course does not have, and lessons that do not read', () => {
@@ -65,14 +65,14 @@ describe('course file', () => {
     expect(fog.parts[0].blocks[0]).toEqual({ type: 'text', text: 'Push it hard.' });
   });
 
-  it('keeps edits in this browser, applies them on the next start, and forgets them', () => {
+  it('keeps edits in this browser, applies them on the next start, and forgets them', async () => {
     const make = () => ({ 'src/push.json': lesson() });
     const first = courseEdits({ key: 'push.course', title: 'Push', files: make() });
     expect(first.edited).toEqual([]);
-    const file = first.file();
+    const file = await first.file();
     (file.files['src/push.json'] as Lesson).title = 'Shoving';
-    expect(first.load('not json')[0]).toMatch(/not JSON/);
-    expect(first.load(JSON.stringify(file))).toEqual([]);
+    expect((await first.load('not json'))[0]).toMatch(/not JSON/);
+    expect(await first.load(JSON.stringify(file))).toEqual([]);
     expect(first.edited).toEqual(['src/push.json']);
     const files = make();
     const next = courseEdits({ key: 'push.course', title: 'Push', files });
