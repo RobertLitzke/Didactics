@@ -19,8 +19,10 @@ import { lessonView, type Lesson, type LessonViewOptions } from './lesson';
 import { retireWhenSaved } from './offline';
 import { creditsView, type CreditsViewOptions, type Photo } from './photos';
 import { emptyProgress, migrateProgress, skipLesson, type EmptyOptions, type Progress, type Units } from './progress';
-import { quizView, type QuizViewOptions } from './quiz-view';
+import type { QuizViewOptions } from './quiz-view';
 import type { Card } from './quiz';
+import { recordAnswer } from './review';
+import { reviewView, type ReviewViewOptions } from './review-view';
 import { resumeFor } from './resume';
 import { Router, type View } from './router';
 import { settingsView, type SettingsOptions } from './settings';
@@ -94,8 +96,19 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   /** The page menu's paths in order, to place the course's pages among the built-in ones. */
   menu?: readonly string[];
 
-  /** A quiz page at /quiz. */
+  /**
+   * The course's own flash cards: a deck, the blurb and a picture for a
+   * card. They are met on the review page, a few new ones a day, alongside
+   * the lessons' check questions. (Before 0.12 they had a Quiz page of their
+   * own; /quiz now opens the review page.)
+   */
   quiz?: Omit<QuizViewOptions<C, S>, 'store'> & { label?: string };
+  /**
+   * The review page at /review, in the menu as "Review": every check question
+   * answered and every quiz card met, on Anki's schedule, with an Anki
+   * download (review-view.ts). On by default; false for none.
+   */
+  review?: false | (Pick<ReviewViewOptions<C, S>, 'blurb' | 'sitting' | 'html' | 'fileName'> & { label?: string });
   /** A glossary page at /glossary: the lessons' technical footnotes, and `entries` before them. */
   glossary?: { entries?: GlossaryEntry[]; label?: string };
   /** A Credits page at /credits, linked from Settings. */
@@ -214,14 +227,36 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   const { store, empty } = courseStore<S>(o.id, o.save, !!o.lesson?.radio);
   const text = o.text && (isEdits(o.text) ? o.text : courseEdits({ key: `${o.id}.course`, title: o.title, ...o.text }));
   const lessonPath = o.lessonPath ?? '/lesson';
+  const naming = { title: o.title, noun: o.lesson?.noun };
   if (o.splash) showSplash(o.splash);
 
   const pages: CoursePage[] = [
     { path: '/home', label: 'Home', view: o.home ?? courseHome({ ...o, store, lessonPath, remember: `${o.id}.tree`, noun: o.lesson?.noun }) },
-    { path: `${lessonPath}/:id`, fullScreen: true, view: lessonView({ ...o.lesson, lessons: o.lessons, figures: o.figures, store, prose: o.prose }) },
+    {
+      path: `${lessonPath}/:id`,
+      fullScreen: true,
+      view: lessonView({
+        ...o.lesson,
+        lessons: o.lessons,
+        figures: o.figures,
+        store,
+        prose: o.prose,
+        // Each check question answered is kept for review.
+        answered: o.review === false ? undefined : (l, at, figure, q) => store.update((s) => ({ ...s, review: recordAnswer(s.review, l, at, figure, q, naming) })),
+      }),
+    },
     ...(o.pages ?? []),
   ];
-  if (o.quiz) pages.push({ path: '/quiz', label: o.quiz.label ?? 'Quiz', view: quizView({ ...o.quiz, store }) });
+  if (o.review !== false) {
+    const r = o.review ?? {};
+    pages.push({
+      path: '/review',
+      label: r.label ?? 'Review',
+      view: reviewView({ ...r, ...naming, store, lessons: o.lessons, figures: o.figures, deck: o.quiz?.deck, media: o.quiz?.media, blurb: r.blurb ?? o.quiz?.blurb, fileName: r.fileName ?? `${o.id}.apkg` }),
+    });
+    // The quiz's old address, in bookmarks and in a course's menu list.
+    pages.push({ path: '/quiz', view: (_root, nav) => nav.replace('/review') });
+  }
   if (o.glossary) {
     const entries = mergeGlossary(o.glossary.entries ?? [], glossaryFromLessons(o.lessons));
     const lesson = (id: string) => {
@@ -249,7 +284,13 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   });
 
   const labelled = pages.filter((p): p is CoursePage & { label: string } => !!p.label);
-  const nav: NavLink[] = (o.menu ? o.menu.map((path) => labelled.find((p) => p.path === path)).filter((p) => !!p) : labelled)
+  // The review page takes the quiz's place in the menu, or goes before Settings in a menu that had none.
+  let menu = o.menu && o.review !== false ? [...new Set(o.menu.map((p) => (p === '/quiz' ? '/review' : p)))] : o.menu;
+  if (menu && o.review !== false && !menu.includes('/review')) {
+    const at = menu.indexOf('/settings');
+    menu = at < 0 ? [...menu, '/review'] : [...menu.slice(0, at), '/review', ...menu.slice(at)];
+  }
+  const nav: NavLink[] = (menu ? menu.map((path) => labelled.find((p) => p.path === path)).filter((p) => !!p) : labelled)
     .map((p) => ({ path: p.path, label: p.label }));
   if (o.catalog) nav.push({ path: '/catalog', label: o.catalog.label ?? 'All courses', href: asset(o.catalog.href) });
   const full = pages.filter((p) => p.fullScreen).map((p) => p.path.split('/:')[0] + '/');

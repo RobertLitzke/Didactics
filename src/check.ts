@@ -27,6 +27,20 @@ export interface CheckStep {
   why: string;
   /** Short choices go in a row, long ones in a list. Default list. */
   row?: boolean;
+  /**
+   * What tells this question from another with the same words, such as the
+   * photo it shows: a reader's answers are kept for review by question
+   * (review.ts), and two photos asked "What cloud is this?" are two questions.
+   */
+  key?: string;
+}
+
+/** How a check makes its questions. */
+export type CheckSteps = (ctx: FigureContext, options: Options | undefined, rng: Rng) => CheckStep[];
+
+/** A check figure's own way of making its questions, to ask them again outside the lesson (review.ts). */
+export function checkSteps(f: FigureFactory | undefined): CheckSteps | undefined {
+  return (f as { steps?: CheckSteps } | undefined)?.steps;
 }
 
 /** What the check says for a right and a wrong answer, plain and over the radio. */
@@ -41,8 +55,8 @@ const WORDS = {
  * reader coming back finds the same questions and goes on from where they were.
  * `spec.options` checks the block's options in the content test.
  */
-export function check(steps: (ctx: FigureContext, options: Options | undefined, rng: Rng) => CheckStep[], spec: FigureSpec = {}): FigureFactory {
-  return quiz((ctx, t, options) => {
+export function check(steps: CheckSteps, spec: FigureSpec = {}): FigureFactory {
+  const factory = quiz((ctx, t, options) => {
     const kept = t.kept as { seed?: unknown; picks?: unknown } | undefined;
     const seed = typeof kept?.seed === 'number' ? kept.seed : freshSeed();
     const picks: number[] = Array.isArray(kept?.picks) ? kept.picks.filter((x): x is number => typeof x === 'number') : [];
@@ -85,6 +99,7 @@ export function check(steps: (ctx: FigureContext, options: Options | undefined, 
           if (good) right++;
           picks.push(k);
           t.keep({ seed, picks: [...picks] });
+          ctx.answered?.({ ...(q.key ? { key: q.key } : {}), ask: q.ask, choices: q.choices, answer: q.answer, why: q.why, picked: k, index: i, seed });
           buttons.forEach((x, j) => {
             x.disabled = true;
             if (j === q.answer) x.classList.add('right');
@@ -109,4 +124,5 @@ export function check(steps: (ctx: FigureContext, options: Options | undefined, 
     next();
     return node;
   }, spec);
+  return Object.assign(factory, { steps });
 }

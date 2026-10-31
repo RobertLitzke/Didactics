@@ -1,10 +1,11 @@
 // The part of the save file every lesson app shares: lessons finished and how
-// they went, unlocked journal entries, units, the quiz, and, for an app with a
+// they went, unlocked journal entries, units, the quiz and the review cards, and, for an app with a
 // radio (radio.ts), the radio's setting and what was heard. An app
 // adds its own fields alongside these (Clouds' core/save.ts is an example) and repairs them
 // after migrateProgress has done these.
 
 import { migrateResume, type LessonResume } from './resume';
+import { migrateCollection, type Collection } from './srs';
 import type { Units } from './units';
 
 export type { Units } from './units';
@@ -38,6 +39,12 @@ export interface Progress {
   quiz: Record<string, { box: number; due: number }>;
   /** Lessons left part way, by id, to pick up again where the reader was (resume.ts). */
   resume: Record<string, LessonResume>;
+  /**
+   * The review page's cards: every check question answered and every quiz
+   * card met, with their schedules and every answer, in Anki's shape
+   * (srs.ts, review.ts). Absent until the first one.
+   */
+  review?: Collection;
   /** Radio talks on. Off, the lessons are a plain workbook. */
   talk?: boolean;
   /** The opening talk has been offered once. */
@@ -108,6 +115,7 @@ export function migrateProgress<P extends Progress = RadioProgress>(raw: unknown
       if (Number.isFinite(due)) out.quiz[id] = { box, due };
     }
   }
+  if (isObj(raw.review)) out.review = migrateCollection(raw.review);
   out.journal = stringSet(raw.journal);
   out.resume = migrateResume(raw.resume);
   const lessons = isObj(raw.lessons) ? raw.lessons : raw.shifts;

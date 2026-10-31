@@ -817,3 +817,23 @@ body.sheet-up { overflow: hidden; }
 .tree-rail .lesson-card { background: rgba(255, 255, 255, 0.05); }
 .lesson-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .lesson-actions .btn-ghost { color: var(--text); box-shadow: inset 0 0 0 2px var(--muted); }
+
+/* ---- Review: spaced repetition in Anki's shape (review-view.ts) ------------ */
+.review .count-new strong, .review-counts .count-new { color: var(--count-new, #2f6fd6); }
+.review .count-learning strong, .review-counts .count-learning { color: var(--count-learning, #c9473f); }
+.review .count-due strong, .review-counts .count-due { color: var(--count-due, #2f8f5b); }
+.review-counts { display: inline-flex; gap: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.review-decks { margin: 20px 0; }
+.review-deck { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid color-mix(in srgb, var(--text) 18%, transparent); }
+.review-deck-name { color: var(--text); }
+.review-rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; margin-top: 12px; }
+.review-rates .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; margin: 0; }
+.review-rates .rate-gap { font-size: 0.75rem; opacity: 0.8; text-transform: none; letter-spacing: normal; }
+.review-options { margin: 20px 0; color: var(--text); }
+.review-options summary { cursor: pointer; font-weight: 700; }
+.review-options label { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+.review-number { width: 5em; font: inherit; padding: 4px 6px; }
+.review-options select { font: inherit; padding: 4px 6px; max-width: 100%; }
+.review-anki { margin: 20px 0; }
+.review .check-picture { margin-bottom: 8px; }
+.review .check-picture img, .review .check-picture svg { max-width: 100%; height: auto; }

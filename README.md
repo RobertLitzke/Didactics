@@ -4,7 +4,7 @@ Small libraries for building interactive explainers: lessons written as
 JSON, made of paragraphs and live figures that show cause and effect, with
 tasks that open the next part, a check at the end, and a log the reader
 signs. Alongside the lessons there are footnotes, a glossary, a lesson tree,
-a spaced-repetition quiz, optional radio talks typed out on a paper slip, a
+spaced-repetition review in Anki's shape (with an Anki export), optional radio talks typed out on a paper slip, a
 settings page, and a PWA shell and build that work offline and as a single
 HTML file.
 
@@ -38,8 +38,8 @@ example:
   after importing it.
 
 Each module can be used without the others above it. `dom`, `rng`, `store`,
-`units`, `radio`, `resume`, `blocks`, `asset`, `offline` and `vite` import
-nothing from the rest; `course` only `blocks`; `quiz` only `rng`; `router`, `ui`, `shell`, `draw`, `footnote`,
+`units`, `radio`, `resume`, `blocks`, `asset`, `offline`, `sqlite` and `vite` import
+nothing from the rest; `course` only `blocks`; `quiz` only `rng`; `srs` only ts-fsrs; `anki` only `srs` and `sqlite`; `router`, `ui`, `shell`, `draw`, `footnote`,
 `splash`, `update` and `overflow` only `dom`. The lesson player (`lesson`) is the one
 that brings the most together.
 
@@ -165,8 +165,13 @@ pin back before committing.
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
 | **Practice** | |
-| `quiz` | Leitner scheduling: `review`, `deal`, `tally`, `GAPS_DAYS`, the `Card` shape, `conceptCard` for hand-written cards |
-| `quiz-view` | `quizView({ deck, store, blurb, media?, empty? })`, the quiz page |
+| `srs` | Spaced repetition in Anki's shape, pure functions over plain data: a `Collection` of `Deck`s, `Note`s (basic or multiple choice), `Card`s (new, learning, review, relearning; due, interval, ease, reps, lapses, FSRS stability and difficulty) and a `ReviewLog`. Schedulers `fsrs()` (via ts-fsrs, the default) and `sm2()` (Anki's classic); `answer`, `preview`, `studyQueue` (due first, new ones woven through, daily limits), `nextCard`, `reviewAhead`, `dayCounts`, `totals`, `suspend`, `bury`, `forget`, `addNote`, `removeNote`, `migrateCollection`, `fromLeitner`, `formatGap` |
+| `anki` | `toApkg(collection, { media?, html?, sourceLabel? })`: the collection as an Anki package, schedules and review log included, notes matched again on a later import by guid |
+| `sqlite` | `sqliteFile(tables, indexes)`: a small writer of SQLite database files (what an .apkg holds), with no WebAssembly |
+| `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day, Leitner places kept), `stepFor` (a check question made again, picture and all) |
+| `review-view` | `reviewView({ store, title, lessons, figures, deck?, media?, blurb? })`, the review page: today's counts, decks, sittings with Anki's four buttons, options, and the .apkg download |
+| `quiz` | The flash-card shape (`Card`, `conceptCard` for hand-written cards); its Leitner scheduling (`review`, `deal`, `tally`) is kept for old saves |
+| `quiz-view` | `quizView`, the old quiz page, no longer used by `defineCourse` |
 | **Radio** | |
 | `radio` | Talk, Turn and Reply types, `transcript()` |
 | `slip` | `createSlip({ stations, snubs, signOff, onHeard, onOff })` returns `{ play, clear }`, the typewriter slip |
@@ -652,7 +657,13 @@ router, shell, text, asset }`. More, each optional:
   label puts one in the menu. `menu: ['/home', '/lab', '/quiz', '/settings']`
   orders the menu.
 - `home`: a home page of the course's own.
-- `quiz: { deck, blurb, media? }` adds /quiz; `glossary: { entries? }` adds
+- The review page at /review is always there (`review: false` for none;
+  `review: { blurb?, sitting?, html?, label? }` to change it): every check
+  question the reader answers is kept there, in a deck per lesson, and asked
+  again on Anki's schedule. `quiz: { deck, blurb, media? }` adds the course's
+  own flash cards to it, a few new ones a day. /quiz opens /review, and a
+  `menu` that names '/quiz' shows Review in its place.
+- `glossary: { entries? }` adds
   /glossary (the lessons' technical footnotes, and `entries` first);
   `photos: { photos, name?, intro?, after? }` adds /credits, linked from
   Settings.
@@ -783,20 +794,44 @@ is a full example.
 Fonts are inlined into the one-file build, so name few, and Latin-only
 subsets keep the page small.
 
-### Quiz (optional)
+### Review: spaced repetition, in Anki's shape
+
+`defineCourse` gives every course a Review page. What is on it:
+
+- **Every check question answered.** `check()` tells the lesson each answer
+  (`ctx.answered`), and the question becomes a note in its lesson's deck
+  ("Clouds::Lesson 03: Fog"), with that answer as its first review: right is
+  Good, wrong is Again. A note keeps the question's words and where it came
+  from (lesson, block, the check's seed, its place), so the page makes the
+  same question again, picture and all. Two questions with the same words
+  over different photos need a `key` on their `CheckStep` (the photo's id).
+  Lessons finished before a reader's first answer add their checks as new
+  cards.
+- **The course's flash cards**, from `quiz: { deck }`, a few new ones a day.
+  Any object with `{ id, question, options, why }` is a card, with the right
+  answer at `options[0]`; `conceptCard` makes one from a hand-written JSON
+  card. A card with `after: 'lesson-id'` is dealt only once that lesson is
+  passed or skipped. `media: (card) => node | null` puts a picture above it.
+
+The data is Anki's: notes, cards with a type (new, learning, review,
+relearning) and a queue, due times, intervals, ease, reps, lapses, and every
+answer in a review log, kept in the save under `review`. FSRS schedules by
+default (SM-2 is an option on the page); new cards a day default to 20. The
+page's "Download for Anki" writes an .apkg with all of it, pictures
+included; Anki keeps each card's schedule when "Import any learning
+progress" is ticked, and a later download updates the same notes.
+
+`didactics/srs` works without the rest, for an app that is not a course:
 
 ```ts
-import { conceptCard, type Concept } from 'didactics/quiz';
-import { quizView } from 'didactics/quiz-view';
-import ideas from './quiz.json';           // { "cards": Concept[] }
-const deck = (ideas.cards as Concept[]).map((c) => conceptCard(c));
-// A card with `after: 'lesson-id'` is dealt only once that lesson is passed or skipped.
-router.add('/quiz', quizView({ deck, store, blurb: 'Cards on the ideas behind the lessons.' }));
+import { addNote, answer, emptyCollection, ensureDeck, nextCard, Rating, studyQueue } from 'didactics/srs';
+let col = ensureDeck(emptyCollection(), 'birds', 'Birds::Songs');
+col = addNote(col, 'birds', { id: 'amro', front: 'Whose song?', back: 'American robin' });
+const queue = studyQueue(col);                       // learning, then due, new woven in
+const next = nextCard(col, queue);                   // a card missed a minute ago comes first
+col = answer(col, next!.id, Rating.Good, Date.now(), { took: 3200 });
+const bytes = await (await import('didactics/anki')).toApkg(col);   // for Anki
 ```
-
-Generated cards work too. Any object with `{ id, question, options, why }`
-is a card, with the right answer at `options[0]`. To show a picture above a
-card, pass `media: (card) => node | null`.
 
 ### Radio talks (optional)
 

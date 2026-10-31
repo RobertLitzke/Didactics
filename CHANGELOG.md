@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.12.0 (2026-10-31)
+
+Spaced repetition in Anki's shape, and a review page in every course:
+
+- `srs`: a collection of decks, notes (basic, or multiple choice), cards
+  (type new/learning/review/relearning, queue, due, interval, ease, reps,
+  lapses, (re)learning step, FSRS stability and difficulty) and a review log,
+  as plain data and pure functions. Two schedulers, as Anki runs them:
+  `fsrs()` (ts-fsrs, the default) and `sm2()`, with learning and relearning
+  steps, fuzz, leeches, daily limits and a day that starts at 4 am. The study
+  queue comes from Syrinx: due cards most overdue first, new ones woven
+  through at a share of the sitting, and, once nothing is due, the cards
+  nearest to being forgotten (`reviewAhead`).
+- `anki`: `toApkg` writes the collection as an .apkg (schema 11) with the
+  cards' schedules, FSRS memory, the review log and pictures; checked by
+  importing into Anki 26.9. `sqlite`: the SQLite file writer it uses.
+- `review` and `review-view`: every check question a reader answers is kept
+  in a deck per lesson, with the answer as its first review; lessons finished
+  earlier add their checks as new cards; the course's quiz deck joins a few
+  new cards a day, and cards from the old Leitner quiz keep their place.
+- `app`: `defineCourse` adds the review page at /review (`review: false` for
+  none). Breaking: there is no separate quiz page any more; `quiz: { deck }`
+  feeds the review page, /quiz opens it, and a `menu` naming '/quiz' shows
+  Review there. A menu without either gets Review before Settings.
+- `check`: a `CheckStep` may carry a `key`, to tell apart questions with the
+  same words over different pictures. `FigureContext.answered` and
+  `LessonViewOptions.answered` pass each answer on. `Progress.review` holds
+  the collection.
+
 ## 0.11.0 (2026-10-31)
 
 Maps of real places, as the background of a figure:

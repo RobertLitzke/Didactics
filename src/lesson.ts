@@ -27,7 +27,7 @@
 
 import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './blocks.ts';
 import { el, type Child } from './dom';
-import { placeCaption, type FigureContext, type FigureFactory } from './figure';
+import { placeCaption, type AnsweredQuestion, type FigureContext, type FigureFactory } from './figure';
 import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, type FootnoteSet, type Footnotes } from './footnote';
 import { finishLesson, type Progress } from './progress';
 import type { Cue, Talk } from './radio';
@@ -127,6 +127,12 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
    * shows its whole plan on the home page. Ignored when `of` is given.
    */
   countComing?: boolean;
+  /**
+   * A question of a check was answered, in this lesson, in the block at
+   * `at` ("part.block", as resume.ts keys it) showing figure `figure`; the
+   * app keeps it for review (review.ts). defineCourse fills this in.
+   */
+  answered?: (lesson: L, at: string, figure: string, q: AnsweredQuestion) => void;
 }
 
 /** The view for a route like /lesson/:id. */
@@ -223,10 +229,11 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     /** A block's own context: its score, and its memory between visits. */
     // The check's talk frames the check itself, whenever the radio is on.
     const checkTalk = o.radio && save.talk ? talks.find((t) => t.cue === 'check') : undefined;
-    const blockCtx = (part: number, key: string): FigureContext => {
+    const blockCtx = (part: number, key: string, figure: string): FigureContext => {
       let mine: [number, number] | undefined;
       return {
         ...ctx,
+        answered: o.answered ? (q) => o.answered!(lesson, key, figure, q) : undefined,
         radio: checkTalk && part === lesson.parts.length - 1 ? { talk: checkTalk, them: o.radio!.them } : undefined,
         score: (right, of) => {
           mine = mine ? [mine[0] + right, mine[1] + of] : [right, of];
@@ -290,7 +297,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       article.append(section);
       section.append(...part.blocks.map((b, j) => {
         const key = blockKey(i, j);
-        const node = renderBlock(b, blockCtx(i, key), tasks, notes, keeping(i, key));
+        const node = renderBlock(b, blockCtx(i, key, isDiagram(b) ? b.id : ''), tasks, notes, keeping(i, key));
         node.dataset.at = key;
         return node;
       }));

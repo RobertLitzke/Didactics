@@ -24,6 +24,26 @@ export interface FigureContext {
    * the questions (check.ts), and the station it comes from.
    */
   radio?: { talk: Talk; them?: { call: string; place: string } };
+  /**
+   * A question of the lesson's check has been answered: the lesson passes it
+   * on, to be kept for review (review.ts). Absent outside a lesson.
+   */
+  answered?: (q: AnsweredQuestion) => void;
+}
+
+/** A check question as answered, with what it takes to ask it again (check.ts, review.ts). */
+export interface AnsweredQuestion {
+  /** The step's own key, when the question's words alone do not tell it from another (the same words over another photo). */
+  key?: string;
+  ask: string;
+  choices: string[];
+  answer: number;
+  why: string;
+  /** The choice picked. */
+  picked: number;
+  /** The question's place in the check, and the check's seed: with these the check makes the same question again. */
+  index: number;
+  seed: number;
 }
 
 /** What a lesson remembers of one figure between visits. */

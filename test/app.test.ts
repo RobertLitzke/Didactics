@@ -27,7 +27,7 @@ describe('defineCourse', () => {
     const course = defineCourse({ id: 'levers', title: 'Levers', lessons, figures: { push }, prose: (t) => prose(t, {}), text: { files } });
     await settle();
 
-    expect([...document.querySelectorAll('.navmenu nav a')].map((o) => o.textContent)).toEqual(['Home', 'Settings']);
+    expect([...document.querySelectorAll('.navmenu nav a')].map((o) => o.textContent)).toEqual(['Home', 'Review', 'Settings']);
     expect(document.querySelector('.course-home h1')!.textContent).toBe('Levers');
     expect(document.querySelectorAll('.lesson-card')).toHaveLength(2);
     expect(document.querySelector('.btn-big')!.getAttribute('href')).toBe('#/lesson/a');
@@ -60,7 +60,7 @@ describe('defineCourse', () => {
       menu: ['/home', '/lab', '/quiz', '/glossary', '/settings'],
     });
     await settle();
-    expect([...document.querySelectorAll('.navmenu nav a')].map((o) => o.textContent)).toEqual(['Home', 'Lab', 'Quiz', 'Glossary', 'Settings']);
+    expect([...document.querySelectorAll('.navmenu nav a')].map((o) => o.textContent)).toEqual(['Home', 'Lab', 'Review', 'Glossary', 'Settings']);
   });
 
   it('ends the menu with a link to the site\'s catalog, never marked as the page', async () => {
@@ -69,8 +69,8 @@ describe('defineCourse', () => {
     defineCourse({ id: 'in-site', title: 'In a site', lessons: [lesson('a', 1)], figures: { push }, prose: (t) => prose(t, {}), catalog: { href: '../' } });
     await settle();
     const links = [...document.querySelectorAll('.navmenu nav a')];
-    expect(links.map((o) => o.textContent)).toEqual(['Home', 'Settings', 'All courses']);
-    expect(links[2].getAttribute('href')).toBe('../');
+    expect(links.map((o) => o.textContent)).toEqual(['Home', 'Review', 'Settings', 'All courses']);
+    expect(links[3].getAttribute('href')).toBe('../');
     expect(links[2].classList.contains('here')).toBe(false);
     expect(document.querySelector('.navmenu summary')!.textContent).toBe('Home');
   });
