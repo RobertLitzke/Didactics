@@ -542,6 +542,10 @@ body.radio-up main { padding-bottom: 50vh; }
 .key-ideas li p { margin: 0; }
 /* A still picture has no readout or controls under it. */
 .fig-still { padding: 0; }
+/* maps.ts: a map's title over it, and its credit and note under it. */
+.map-chart .map-title { margin: 10px 14px 6px; font: 700 0.92rem var(--display); color: var(--ink); text-align: center; }
+.map-chart .map-credit { margin: 4px 14px 0; font-size: 0.72rem; color: var(--ink-soft); text-align: right; }
+.map-chart .map-note { margin: 4px 14px 8px; font-size: 0.8rem; color: var(--ink-soft); }
 
 /* ---- Quiz: flash cards with spaced repetition ------------------------------ */
 .quiz-tally { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 16px 0; }

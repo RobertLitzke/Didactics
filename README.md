@@ -153,6 +153,7 @@ pin back before committing.
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
+| `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `scaleBar`; `maps({ palette, asset })` gives the `map` chart |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
@@ -358,6 +359,35 @@ that uses a chart.
 Every chart also takes a `"title"` (bold, over it) and a `"note"` (muted,
 under it); the caption is still the one text box under the figure. They are
 stills: a chart that should respond to the reader is a figure of the course's own.
+
+### Maps of real places
+
+`maps` draws a fixed view of a real place from a grid of heights, so a
+figure can make the light, the water level or the rock underneath a cause.
+A relief is made once, ahead of time, by a script that writes
+`public/maps/<name>.png` (heights in the Terrarium encoding) and
+`<name>.json` (where it lies, its credit and licence, and the command that
+made it). Nothing is fetched from a map service while reading, so maps work
+offline once those files are cached (add `'maps/*'` to `precache`).
+
+```ts
+import { loadRelief, mapView, mapLabels, outcrops } from 'didactics/maps';
+const relief = await loadRelief(asset('maps/bath'));
+const view = mapView(relief);                          // view.node goes in frame({ drawing: view.node })
+view.paint({ sun: { azimuth: 315, altitude: 35 }, water: 0 });
+view.svg.append(...mapLabels(view, [{ lon: -2.36, lat: 51.38, text: 'Bath' }]));
+```
+
+A still map needs no code: spread `maps({ palette: COL, asset })` with the
+charts and use the `map` id.
+
+```jsonc
+{ "type": "diagram", "id": "map", "caption": "…",
+  "options": { "relief": "maps/auvergne", "sun": { "azimuth": 300, "altitude": 35 },
+    "labels": [{ "lon": 2.964, "lat": 45.772, "text": "Puy de Dôme" }],
+    "lines": [{ "points": [[2.9, 45.8], [3.0, 45.85]], "color": "rose", "dashed": true }] } }
+// "water": metres (sea level is 0), "ground": "height" for a ramp by height, "exaggeration", "title", "note".
+```
 
 ### Leaving a lesson part way
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.0 (2026-10-31)
+
+Maps of real places, as the background of a figure:
+
+- `maps`: a relief (a grid of heights made ahead of time, shipped as a
+  Terrarium PNG and a JSON file saying where it lies and where it came from)
+  drawn as a shaded map. `loadRelief`, `mapView` (a canvas with an SVG on top,
+  400 units wide), `paintRelief` with the sun, height exaggeration, a water
+  level and a colour per cell as parameters, `hillshade`, `profile` (heights
+  along a line), `outcrops` (where a tilted stack of layers meets the
+  ground), `mapLabels`, `mapLines`, `scaleBar`. The reliefs are made by a
+  script in the course's repository (the monorepo's `tools/geo/relief.mjs`).
+- `maps({ palette, asset })` gives the `map` chart: a still map from a block's
+  options alone (relief, sun, water, labels, lines), with the heights' credit
+  under it.
+
 ## 0.10.0 (2026-10-31)
 
 Several courses on one site, each in a folder under a catalog page:
