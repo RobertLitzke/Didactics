@@ -3,7 +3,7 @@
   // run TypeScript from node_modules: the build helper (src/vite.ts), which an
   // app's vite.config.ts loads, and the course tools (src/course.ts and
   // src/blocks.ts, src/code-text.ts, src/code-scan.ts), which
-  // bin/didactics-course.mjs uses. `npm run build`
+  // and the course scaffold (src/scaffold.ts), which bin/didactics-course.mjs uses. `npm run build`
   // writes them; a test fails if they are out of date.
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -15,5 +15,5 @@
     "outDir": "lib",
     "rootDir": "src"
   },
-  "include": ["src/vite.ts", "src/course.ts", "src/blocks.ts", "src/code-text.ts", "src/code-scan.ts"]
+  "include": ["src/vite.ts", "src/course.ts", "src/blocks.ts", "src/code-text.ts", "src/code-scan.ts", "src/scaffold.ts"]
 }

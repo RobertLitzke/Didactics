@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, a spaced-repetition quiz, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -17,6 +17,7 @@
     "README.md"
   ],
   "exports": {
+    "./app": "./src/app.ts",
     "./asset": "./src/asset.ts",
     "./blocks": "./src/blocks.ts",
     "./charts": "./src/charts.ts",
@@ -44,6 +45,10 @@
     "./resume": "./src/resume.ts",
     "./rng": "./src/rng.ts",
     "./router": "./src/router.ts",
+    "./scaffold": {
+      "types": "./lib/scaffold.d.ts",
+      "default": "./lib/scaffold.js"
+    },
     "./settings": "./src/settings.ts",
     "./shell": "./src/shell.ts",
     "./slip": "./src/slip.ts",

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0 (2026-10-31)
+
+A course without the boilerplate:
+
+- `app` (new): `defineCourse({ id, title, lessons, figures, prose, ... })`
+  boots the whole app in one call: the save and its store, the top bar and
+  page menu, a home page with the lesson tree (`courseHome`), the lesson
+  player, Settings (one-file link, offline count, course text and its
+  pieces), and optionally a quiz, a glossary and Credits, plus the course's
+  own `pages`, the update banner and the dev overflow strip. Storage keys and
+  file names come from `id`. Also `courseStore`.
+- `scaffold` (new, Node only) and `didactics-course new <folder> --title T`:
+  a new course that installs, tests, builds and deploys as written, pinned to
+  the Didactics commit the command came from.
+- `styles/kit.css`: `.lesson-card` and `.lesson-actions` for the default home
+  page.
+
 ## 0.8.0 (2026-10-31)
 
 Figures a lesson sets up in its JSON, with no code in the course:

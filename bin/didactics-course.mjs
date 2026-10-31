@@ -7,12 +7,16 @@
 // --code adds the words written in the source files under each folder it
 // names (src/code-text.ts), and import writes edited ones back into them.
 //   didactics-course upgrade src/data              lessons and reference files in the old `kind` shape to typed blocks
+//   didactics-course new levers [--title "Levers"] [--subtitle "…"] [--port 5430] [--didactics <spec>]
+//                                                  a new course in the folder levers, ready for npm install
 //
 // Paths are kept relative to the folder it is run in, so run it from the
 // repository root, the same root the app's import.meta.glob paths start from.
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { exportCourse, formatJson, readCourse, upgradeLesson, upgradeReference } from '../lib/course.js';
 
 const [command, ...args] = process.argv.slice(2);
@@ -107,10 +111,60 @@ if (command === 'export') {
     console.log(`upgraded ${path}`);
   }
   console.log(`${changed} files upgraded. Check each callout's type: a figure the guess got wrong is reported by lessonProblems or referenceProblems.`);
+} else if (command === 'new') {
+  const [dir] = rest;
+  if (!dir) fail('Name the folder for the new course, such as: didactics-course new levers --title Levers');
+  const { courseId, scaffold } = await import('../lib/scaffold.js');
+  const title = flags.title?.[0] ?? dir.split(/[\\/]/).filter(Boolean).at(-1).replace(/[-_]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  const files = scaffold({
+    id: courseId(title),
+    title,
+    subtitle: flags.subtitle?.[0],
+    port: flags.port ? Number(flags.port[0]) : undefined,
+    didactics: flags.didactics?.[0] ?? didacticsPin(),
+  });
+  let made = 0;
+  for (const [path, body] of Object.entries(files)) {
+    const to = `${dir}/${path}`;
+    if (existsSync(to)) {
+      console.log(`kept    ${to} (already there)`);
+      continue;
+    }
+    write(to, body);
+    made++;
+  }
+  console.log(`Wrote ${made} files into ${dir}. Next: cd ${dir} && npm install && npm run dev`);
 } else {
   fail([
     'didactics-course export <folders or files> [--title T] [--out course.json] [--skip path] [--code src]',
     'didactics-course import <course.json> [--dry-run]',
     'didactics-course upgrade <folders or files>',
+    'didactics-course new <folder> [--title T] [--subtitle S] [--port 5430] [--didactics <npm spec>]',
   ]);
+}
+
+/**
+ * The Didactics this command came from, to pin the new course to: the commit
+ * a package-lock above it recorded (npx, or a course's node_modules), or the
+ * commit of a checkout it runs in; else main.
+ */
+function didacticsPin() {
+  const repo = 'github:RobertLitzke/Didactics';
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (let d = resolve(here, '..'); ; d = dirname(d)) {
+    const lock = `${d}/package-lock.json`;
+    if (existsSync(lock)) {
+      const resolved = JSON.parse(readFileSync(lock, 'utf8')).packages?.['node_modules/didactics']?.resolved;
+      const sha = /#([0-9a-f]{40})$/.exec(resolved ?? '')?.[1];
+      if (sha) return `${repo}#${sha}`;
+    }
+    if (dirname(d) === d) break;
+  }
+  try {
+    const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: here, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (/^[0-9a-f]{40}$/.test(sha)) return `${repo}#${sha}`;
+  } catch {
+    // Not a checkout.
+  }
+  return `${repo}#main`;
 }

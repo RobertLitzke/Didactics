@@ -50,6 +50,21 @@ home page, photos and their pipeline, and all of its content. If a piece of
 course code turns out to be useful to a second course, move it here as its
 own small module with no knowledge of either.
 
+## A new course in one command
+
+```sh
+npx -p github:RobertLitzke/Didactics didactics-course new levers --title Levers
+cd levers && npm install && npm run dev
+```
+
+That writes a course that installs, tests, builds and deploys as it stands:
+package.json pinned to the Didactics commit it came from (`--didactics
+<npm spec>` to choose), tsconfig, the Vite and Vitest configs, index.html,
+placeholder icons, a GitHub Pages workflow, a content test, and one lesson
+with one live figure, a placeholder diagram and a check. Its `src/main.ts` is
+a single `defineCourse` call (below). Options: `--subtitle`, `--port`
+(default 5430). A file already in the folder is left as it is.
+
 ## Using it in a course
 
 Add it as a git dependency pinned to a commit on main (or to a release tag,
@@ -116,6 +131,8 @@ pin back before committing.
 | `units` | `Units`, `height(m, units)`, `length(m, units)` (cm to km, in to mi), `feet`, `deg`, `temp` |
 | `router` | `new Router(outlet, hooks).add('/x/:id', view).start('/home')`, hash routes, views return a teardown |
 | **Shell** | |
+| `app` | `defineCourse({ id, title, lessons, figures, prose, ... })`: the whole app in one call (store, top bar and menu, home, lesson player, quiz, glossary, Credits, Settings with the course text, update banner), with the course's own pages; also `courseHome`, `courseStore` |
+| `scaffold` | Node only: `scaffold(options)`, the files of a new course, which `didactics-course new` writes; `courseId`, `squarePng` |
 | `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
 | `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline` shows how many photos are saved on the device, `oneFile.offline` offers the copy with photos inside |
@@ -158,8 +175,9 @@ has a doc comment.
 
 ## A new course, step by step
 
-The example is a made-up topic, "Levers", in a single file layout. Start
-with the package.json, tsconfig, vitest config and env.d.ts above.
+`didactics-course new` (above) writes all of this; this section says what
+each piece is. The example is a made-up topic, "Levers". Start with the
+package.json, tsconfig, vitest config and env.d.ts above.
 
 ### vite.config.ts
 
@@ -572,36 +590,60 @@ keeps its first entry, so pass the lists in order of preference.
 // src/main.ts
 import 'didactics/styles/kit.css';
 import './tokens.css';                         // your colours and fonts (see below)
-import { el } from 'didactics/dom';
-import { lessonView } from 'didactics/lesson';
-import { Router } from 'didactics/router';
-import { appShell } from 'didactics/shell';
-import { settingsView } from 'didactics/settings';
-import { watchForUpdates } from 'didactics/update';
+import { defineCourse } from 'didactics/app';
+import { courseFiles } from 'didactics/course';
 import levers from './lessons/levers.json';
 import { leverFigure } from './figures/lever';
 import { checkFigure } from './figures/check';
 import { prose } from './figures/kit';
-import { emptySave } from './save';
-import { store } from './store';
 
-const LESSONS = [levers];
-const FIGURES = { lever: leverFigure, check: checkFigure };
-
-const shell = appShell({
-  mount: document.getElementById('app')!, title: 'Levers', subtitle: 'Why a long handle helps',
-  nav: [{ path: '/home', label: 'Home' }, { path: '/settings', label: 'Settings' }],
-  fullScreen: (p) => p.startsWith('/lesson/'),
+defineCourse({
+  id: 'levers',                                // keeps levers.save, levers.course; files levers-save.json, levers.html
+  title: 'Levers', subtitle: 'Why a long handle helps',
+  lessons: [levers],
+  figures: { lever: leverFigure, check: checkFigure },
+  prose,
+  // Optional: Settings can download the words to edit and load them back.
+  text: { files: courseFiles(import.meta.glob('/src/lessons/*.json', { eager: true, import: 'default' })) },
 });
-new Router(shell.outlet, { before: shell.before })
-  .add('/home', (root) => { root.append(el('div.page', {}, LESSONS.map((l) => el('p', {}, el('a', { href: `#/lesson/${l.id}` }, l.title))))); })
-  .add('/lesson/:id', lessonView({ lessons: LESSONS, figures: FIGURES, store, prose }))
-  .add('/settings', settingsView({ store, empty: emptySave, appName: 'Levers', saveFile: 'levers-save.json' }))
-  .start('/home');
+```
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  watchForUpdates({ title: 'New version', text: 'A fresh version of Levers is ready.' });
-}
+`defineCourse` makes the save (progress only, metric; `save: { units,
+fixedUnits, radio }` to change that, or `save: { store, empty }` to hand in
+your own), the top bar with its page menu, a home page with the lessons as a
+tree (`branches` for forks, `welcome` for words under the title), the lesson
+player at `/lesson/:id` (`lessonPath` to change it; `lesson: { hero, intro,
+radio, noun, countComing }` for its other options), Settings, the update
+banner in a build, and the overflow strip in dev. It returns `{ store, empty,
+router, shell, text, asset }`. More, each optional:
+
+- `pages: [{ path, view, label?, fullScreen? }]`: the course's own pages; a
+  label puts one in the menu. `menu: ['/home', '/lab', '/quiz', '/settings']`
+  orders the menu.
+- `home`: a home page of the course's own.
+- `quiz: { deck, blurb, media? }` adds /quiz; `glossary: { entries? }` adds
+  /glossary (the lessons' technical footnotes, and `entries` first);
+  `photos: { photos, name?, intro?, after? }` adds /credits, linked from
+  Settings.
+- `text`: the course's words, as `courseEdits` options or edits already made
+  (make them in a module the entry imports first when the course's modules
+  copy words out as they load, as Clouds' `src/course.ts` does);
+  `textPieces` to download a lesson at a time.
+- `site` (the live URL, for the one-file copy opened from disk), `oneFile`,
+  `offline: { folder, total, noun, retire? }`, `splash`, `update`, and
+  `settings` for anything else on that page (units label, radio blurb, more
+  sections).
+
+Clouds' `src/main.ts` uses nearly all of them. A course that wants a
+different arrangement can still put the parts together itself:
+
+```ts
+const shell = appShell({ mount: document.getElementById('app')!, title: 'Levers', nav, fullScreen: (p) => p.startsWith('/lesson/') });
+new Router(shell.outlet, { before: shell.before })
+  .add('/home', home)
+  .add('/lesson/:id', lessonView({ lessons, figures, store, prose }))
+  .add('/settings', settingsView({ store, empty, appName: 'Levers', saveFile: 'levers-save.json' }))
+  .start('/home');
 ```
 
 "Lesson 3 of N" counts the lessons that are written. A course whose home

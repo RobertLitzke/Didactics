@@ -800,3 +800,14 @@ body.sheet-up { overflow: hidden; }
 .course-problems { margin: 8px 0 0; padding-left: 20px; color: var(--bad); font-size: 0.9rem; }
 .course-problems:empty { display: none; }
 .course-piece { font: 1rem var(--font); padding: 10px 12px; border-radius: 10px; border: 0; background: var(--panel); color: var(--ink); width: min(320px, 100%); margin-bottom: 8px; }
+
+/* app.ts courseHome: the default home page, a card per lesson in the tree. */
+.course-home .subtitle { color: var(--muted); margin-top: -8px; }
+.lesson-card { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--bg-2); border-radius: var(--radius); padding: 12px 14px; }
+.lesson-card.next { box-shadow: inset 0 0 0 2px var(--sun); }
+.lesson-card h3 { margin: 0 0 2px; }
+.lesson-card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.lesson-card .score { color: var(--sun); margin-top: 4px; }
+.tree-rail .lesson-card { background: rgba(255, 255, 255, 0.05); }
+.lesson-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.lesson-actions .btn-ghost { color: var(--text); box-shadow: inset 0 0 0 2px var(--muted); }

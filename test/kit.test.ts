@@ -21,7 +21,8 @@ const SRC = resolve(__dirname, '../src');
 
 describe('Didactics', () => {
   it('imports only itself and its build tools (TypeScript reads course code)', () => {
-    for (const f of readdirSync(SRC)) {
+    // scaffold.ts writes a course's own files, imports and all, as text.
+    for (const f of readdirSync(SRC).filter((f) => f !== 'scaffold.ts')) {
       for (const [, from] of readFileSync(resolve(SRC, f), 'utf8').matchAll(/from '([^']+)'/g)) {
         expect(from.startsWith('./') || /^(node:|vite|virtual:pwa-register|typescript$)/.test(from), `${f} imports ${from}`).toBe(true);
       }
