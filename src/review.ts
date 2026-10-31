@@ -61,7 +61,8 @@ export const lessonDeck = (lesson: string) => `lesson:${lesson}`;
 
 /** A lesson's deck name, numbered so Anki lists them in order: "Clouds::Lesson 03: Fog". */
 export function lessonDeckName(l: Lesson, o: DeckNaming): string {
-  return `${o.title}::${o.noun ?? 'Lesson'} ${l.code ?? String(l.n).padStart(2, '0')}: ${l.title}`;
+  const code = l.code ?? String(l.n);
+  return `${o.title}::${o.noun ?? 'Lesson'} ${/^\d+$/.test(code) ? code.padStart(2, '0') : code}: ${l.title}`;
 }
 
 /** A check question's note id: by lesson and its key, or its words and right answer. */

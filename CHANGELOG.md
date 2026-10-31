@@ -22,7 +22,7 @@ Spaced repetition in Anki's shape, and a review page in every course:
   new cards a day, and cards from the old Leitner quiz keep their place.
 - `app`: `defineCourse` adds the review page at /review (`review: false` for
   none). Breaking: there is no separate quiz page any more; `quiz: { deck }`
-  feeds the review page, /quiz opens it, and a `menu` naming '/quiz' shows
+  feeds the review page (its `blurb` is no longer shown; `review: { blurb }` sets the page's), /quiz opens it, and a `menu` naming '/quiz' shows
   Review there. A menu without either gets Review before Settings.
 - `check`: a `CheckStep` may carry a `key`, to tell apart questions with the
   same words over different pictures. `FigureContext.answered` and

@@ -61,10 +61,13 @@ export async function pictureFile(node: Node, base: string): Promise<{ name: str
       const v = s.viewBox?.baseVal;
       return v && v.width ? { w: v.width, h: v.height } : { w: Number(s.getAttribute('width')) || 400, h: Number(s.getAttribute('height')) || 200 };
     };
-    // Several drawings side by side (a sky over the hours) become one, at one height.
+    // Several drawings side by side (a sky over the hours) become one, at one height, each with its caption under it.
     const H = Math.max(...svgs.map((s) => box(s).h));
+    const captions = svgs.map((s) => s.closest('figure')?.querySelector('figcaption')?.textContent?.trim() ?? '');
+    const below = captions.some(Boolean) ? 26 : 0;
+    const gap = svgs.length > 1 ? 8 : 0;
     let x = 0;
-    const parts = svgs.map((s) => {
+    const parts = svgs.map((s, i) => {
       const b = box(s);
       const w = (b.w * H) / b.h;
       const copy = s.cloneNode(true) as SVGSVGElement;
@@ -73,11 +76,12 @@ export async function pictureFile(node: Node, base: string): Promise<{ name: str
       copy.setAttribute('width', String(w));
       copy.setAttribute('height', String(H));
       if (!copy.getAttribute('viewBox')) copy.setAttribute('viewBox', `0 0 ${b.w} ${b.h}`);
-      x += w + (svgs.length > 1 ? 8 : 0);
-      return new XMLSerializer().serializeToString(copy);
+      const caption = captions[i] ? `<text x="${x + w / 2}" y="${H + 19}" text-anchor="middle" font-size="16" fill="#444">${escapeXml(captions[i])}</text>` : '';
+      x += w + gap;
+      return new XMLSerializer().serializeToString(copy) + caption;
     });
-    const width = x - (svgs.length > 1 ? 8 : 0);
-    const text = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${width} ${H}" width="${Math.round(width)}" height="${Math.round(H)}" font-family="sans-serif">${parts.join('')}</svg>`;
+    const width = x - gap;
+    const text = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${width} ${H + below}" width="${Math.round(width)}" height="${Math.round(H + below)}" font-family="sans-serif">${parts.join('')}</svg>`;
     return { name: `${base}.svg`, data: new TextEncoder().encode(text) };
   }
   const canvas = node instanceof HTMLCanvasElement ? node : node.querySelector('canvas');
@@ -87,6 +91,8 @@ export async function pictureFile(node: Node, base: string): Promise<{ name: str
   }
   return null;
 }
+
+const escapeXml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const frames = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
@@ -274,7 +280,7 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
             show();
           };
           const buttons = (picked === 'wrong' ? [Rating.Again] : [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]).map((r) =>
-            el(r === Rating.Good || picked === 'wrong' ? 'button.btn' : 'button.btn.btn-ghost', { type: 'button', className: `rate rate-${r}`, onclick: () => rate(r) },
+            el(`button.btn${r === Rating.Good || picked === 'wrong' ? '' : '.btn-ghost'}.rate.rate-${r}`, { type: 'button', onclick: () => rate(r) },
               el('span.rate-name', {}, RATING_NAMES[r]), el('span.rate-gap', {}, formatGap(gaps[r]))));
           after.append(el('div.review-rates', {}, ...buttons));
           (buttons.find((b) => b.classList.contains('rate-3')) ?? buttons[0]).focus();
