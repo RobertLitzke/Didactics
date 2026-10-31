@@ -67,6 +67,7 @@ export interface ScaleItem {
   /** Shown at the end of the bar in place of the value. */
   says?: string;
   color?: string;
+  /** A label to pick out: bold, in the bar's colour. */
   bold?: boolean;
 }
 
@@ -289,7 +290,7 @@ function drawScale(k: Kit, units: Units, o: ScaleOptions): FigureHandle {
       const mid = y + rowH / 2;
       const first = mid + 3.5 - ((labels[i].length - 1) * lineHeight('note')) / 2;
       s.append(
-        ...block(x0 - 8, first, labels[i], 'note', { anchor: 'end', bold: it.bold, fill: it.color ? c : undefined }),
+        ...block(x0 - 8, first, labels[i], 'note', { anchor: 'end', bold: it.bold, fill: it.color && it.bold ? c : undefined }),
         svg('rect', { x: x0, y: mid - 8, width: w, height: 16, rx: 2, fill: c }),
         label(x0 + w + 6, mid + 3.5, says[i], { size: 'note', bold: true }),
       );
