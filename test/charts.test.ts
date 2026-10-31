@@ -78,8 +78,8 @@ describe('charts', () => {
 
   it('puts timeline events in order of time, whatever order the file lists them', () => {
     const svg = standaloneFigure(CHARTS.timeline, { caption: '', save, options: timeline }).node.querySelector('svg')!;
-    const whens = [...svg.querySelectorAll('text')].map((t) => t.textContent).filter((t) => /^(1880|1931|Nov 1946)$/.test(t!));
-    expect(whens).toEqual(['1880', '1931', 'Nov 1946']);
+    const whens = [...svg.querySelectorAll('text')].map((t) => t.textContent).filter((t) => /^(1880–1900|1931|Nov 1946)$/.test(t!));
+    expect(whens).toEqual(['1880–1900', '1931', 'Nov 1946']);
   });
 
   it('shows lengths in the reader\'s units, and draws a log axis', () => {
