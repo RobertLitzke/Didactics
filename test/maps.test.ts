@@ -97,6 +97,8 @@ describe('the map chart', () => {
   it('checks its options', () => {
     expect(mapOptionsProblems({ relief: 'maps/zion.png' })[0]).toMatch(/without an extension/);
     expect(mapOptionsProblems({ relief: 'maps/zion', labels: [{ lon: 500, lat: 0, text: 'x' }] })[0]).toMatch(/degrees/);
+    expect(mapOptionsProblems({ relief: 'maps/zion', scale: 'right' })).toEqual([]);
+    expect(mapOptionsProblems({ relief: 'maps/zion', scale: 'middle' as 'left' })[0]).toMatch(/scale/);
     expect(mapOptionsProblems({ relief: 'maps/zion', sun: { azimuth: 300, altitude: 30 }, labels: [{ lon: -113, lat: 37.2, text: 'Zion' }] })).toEqual([]);
   });
 

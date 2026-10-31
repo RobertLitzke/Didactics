@@ -15,6 +15,7 @@ Maps of real places, as the background of a figure:
 - `maps({ palette, asset })` gives the `map` chart: a still map from a block's
   options alone (relief, sun, water, labels, lines), with the heights' credit
   under it.
+- A map block's `scale: "right"` puts the scale bar in the bottom-right corner, to keep it off a label.
 
 ## 0.10.0 (2026-10-31)
 

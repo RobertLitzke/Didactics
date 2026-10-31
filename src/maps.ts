@@ -471,11 +471,11 @@ function niceLength(metres: number, units: Units): { m: number; say: string } {
 }
 
 /** A scale bar and a north arrow in the bottom-left corner. */
-export function scaleBar(v: Pick<MapView, 'relief' | 'w' | 'h'>, units: Units, ink = '#2a2547', paper = '#fffaf0'): SVGElement[] {
+export function scaleBar(v: Pick<MapView, 'relief' | 'w' | 'h'>, units: Units, ink = '#2a2547', paper = '#fffaf0', corner: 'left' | 'right' = 'left'): SVGElement[] {
   const perUnit = (cellSize(v.relief, v.relief.height - 4) * v.relief.width) / v.w;
   const { m, say } = niceLength(perUnit * v.w * 0.22, units);
   const len = m / perUnit;
-  const x = 10;
+  const x = corner === 'left' ? 10 : v.w - 10 - len - 22;
   const y = v.h - 10;
   return [
     svg('rect', { x: x - 4, y: y - 26, width: len + 8 + 22, height: 32, rx: 3, fill: paper, opacity: 0.8 }),
@@ -503,6 +503,8 @@ export interface MapOptions {
   ground?: 'plain' | 'height';
   labels?: MapLabel[];
   lines?: MapLine[];
+  /** Which bottom corner the scale bar sits in, to keep it off a label; default left. */
+  scale?: 'left' | 'right';
 }
 
 export interface MapsOptions {
@@ -529,6 +531,7 @@ export function mapOptionsProblems(o: Options | undefined): string[] {
   }
   if (o.water !== undefined && !isNum(o.water)) out.push('"water" should be a height in metres');
   if (o.ground !== undefined && o.ground !== 'plain' && o.ground !== 'height') out.push('"ground" should be "plain" or "height"');
+  if (o.scale !== undefined && o.scale !== 'left' && o.scale !== 'right') out.push('"scale" should be "left" or "right"');
   const place = (p: unknown) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
   if (o.labels !== undefined) {
     if (!Array.isArray(o.labels)) out.push('"labels" should be a list');
@@ -569,7 +572,7 @@ function drawMap(r: Relief, o: MapOptions, units: Units, pal: Record<string, str
   v.svg.append(
     ...mapLines(v, (o.lines ?? []).map((l) => ({ ...l, color: color(l.color) ?? ink })), ink),
     ...mapLabels(v, (o.labels ?? []).map((l) => ({ ...l, color: color(l.color) })), ink, paper),
-    ...scaleBar(v, units, ink, paper),
+    ...scaleBar(v, units, ink, paper, o.scale),
   );
   const parts: HTMLElement[] = [];
   if (o.title) parts.push(el('p.map-title', {}, o.title));
