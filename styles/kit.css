@@ -137,6 +137,8 @@ p { margin: 0 0 0.75em; }
   letter-spacing: 0.08em; padding: 10px 12px; font-size: 0.8rem; border-radius: 8px;
 }
 .navmenu nav a.here { background: var(--bg); color: var(--sun); }
+/* A link out of the course, to the site's catalog: set apart below the pages. */
+.navmenu nav a.away { margin-top: 4px; border-top: 1px solid var(--bg); border-radius: 0 0 8px 8px; }
 body.in-lesson .topbar { display: none; }
 
 main { display: block; }

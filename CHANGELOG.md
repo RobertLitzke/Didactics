@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.0 (2026-10-31)
+
+Several courses on one site, each in a folder under a catalog page:
+
+- `app`: `defineCourse({ catalog: { href: '../' } })` ends the page menu with
+  an "All courses" link (`label` to rename it) to the site's catalog. The
+  one-file copy links to the catalog on the live site (`site`).
+- `shell`: a `NavLink` may carry `href`, a page outside the app; it is never
+  marked as the current page, and is set apart at the foot of the menu.
+- `vite`: `lessonApp({ inSite: true })` for a course in a folder of a site
+  whose own build writes the one service worker and manifest: the page
+  registers `../sw.js` with the site's root as its scope and links
+  `../manifest.webmanifest`.
+- `offline`: `savedCount(folder)` counts files under the folder next to the
+  page, so courses sharing one service worker each count their own photos.
+
 ## 0.9.1 (2026-10-31)
 
 - `scaffold`: a new course's `src/figures/index.ts` includes the charts

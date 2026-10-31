@@ -63,6 +63,18 @@ describe('defineCourse', () => {
     expect([...document.querySelectorAll('.navmenu nav a')].map((o) => o.textContent)).toEqual(['Home', 'Lab', 'Quiz', 'Glossary', 'Settings']);
   });
 
+  it('ends the menu with a link to the site\'s catalog, never marked as the page', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    location.hash = '';
+    defineCourse({ id: 'in-site', title: 'In a site', lessons: [lesson('a', 1)], figures: { push }, prose: (t) => prose(t, {}), catalog: { href: '../' } });
+    await settle();
+    const links = [...document.querySelectorAll('.navmenu nav a')];
+    expect(links.map((o) => o.textContent)).toEqual(['Home', 'Settings', 'All courses']);
+    expect(links[2].getAttribute('href')).toBe('../');
+    expect(links[2].classList.contains('here')).toBe(false);
+    expect(document.querySelector('.navmenu summary')!.textContent).toBe('Home');
+  });
+
   it('makes a save with or without the radio, or takes the one it is given', () => {
     expect('talk' in courseStore('x').empty()).toBe(false);
     expect('talk' in courseStore('x', {}, true).empty()).toBe(true);

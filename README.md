@@ -131,7 +131,7 @@ pin back before committing.
 | `units` | `Units`, `height(m, units)`, `length(m, units)` (cm to km, in to mi), `feet`, `deg`, `temp` |
 | `router` | `new Router(outlet, hooks).add('/x/:id', view).start('/home')`, hash routes, views return a teardown |
 | **Shell** | |
-| `app` | `defineCourse({ id, title, lessons, figures, prose, ... })`: the whole app in one call (store, top bar and menu, home, lesson player, quiz, glossary, Credits, Settings with the course text, update banner), with the course's own pages; also `courseHome`, `courseStore` |
+| `app` | `defineCourse({ id, title, lessons, figures, prose, ... })`: the whole app in one call (store, top bar and menu, home, lesson player, quiz, glossary, Credits, Settings with the course text, update banner), with the course's own pages, and on a site of several courses a menu link to the catalog (`catalog`); also `courseHome`, `courseStore` |
 | `scaffold` | Node only: `scaffold(options)`, the files of a new course, which `didactics-course new` writes; `courseId`, `squarePng` |
 | `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
@@ -141,7 +141,7 @@ pin back before committing.
 | `asset` | `assetFrom(siteUrl)`, `fromDisk` (lets the one-file copy fetch photos from the live site), `selfContained` (the offline copy, photos inlined) |
 | `offline` | `savedCount(folder)`, `retireWhenSaved(folder, total, oldCaches)` |
 | `overflow` | Dev only: flags anything wider than the screen |
-| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `codeTextModule`, `globRegExp` |
+| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`; `inSite` for a course in a folder of a site with one service worker); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `codeTextModule`, `globRegExp` |
 | `styles/kit.css` | All the styles, themed through CSS custom properties |
 | **Lessons** | |
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |

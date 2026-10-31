@@ -133,6 +133,13 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   offline?: { folder: string; total: number; noun: string; retire?: string[] };
   /** The page the app opens on. Default /home. */
   start?: string;
+  /**
+   * The course is one of several on a site: the menu ends with a link to the
+   * site's catalog of courses. `href` is relative to the course's page, "../"
+   * when the course sits in a folder under the catalog. The one-file copy,
+   * opened from disk, links to the catalog on the live site (`site`).
+   */
+  catalog?: { href: string; label?: string };
 }
 
 export interface Course<S extends Progress> {
@@ -244,6 +251,7 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   const labelled = pages.filter((p): p is CoursePage & { label: string } => !!p.label);
   const nav: NavLink[] = (o.menu ? o.menu.map((path) => labelled.find((p) => p.path === path)).filter((p) => !!p) : labelled)
     .map((p) => ({ path: p.path, label: p.label }));
+  if (o.catalog) nav.push({ path: '/catalog', label: o.catalog.label ?? 'All courses', href: asset(o.catalog.href) });
   const full = pages.filter((p) => p.fullScreen).map((p) => p.path.split('/:')[0] + '/');
   const shell = appShell({
     mount: o.mount ?? document.getElementById('app')!,

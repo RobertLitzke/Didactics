@@ -17,6 +17,11 @@ export interface NavLink {
   /** The route, such as "/quiz"; it is "here" for any path that starts with it. */
   path: string;
   label: string;
+  /**
+   * A page outside the app instead of a route, such as "../" for the catalog of
+   * every course on the site. Never marked as the current page.
+   */
+  href?: string;
 }
 
 export interface PageMenu {
@@ -27,7 +32,7 @@ export interface PageMenu {
 
 /** The dropdown of pages. It closes when a page is picked or on a tap elsewhere. */
 export function pageMenu(links: readonly NavLink[], fallback = 'Menu'): PageMenu {
-  const anchors = links.map((l) => el('a', { href: `#${l.path}` }, l.label));
+  const anchors = links.map((l) => el(l.href ? 'a.away' : 'a', { href: l.href ?? `#${l.path}` }, l.label));
   const current = el('span');
   const node = el('details.navmenu', {}, el('summary', {}, current), el('nav', {}, anchors)) as HTMLDetailsElement;
   node.addEventListener('click', (e) => {
@@ -37,8 +42,8 @@ export function pageMenu(links: readonly NavLink[], fallback = 'Menu'): PageMenu
     if (node.open && !node.contains(e.target as Node)) node.open = false;
   });
   const mark = (path: string) => {
-    anchors.forEach((a, i) => a.classList.toggle('here', path.startsWith(links[i].path)));
-    current.textContent = links.find((l) => path.startsWith(l.path))?.label ?? fallback;
+    anchors.forEach((a, i) => a.classList.toggle('here', !links[i].href && path.startsWith(links[i].path)));
+    current.textContent = links.find((l) => !l.href && path.startsWith(l.path))?.label ?? fallback;
     node.open = false;
   };
   return { node, mark };

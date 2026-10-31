@@ -157,6 +157,14 @@ export interface LessonAppOptions {
    * (codeTextModule), from `root`; `false` for none. Defaults to ['src'].
    */
   codeText?: string[] | false;
+  /**
+   * The course is one of several on a site, in a folder under the site's
+   * root, and the site's own build writes the one service worker and manifest
+   * for all of them. The page registers ../sw.js with the root as its scope
+   * and links ../manifest.webmanifest; the site's build leaves out the sw.js
+   * and manifest this build still writes for itself.
+   */
+  inSite?: boolean;
 }
 
 /** An icon in the web app manifest, with `src` relative to the built page. */
@@ -187,6 +195,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
       oneFileCopy(o.root, o.oneFile),
       o.offlineFile ? offlineCopy(o.root, o.offlineFile, o.precache ?? []) : null,
       VitePWA({
+        ...(o.inSite ? { buildBase: '../', scope: '../' } : {}),
         registerType: 'prompt',
         injectRegister: null, // registered by hand, with Didactics' update.ts
         // The glob below already lists the icons; left on, the plugin lists them
