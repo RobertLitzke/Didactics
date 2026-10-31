@@ -305,11 +305,15 @@ export const firstCheck = check(() => [
 ]);
 `,
 
-    'src/figures/index.ts': `// Each diagram id the lessons name, to its code.
+    'src/figures/index.ts': `// Each diagram id the lessons name, to its code. The charts (timeline, tree,
+// scale, plate) are drawn from a lesson's JSON alone, in the palette's colours.
+import { charts } from 'didactics/charts';
 import type { FigureFactory } from 'didactics/figure';
 import { firstCheck, seesaw } from './first';
+import { COL } from './kit';
 
 export const FIGURES: Readonly<Record<string, FigureFactory>> = {
+  ...charts({ palette: COL }),
   seesaw,
   check: firstCheck,
 };

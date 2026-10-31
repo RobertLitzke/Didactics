@@ -315,8 +315,9 @@ their sliders with `lock(sliders, true)`, offer a `choices([...])` row and a
 
 Four kinds of still are common enough that a lesson sets them up in its JSON
 alone: a **timeline**, a **tree**, a **scale** comparison and a labelled
-**plate**. Add them under the course's figures once, and every lesson can use
-them by id, as often as it likes:
+**plate**. Add them under the course's figures once (a course made with
+`didactics-course new` has them already), and every lesson can use them by
+id, as often as it likes:
 
 ```ts
 import { charts } from 'didactics/charts';

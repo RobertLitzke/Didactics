@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1 (2026-10-31)
+
+- `scaffold`: a new course's `src/figures/index.ts` includes the charts
+  (`...charts({ palette: COL })`), so its lessons can use timeline, tree,
+  scale and plate from the start.
+- `charts`: a scale's labels are in ink unless `bold`, which puts them in
+  their bar's colour, so pale bars keep readable labels.
+
 ## 0.9.0 (2026-10-31)
 
 A course without the boilerplate:
