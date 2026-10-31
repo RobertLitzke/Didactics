@@ -51,6 +51,8 @@ const HOW_TO =
   'A lesson is a list of "parts", each a list of "blocks" with a "type": "text" (a paragraph), "key_ideas" (a title and points), ' +
   'or a callout for something the course draws, by "id": "interactive_diagram", "diagram" (a still) or "quiz". ' +
   'A callout\'s "caption" and "task" are words to edit; its "id", "goal" and "options" wire it to the code, so keep them unless the code changes too. ' +
+  'The exception is a chart, a callout with the "id" "timeline", "tree", "scale" or "plate": it is drawn from its "options" alone, ' +
+  'so its labels, notes, numbers and colours are all there to edit, and a new chart is only a new block. ' +
   'Blocks can be added, removed and moved. A callout with an id the course has no code for yet shows as a box saying that the diagram goes there, ' +
   '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]] and [^footnote]. ' +
   '"code", when there is one, has the words written in the course\'s code (labels, commentary, buttons), one table per source file: ' +

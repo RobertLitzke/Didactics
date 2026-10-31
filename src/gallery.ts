@@ -10,7 +10,7 @@ import type { Progress } from './progress';
 
 export interface GalleryOptions {
   figures: Readonly<Record<string, FigureFactory>>;
-  /** Where captions, goals and options come from: the first block that uses each figure. */
+  /** Where captions, goals and options come from: the first block that uses each figure, or every block for a chart (charts.ts). */
   lessons: readonly Pick<Lesson, 'parts'>[];
   /** The save figures are built with; set its units for a page in the other system. */
   save: Progress;
@@ -31,18 +31,21 @@ export interface Gallery {
 
 /** Build the gallery. Mount its node, then wait for `ready` before a screenshot. */
 export function galleryPage(o: GalleryOptions): Gallery {
-  const uses = new Map<string, DiagramBlock>();
-  for (const l of o.lessons) for (const p of l.parts) for (const b of p.blocks) if (isDiagram(b) && !uses.has(b.id)) uses.set(b.id, b);
+  const uses = new Map<string, DiagramBlock[]>();
+  for (const l of o.lessons) for (const p of l.parts) for (const b of p.blocks) if (isDiagram(b)) uses.set(b.id, [...(uses.get(b.id) ?? []), b]);
   const only = o.only !== undefined ? o.only : typeof location !== 'undefined' ? new URLSearchParams(location.search).get('only') : null;
   const article = el('article.article');
   const figures: StandaloneFigure[] = [];
   for (const [id, factory] of Object.entries(o.figures)) {
     if (only && only !== id) continue;
-    const b = uses.get(id);
-    const fig = standaloneFigure(factory, { caption: `${id}: ${b?.caption ?? '(not in any lesson)'}`, save: o.save, goal: b?.goal, options: b?.options });
-    fig.node.dataset.figure = id;
-    figures.push(fig);
-    article.append(fig.node);
+    // A chart is a different drawing in every block that uses it; anything else, the first block shows.
+    const blocks: (DiagramBlock | undefined)[] = uses.get(id) ?? [undefined];
+    for (const b of factory.each ? blocks : blocks.slice(0, 1)) {
+      const fig = standaloneFigure(factory, { caption: `${id}: ${b?.caption ?? '(not in any lesson)'}`, save: o.save, goal: b?.goal, options: b?.options });
+      fig.node.dataset.figure = id;
+      figures.push(fig);
+      article.append(fig.node);
+    }
   }
   const node = el('main.view', {}, article);
   const ready = Promise.all(figures.map((f) => f.ready)).then(() => void (node.dataset.ready = ''));

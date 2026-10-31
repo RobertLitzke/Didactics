@@ -135,6 +135,7 @@ pin back before committing.
 | `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
+| `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
@@ -291,6 +292,53 @@ is on screen and stops when the lesson closes. Guess-first figures lock
 their sliders with `lock(sliders, true)`, offer a `choices([...])` row and a
 `lockIn('Lock it in', …)` button, then unlock the sliders. See Clouds'
 `heaps.ts` parcel figure for a full example.
+
+### Charts from JSON, with no code
+
+Four kinds of still are common enough that a lesson sets them up in its JSON
+alone: a **timeline**, a **tree**, a **scale** comparison and a labelled
+**plate**. Add them under the course's figures once, and every lesson can use
+them by id, as often as it likes:
+
+```ts
+import { charts } from 'didactics/charts';
+export const FIGURES = { ...charts({ palette: COL, asset }), ...courseFigures };
+```
+
+A course figure with the same id wins. `palette` is what a `"color"` may
+name (any CSS colour works too); `asset` resolves a plate's image path, as
+the course's photos do. Each block's `"options"` hold every word and number
+of the drawing, so the course file carries them and editing them there edits
+the drawing. `lessonProblems` checks them, and the gallery shows every block
+that uses a chart.
+
+```jsonc
+{ "type": "diagram", "id": "scale", "caption": "Thunder is rare on the coast.",
+  "options": { "title": "Days a year with thunder", "unit": "days", "items": [
+    { "label": "Fort Myers, Florida", "value": 90, "color": "sun" },
+    { "label": "Seattle, Washington", "value": 6, "color": "dew", "bold": true } ] } }
+// "quantity": "length" | "height" takes metres and shows the reader's units; "log": true for sizes far apart.
+
+{ "type": "diagram", "id": "timeline", "caption": "…",
+  "options": { "events": [
+    { "at": 1946, "label": "Dry ice makes snow", "when": "Nov 1946" },
+    { "at": 1947, "to": 1952, "label": "Project Cirrus" } ], "spacing": "time" } }
+// "spacing": "even" gives each event the same room; "unit" follows each year ("Ma").
+
+{ "type": "diagram", "id": "tree", "caption": "…",
+  "options": { "layout": "across", "root": { "label": "Clouds", "children": [
+    { "label": "Heaps", "note": "rising bubbles", "children": [{ "label": "Cumulus" }] } ] } } }
+// "across" (an outline) fits any tree; "down" (root on top) only up to 6 leaves.
+
+{ "type": "diagram", "id": "plate", "caption": "…",
+  "options": { "image": "photos/cb-01.jpg", "width": 1200, "height": 800, "alt": "…", "credit": "NOAA",
+    "labels": [{ "x": 0.5, "y": 0.1, "text": "Anvil" }, { "x": 0.2, "y": 0.8, "text": "Rain shaft", "side": "left" }] } }
+// x and y are fractions of the image; labels sit in the nearer margin unless "side" says.
+```
+
+Every chart also takes a `"title"` (bold, over it) and a `"note"` (muted,
+under it); the caption is still the one text box under the figure. They are
+stills: a chart that should respond to the reader is a figure of the course's own.
 
 ### Leaving a lesson part way
 

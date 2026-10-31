@@ -63,6 +63,8 @@ export type FigureFactory = ((ctx: FigureContext, goal?: string, options?: Optio
   goals?: readonly string[];
   quiz?: true;
   options?: OptionsCheck;
+  /** Drawn from its options alone (charts.ts), so each block that uses it is a different drawing: a gallery shows every one. */
+  each?: true;
 };
 
 /** What a figure says about itself beyond how it is built. */

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 (2026-10-31)
+
+Figures a lesson sets up in its JSON, with no code in the course:
+
+- `charts` (new): `charts({ palette?, asset? })` gives four stills drawn
+  from a block's `options`: `timeline` (events and spans, by time or evenly
+  spaced), `tree` (an outline, or downward for up to 6 leaves), `scale` (bars,
+  linear or log, lengths in the reader's units) and `plate` (an image with
+  labels and leader lines in its margins). Each checks its options, so
+  `lessonProblems` names a bad one. Their words live in the lesson file, so
+  the course file carries them, and its how-to says they are there to edit.
+- `figure`: `FigureFactory.each`, set on charts: the gallery shows every
+  block that uses such a figure, not just the first.
+
 ## 0.7.0 (2026-10-30)
 
 Downloading the course a piece at a time:
