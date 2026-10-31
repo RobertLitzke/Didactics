@@ -41,6 +41,9 @@ export interface AnsweredQuestion {
   why: string;
   /** The choice picked. */
   picked: number;
+  /** The address of the photo it showed, if it showed one; `drawing` when its picture was drawn instead. */
+  image?: string;
+  drawing?: boolean;
   /** The question's place in the check, and the check's seed: with these the check makes the same question again. */
   index: number;
   seed: number;

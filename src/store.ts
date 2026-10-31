@@ -36,6 +36,11 @@ export function createStore<S>({ key, empty, migrate }: StoreOptions<S>): Store<
     return cache;
   };
 
+  // Another page of the site changed it (the review of all courses, another tab): read it again when next asked.
+  if (typeof window !== 'undefined') window.addEventListener('storage', (e) => {
+    if (e.key === key) cache = null;
+  });
+
   const set = (save: S): void => {
     cache = save;
     try {

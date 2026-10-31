@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.13.0 (2026-10-31)
+
+Review across every course on a site:
+
+- `review-all`: `allCoursesReview({ courses })`, a page for a site's catalog
+  that reads each course's save, deals their due cards in one sitting (each
+  course's own queue and limits, a missed card back first, whichever course),
+  shows each card in its course's colours (`theme`), writes each answer back
+  into its course's save, and downloads one .apkg of every course.
+  `readCollections`, `writeCollection`. Its look is
+  `didactics/styles/review-all.css`, for a page without kit.css.
+- `srs`: `mergeCollections` (ids under each collection's key, guids kept);
+  a note's `image` (its photo's address) and `drawing`, so a card can be shown
+  away from the course that made it.
+- `check`: an answer passes on its photo's address (`imageOf`); the review page
+  notes it for cards made before.
+- `review-view`: `noteCard`, one card being asked, shared by both pages; a
+  link to the review of all courses when the course has a `catalog`.
+- `store`: a save changed by another page of the site is read again.
+
 ## 0.12.0 (2026-10-31)
 
 Spaced repetition in Anki's shape, and a review page in every course:

@@ -62,6 +62,14 @@ export interface Note {
   answer?: number;
   /** Said once it is answered: why the answer is right. */
   extra?: string;
+  /**
+   * The address of the photo shown with it, so it can be shown away from the
+   * course that made it (the review of all courses); '' when it has no photo.
+   * Left out until the course has looked.
+   */
+  image?: string;
+  /** Its picture is a drawing only its course can make. */
+  drawing?: true;
   tags: string[];
   /**
    * Where the note came from, for the app to find again: a lesson's check
@@ -246,6 +254,8 @@ export interface NoteInput {
   choices?: string[];
   answer?: number;
   extra?: string;
+  image?: string;
+  drawing?: boolean;
   tags?: string[];
   source?: Record<string, unknown>;
 }
@@ -261,6 +271,8 @@ function noteFrom(input: NoteInput, now: number, old?: Note): Note {
     back,
     ...(model === 'choice' ? { choices: [...(input.choices ?? [])], answer: input.answer ?? 0 } : {}),
     ...(input.extra ? { extra: input.extra } : {}),
+    ...((input.image ?? old?.image) !== undefined ? { image: input.image ?? old!.image! } : {}),
+    ...((input.drawing ?? old?.drawing) ? { drawing: true as const } : {}),
     tags: [...new Set([...(old?.tags.filter((t) => t === 'leech') ?? []), ...(input.tags ?? [])])],
     ...(input.source ? { source: input.source } : {}),
     created: old?.created ?? now,
@@ -269,7 +281,7 @@ function noteFrom(input: NoteInput, now: number, old?: Note): Note {
 }
 
 const sameNote = (a: Note, b: Note) =>
-  a.front === b.front && a.back === b.back && a.extra === b.extra && a.model === b.model && a.answer === b.answer &&
+  a.front === b.front && a.back === b.back && a.extra === b.extra && a.model === b.model && a.answer === b.answer && a.image === b.image && a.drawing === b.drawing &&
   JSON.stringify(a.choices) === JSON.stringify(b.choices) && JSON.stringify(a.tags) === JSON.stringify(b.tags) &&
   JSON.stringify(a.source) === JSON.stringify(b.source);
 
@@ -739,6 +751,33 @@ export function nextCard(col: Collection, queue: readonly string[], now: number 
   return soon ? { id: soon.id, rest: [] } : undefined;
 }
 
+// ---- Several collections as one ------------------------------------------------------
+
+/**
+ * Collections as one, for a review across courses or one Anki package of
+ * them all: every id is put under its collection's key ("clouds:" + id), so
+ * nothing clashes; guids stay, so Anki matches the notes of an earlier
+ * export of one course. The settings are the defaults.
+ */
+export function mergeCollections(cols: Readonly<Record<string, Collection>>, now: number = Date.now()): Collection {
+  const out = emptyCollection(Math.min(now, ...Object.values(cols).map((c) => c.created)));
+  const logs: ReviewLog[] = [];
+  for (const [key, c] of Object.entries(cols)) {
+    const k = (id: string) => `${key}:${id}`;
+    for (const d of Object.values(c.decks)) out.decks[k(d.id)] = { ...d, id: k(d.id) };
+    for (const n of Object.values(c.notes)) out.notes[k(n.id)] = { ...n, id: k(n.id) };
+    for (const x of Object.values(c.cards)) out.cards[k(x.id)] = { ...x, id: k(x.id), note: k(x.note), deck: k(x.deck) };
+    for (const r of c.revlog) logs.push({ ...r, card: k(r.card) });
+  }
+  logs.sort((a, b) => a.id - b.id);
+  let last = 0;
+  out.revlog = logs.map((r) => {
+    last = Math.max(r.id, last + 1);
+    return { ...r, id: last };
+  });
+  return out;
+}
+
 // ---- Old schedules and repair -----------------------------------------------------------
 
 /**
@@ -791,6 +830,8 @@ export function migrateCollection(raw: unknown, now: number = Date.now()): Colle
         back: str(n.back) ?? '',
         ...(choices ? { choices, answer: Math.min(choices.length - 1, Math.max(0, Math.floor(num(n.answer)))) } : {}),
         ...(str(n.extra) ? { extra: n.extra as string } : {}),
+        ...(str(n.image) !== undefined ? { image: n.image as string } : {}),
+        ...(n.drawing === true ? { drawing: true as const } : {}),
         tags: Array.isArray(n.tags) ? [...new Set(n.tags.filter((t): t is string => typeof t === 'string'))] : [],
         ...(isObj(n.source) ? { source: n.source } : {}),
         created: num(n.created, now),

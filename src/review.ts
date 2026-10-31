@@ -78,6 +78,8 @@ function checkNote(l: Lesson, at: string, figure: string, q: AnsweredQuestion | 
     choices: q.choices,
     answer: q.answer,
     extra: q.why,
+    ...('image' in q && q.image !== undefined ? { image: q.image } : {}),
+    ...('drawing' in q && q.drawing ? { drawing: true } : {}),
     tags: [`lesson:${l.code ?? l.n}`, 'check'],
     source: { ...source },
   };

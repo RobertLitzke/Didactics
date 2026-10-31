@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, spaced-repetition review with an Anki export, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -46,6 +46,7 @@
     "./reference": "./src/reference.ts",
     "./resume": "./src/resume.ts",
     "./review": "./src/review.ts",
+    "./review-all": "./src/review-all.ts",
     "./review-view": "./src/review-view.ts",
     "./rng": "./src/rng.ts",
     "./router": "./src/router.ts",
@@ -69,7 +70,8 @@
       "default": "./lib/vite.js"
     },
     "./package.json": "./package.json",
-    "./styles/kit.css": "./styles/kit.css"
+    "./styles/kit.css": "./styles/kit.css",
+    "./styles/review-all.css": "./styles/review-all.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json",

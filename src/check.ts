@@ -35,6 +35,18 @@ export interface CheckStep {
   key?: string;
 }
 
+/**
+ * A picture's photo address, to show it away from its course: a photo's
+ * own address, never one inlined into the page; or that it is a drawing.
+ */
+export function imageOf(node: Node | null | undefined): { image?: string; drawing?: boolean } {
+  if (!(node instanceof Element)) return { image: '' };
+  const img = node instanceof HTMLImageElement ? node : node.querySelector('img');
+  const src = img?.getAttribute('src');
+  if (src && !src.startsWith('data:') && !src.startsWith('blob:')) return { image: new URL(src, document.baseURI).href };
+  return node.querySelector('svg, canvas') || node instanceof SVGElement || img ? { image: '', drawing: true } : { image: '' };
+}
+
 /** How a check makes its questions. */
 export type CheckSteps = (ctx: FigureContext, options: Options | undefined, rng: Rng) => CheckStep[];
 
@@ -99,7 +111,7 @@ export function check(steps: CheckSteps, spec: FigureSpec = {}): FigureFactory {
           if (good) right++;
           picks.push(k);
           t.keep({ seed, picks: [...picks] });
-          ctx.answered?.({ ...(q.key ? { key: q.key } : {}), ask: q.ask, choices: q.choices, answer: q.answer, why: q.why, picked: k, index: i, seed });
+          ctx.answered?.({ ...(q.key ? { key: q.key } : {}), ...imageOf(pic), ask: q.ask, choices: q.choices, answer: q.answer, why: q.why, picked: k, index: i, seed });
           buttons.forEach((x, j) => {
             x.disabled = true;
             if (j === q.answer) x.classList.add('right');

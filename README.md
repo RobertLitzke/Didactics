@@ -169,6 +169,7 @@ pin back before committing.
 | `anki` | `toApkg(collection, { media?, html?, sourceLabel? })`: the collection as an Anki package, schedules and review log included, notes matched again on a later import by guid |
 | `sqlite` | `sqliteFile(tables, indexes)`: a small writer of SQLite database files (what an .apkg holds), with no WebAssembly |
 | `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day, Leitner places kept), `stepFor` (a check question made again, picture and all) |
+| `review-all` | `allCoursesReview({ courses: [{ key, title, save, href, icon?, theme? }] })`, every course's cards in one sitting, each in its colours, answers written back to each save, one .apkg of all; style with `didactics/styles/review-all.css` |
 | `review-view` | `reviewView({ store, title, lessons, figures, deck?, media?, blurb? })`, the review page: today's counts, decks, sittings with Anki's four buttons, options, and the .apkg download |
 | `quiz` | The flash-card shape (`Card`, `conceptCard` for hand-written cards); its Leitner scheduling (`review`, `deal`, `tally`) is kept for old saves |
 | `quiz-view` | `quizView`, the old quiz page, no longer used by `defineCourse` |

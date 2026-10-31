@@ -6,6 +6,7 @@
 // within the sitting. The whole collection, schedules and all, downloads as
 // an Anki package (anki.ts).
 
+import { imageOf } from './check';
 import { el } from './dom';
 import type { FigureFactory } from './figure';
 import type { Lesson } from './lesson';
@@ -38,6 +39,8 @@ export interface ReviewViewOptions<C extends QuizCard, S extends Progress> exten
   /** A note's words as HTML in the Anki package, such as the course's prose without its colours. */
   html?: (text: string) => string;
   home?: string;
+  /** The review of every course on the site, on the site's catalog page. */
+  allHref?: string;
 }
 
 const COUNT_CLASS = { new: 'count-new', learning: 'count-learning', review: 'count-due' } as const;
@@ -125,6 +128,21 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
       if (o.deck?.length) next = syncDeck(next, o.deck, o.store.get(), o, Date.now(), shuffle(o.deck, makeRng(freshSeed())));
       return next;
     });
+    // Each card's photo address, once, so the review of all courses can show it.
+    const unseen = Object.values(col().notes).filter((n) => n.image === undefined);
+    if (unseen.length) {
+      const found = unseen.map((n) => {
+        try {
+          const pics = pictureOf(n);
+          const got = pics.map(imageOf);
+          const photo = got.find((g) => g.image);
+          return { ...n, image: photo?.image ?? '', ...(!photo && got.some((g) => g.drawing) ? { drawing: true as const } : {}) };
+        } catch {
+          return { ...n, image: '' };
+        }
+      });
+      setCol((c) => ({ ...c, notes: { ...c.notes, ...Object.fromEntries(found.filter((n) => c.notes[n.id]).map((n) => [n.id, n])) } }));
+    }
 
     const front = () => {
       const c = col();
@@ -167,6 +185,7 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
                   counts(n),
                   el('button.btn.btn-ghost.btn-small', { type: 'button', disabled: !any, onclick: () => sitting(studyQueue(col(), Date.now(), { limit: SITTING, decks: [d.id] }), false, [d.id]) }, 'Study'));
               })) : null),
+        o.allHref ? el('p', {}, el('a', { href: o.allHref }, 'Review every course together'), ': all your courses’ cards in one sitting, and one Anki download.') : '',
         options(cfg),
         anki(c, empty),
       );
@@ -265,55 +284,13 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
         const card = c.cards[n.id];
         const note = card && c.notes[card.note];
         if (!note) return show();
-        const started = Date.now();
         const firstTime = !seen.has(n.id);
         seen.add(n.id);
-        const body = el('div.quiz-card');
-        const after = el('div');
-        /** Anki's buttons under the answer, each with when the card would come back. */
-        const grade = (picked: 'right' | 'wrong' | 'shown') => {
-          const took = Date.now() - started;
-          const gaps = preview(col(), n.id, Date.now());
-          const rate = (r: RatingT) => {
-            if (firstTime && r !== Rating.Again) right++;
-            setCol((x) => answer(x, n.id, r, Date.now(), { took }));
-            show();
-          };
-          const buttons = (picked === 'wrong' ? [Rating.Again] : [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]).map((r) =>
-            el(`button.btn${r === Rating.Good || picked === 'wrong' ? '' : '.btn-ghost'}.rate.rate-${r}`, { type: 'button', onclick: () => rate(r) },
-              el('span.rate-name', {}, RATING_NAMES[r]), el('span.rate-gap', {}, formatGap(gaps[r]))));
-          after.append(el('div.review-rates', {}, ...buttons));
-          (buttons.find((b) => b.classList.contains('rate-3')) ?? buttons[0]).focus();
-        };
-        const pictures = pictureOf(note);
-        body.append(...pictures.map((p) => el('div.check-picture', {}, p)), el('p.task', {}, note.front));
-        if (note.model === 'choice' && note.choices) {
-          const order = shuffle(note.choices.map((_, i) => i), makeRng(freshSeed()));
-          const buttons = order.map((i) => {
-            const b = el('button.btn.btn-ghost.wide', { type: 'button' }, note.choices![i]) as HTMLButtonElement;
-            b.addEventListener('click', () => {
-              const good = i === note.answer;
-              buttons.forEach((x, k) => {
-                x.disabled = true;
-                if (order[k] === note.answer) x.classList.add('right');
-              });
-              if (!good) b.classList.add('wrong');
-              after.append(el('div', { className: `verdict ${good ? 'good' : 'bad'}` }, el('p', {}, `${good ? 'Right.' : 'Not quite.'} ${note.extra ?? ''}`)));
-              grade(good ? 'right' : 'wrong');
-            });
-            return b;
-          });
-          body.append(el('div.answer-list', {}, buttons));
-        } else {
-          const reveal = el('button.btn', { type: 'button' }, 'Show answer') as HTMLButtonElement;
-          reveal.addEventListener('click', () => {
-            reveal.remove();
-            after.append(el('div.verdict', {}, el('p', {}, el('strong', {}, note.back)), note.extra ? el('p', {}, note.extra) : null));
-            grade('shown');
-          });
-          after.append(reveal);
-        }
-        body.append(after);
+        const body = noteCard(note, pictureOf(note), () => preview(col(), n.id, Date.now()), (r, took) => {
+          if (firstTime && r !== Rating.Again) right++;
+          setCol((x) => answer(x, n.id, r, Date.now(), { took }));
+          show();
+        });
         const left = ahead ? queue.length + 1 : dayCounts(col(), now, decks);
         page.replaceChildren(
           el('p.eyebrow', {}, `${deckName(c, card.deck)} · `, typeof left === 'number' ? `${left} left` : el('span.review-counts', {},
@@ -342,6 +319,56 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
 
     front();
   };
+}
+
+/**
+ * One card being asked: its pictures, its question, the choices (or Show
+ * answer), then what was right and Anki's buttons, each labelled with when
+ * the card would come back. `onRate` gets the button and how long the
+ * answer took. Used by the review page and the review of all courses.
+ */
+export function noteCard(note: Note, pictures: readonly Node[], gaps: () => Record<RatingT, number>, onRate: (r: RatingT, took: number) => void): HTMLElement {
+  const started = Date.now();
+  const body = el('div.quiz-card');
+  const after = el('div');
+  const grade = (picked: 'right' | 'wrong' | 'shown') => {
+    const took = Date.now() - started;
+    const g = gaps();
+    const buttons = (picked === 'wrong' ? [Rating.Again] : [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]).map((r) =>
+      el(`button.btn${r === Rating.Good || picked === 'wrong' ? '' : '.btn-ghost'}.rate.rate-${r}`, { type: 'button', onclick: () => onRate(r, took) },
+        el('span.rate-name', {}, RATING_NAMES[r]), el('span.rate-gap', {}, formatGap(g[r]))));
+    after.append(el('div.review-rates', {}, ...buttons));
+    (buttons.find((b) => b.classList.contains('rate-3')) ?? buttons[0]).focus();
+  };
+  body.append(...pictures.map((p) => el('div.check-picture', {}, p)), el('p.task', {}, note.front));
+  if (note.model === 'choice' && note.choices) {
+    const order = shuffle(note.choices.map((_, i) => i), makeRng(freshSeed()));
+    const buttons = order.map((i) => {
+      const b = el('button.btn.btn-ghost.wide', { type: 'button' }, note.choices![i]) as HTMLButtonElement;
+      b.addEventListener('click', () => {
+        const good = i === note.answer;
+        buttons.forEach((x, k) => {
+          x.disabled = true;
+          if (order[k] === note.answer) x.classList.add('right');
+        });
+        if (!good) b.classList.add('wrong');
+        after.append(el('div', { className: `verdict ${good ? 'good' : 'bad'}` }, el('p', {}, `${good ? 'Right.' : 'Not quite.'} ${note.extra ?? ''}`)));
+        grade(good ? 'right' : 'wrong');
+      });
+      return b;
+    });
+    body.append(el('div.answer-list', {}, buttons));
+  } else {
+    const reveal = el('button.btn', { type: 'button' }, 'Show answer') as HTMLButtonElement;
+    reveal.addEventListener('click', () => {
+      reveal.remove();
+      after.append(el('div.verdict', {}, el('p', {}, el('strong', {}, note.back)), note.extra ? el('p', {}, note.extra) : null));
+      grade('shown');
+    });
+    after.append(reveal);
+  }
+  body.append(after);
+  return body;
 }
 
 function when(ms: number): string {

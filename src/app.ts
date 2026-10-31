@@ -252,7 +252,7 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
     pages.push({
       path: '/review',
       label: r.label ?? 'Review',
-      view: reviewView({ ...r, ...naming, store, lessons: o.lessons, figures: o.figures, deck: o.quiz?.deck, media: o.quiz?.media, blurb: r.blurb, fileName: r.fileName ?? `${o.id}.apkg` }),
+      view: reviewView({ ...r, ...naming, store, lessons: o.lessons, figures: o.figures, deck: o.quiz?.deck, media: o.quiz?.media, blurb: r.blurb, fileName: r.fileName ?? `${o.id}.apkg`, allHref: o.catalog ? `${asset(o.catalog.href)}#review` : undefined }),
     });
     // The quiz's old address, in bookmarks and in a course's menu list.
     pages.push({ path: '/quiz', view: (_root, nav) => nav.replace('/review') });
