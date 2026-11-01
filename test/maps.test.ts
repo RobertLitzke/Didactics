@@ -113,6 +113,20 @@ describe('the map chart', () => {
     expect([...h.node.querySelectorAll('text')].map((t) => t.textContent)).toContain('Top');
   });
 
+  it('fills areas under the lines, clipped to the map, with a key under it', async () => {
+    const r = grid((c) => c);
+    const { map } = maps({ load: async () => r, palette: { heat: '#c4462f' } });
+    expect(mapOptionsProblems({ relief: 'maps/x', areas: [{ points: [[3, 45], [3.1, 45]] }] })[0]).toMatch(/three or more/);
+    expect(mapOptionsProblems({ relief: 'maps/x', key: [{ color: 'heat' }] })[0]).toMatch(/"text"/);
+    const area = { points: [[3, 44.9], [3.1, 44.9], [3.05, 45]] as [number, number][], color: 'heat', opacity: 0.5 };
+    const h = map(testContext(emptyProgress('metric')), undefined, { relief: 'maps/test-b', areas: [area], key: [{ color: 'heat', text: 'Hot' }] });
+    await h.ready;
+    const poly = h.node.querySelector('polygon')!;
+    expect(poly.getAttribute('fill')).toBe('#c4462f');
+    expect(poly.closest('g')!.getAttribute('clip-path')).toMatch(/^url\(#map-clip-/);
+    expect(h.node.querySelector('.map-key li')!.textContent).toBe('Hot');
+  });
+
   it('says so when a relief cannot be loaded', async () => {
     const { map } = maps({ load: async () => { throw new Error('no'); } });
     const h = map(testContext(emptyProgress('metric')), undefined, { relief: 'maps/missing' });

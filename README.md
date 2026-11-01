@@ -153,7 +153,7 @@ pin back before committing.
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
-| `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `scaleBar`; `maps({ palette, asset })` gives the `map` chart |
+| `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `mapAreas`, `scaleBar`; `maps({ palette, asset })` gives the `map` chart |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
@@ -409,6 +409,8 @@ charts and use the `map` id.
     "labels": [{ "lon": 2.964, "lat": 45.772, "text": "Puy de Dôme" }],
     "lines": [{ "points": [[2.9, 45.8], [3.0, 45.85]], "color": "rose", "dashed": true }] } }
 // "water": metres (sea level is 0), "ground": "height" for a ramp by height, "exaggeration", "title", "note".
+// "areas": [{ "points": [[lon, lat], …], "color": "heat", "opacity": 0.45 }] fills zones under the lines,
+// clipped to the map; "key": [{ "color": "heat", "text": "Garnet" }] puts swatches under it.
 ```
 
 ### Leaving a lesson part way

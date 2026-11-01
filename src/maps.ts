@@ -460,6 +460,39 @@ export function mapLines(v: Pick<MapView, 'xy'>, lines: readonly MapLine[], ink 
   );
 }
 
+/** A filled region through places, such as a zone on a geological map. */
+export interface MapArea {
+  points: readonly (readonly [number, number])[];
+  color?: string;
+  /** How solid the fill is, 0 to 1; default 0.45, so the relief shows through. */
+  opacity?: number;
+}
+
+/** Filled regions, clipped to the map's edges. */
+export function mapAreas(v: Pick<MapView, 'xy' | 'w' | 'h'>, areas: readonly MapArea[], ink = '#2a2547'): SVGElement[] {
+  if (!areas.length) return [];
+  const id = `map-clip-${++clips}`;
+  const clip = svg('clipPath', { id }, svg('rect', { x: 0, y: 0, width: v.w, height: v.h }));
+  const g = svg('g', { 'clip-path': `url(#${id})` },
+    ...areas.map((a) => svg('polygon', {
+      points: a.points.map(([lon, lat]) => v.xy(lon, lat).join(',')).join(' '),
+      fill: a.color ?? ink,
+      'fill-opacity': a.opacity ?? 0.45,
+      stroke: a.color ?? ink,
+      'stroke-opacity': 0.8,
+      'stroke-width': 0.6,
+      'stroke-linejoin': 'round',
+    })));
+  return [svg('defs', {}, clip), g];
+}
+let clips = 0;
+
+/** One entry in a map's key: a swatch and what it stands for. */
+export interface MapKeyItem {
+  color: string;
+  text: string;
+}
+
 /** A round length for a scale bar about a fifth of the map wide, in the reader's units. */
 function niceLength(metres: number, units: Units): { m: number; say: string } {
   const unit = units === 'metric' ? (metres >= 1000 ? 1000 : 1) : metres >= 1609 ? 1609.344 : 0.3048;
@@ -503,6 +536,10 @@ export interface MapOptions {
   ground?: 'plain' | 'height';
   labels?: MapLabel[];
   lines?: MapLine[];
+  /** Filled regions under the lines and labels, such as zones. */
+  areas?: MapArea[];
+  /** Swatches under the map saying what the colours mean. */
+  key?: MapKeyItem[];
   /** Which bottom corner the scale bar sits in, to keep it off a label; default left. */
   scale?: 'left' | 'right';
 }
@@ -547,6 +584,19 @@ export function mapOptionsProblems(o: Options | undefined): string[] {
       if (!Array.isArray(l?.points) || l.points.length < 2 || !l.points.every(place)) out.push(`line ${i + 1}: "points" should be two or more [lon, lat]`);
     });
   }
+  if (o.areas !== undefined) {
+    if (!Array.isArray(o.areas)) out.push('"areas" should be a list');
+    else o.areas.forEach((a: Record<string, unknown>, i) => {
+      if (!Array.isArray(a?.points) || a.points.length < 3 || !a.points.every(place)) out.push(`area ${i + 1}: "points" should be three or more [lon, lat]`);
+      if (a?.opacity !== undefined && (!isNum(a.opacity) || a.opacity < 0 || a.opacity > 1)) out.push(`area ${i + 1}: "opacity" should be from 0 to 1`);
+    });
+  }
+  if (o.key !== undefined) {
+    if (!Array.isArray(o.key)) out.push('"key" should be a list');
+    else o.key.forEach((k: Record<string, unknown>, i) => {
+      if (!isStr(k?.color) || !isStr(k?.text)) out.push(`key ${i + 1}: needs "color" and "text"`);
+    });
+  }
   return out;
 }
 
@@ -570,13 +620,22 @@ function drawMap(r: Relief, o: MapOptions, units: Units, pal: Record<string, str
   v.paint({ sun: o.sun, exaggeration: o.exaggeration, water: o.water, ground: o.ground === 'height' ? heightRamp(r) : undefined });
   const color = (c?: string) => (c ? (pal[c] ?? c) : undefined);
   v.svg.append(
+    ...mapAreas(v, (o.areas ?? []).map((a) => ({ ...a, color: color(a.color) })), ink),
     ...mapLines(v, (o.lines ?? []).map((l) => ({ ...l, color: color(l.color) ?? ink })), ink),
     ...mapLabels(v, (o.labels ?? []).map((l) => ({ ...l, color: color(l.color) })), ink, paper),
     ...scaleBar(v, units, ink, paper, o.scale),
   );
   const parts: HTMLElement[] = [];
   if (o.title) parts.push(el('p.map-title', {}, o.title));
-  parts.push(v.node, el('p.map-credit', {}, `Heights: ${r.meta.credit}`));
+  parts.push(v.node);
+  if (o.key?.length) {
+    parts.push(el('ul.map-key', {}, ...o.key.map((k) => {
+      const sw = el('span.map-swatch');
+      sw.style.background = color(k.color) ?? k.color;
+      return el('li', {}, sw, k.text);
+    })));
+  }
+  parts.push(el('p.map-credit', {}, `Heights: ${r.meta.credit}`));
   if (o.note) parts.push(el('p.map-note', {}, o.note));
   return parts;
 }

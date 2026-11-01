@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.0 (2026-11-01)
+
+Zones on a map:
+
+- `maps`: the `map` chart takes `areas` (filled regions through places,
+  `color`, `opacity`), drawn under its lines and labels and clipped to the
+  map's edges, and `key` (swatches and words under the map). `mapAreas` does
+  the drawing for a course's own map figure. Both are checked with the rest
+  of the options.
+
 ## 0.15.1 (2026-11-01)
 
 - `lesson`: the bar at the top of a lesson no longer repeats the big title
