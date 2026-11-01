@@ -151,7 +151,7 @@ pin back before committing.
 | `course-view` | `courseSection({ edits, fileName, pieces? })`, the Settings section to download (all, or one piece such as a lesson), load and reset the course's text; `pieceFileName` |
 | `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
-| `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
+| `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `player` (a Play button for a time slider), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
 | `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `mapAreas`, `scaleBar`; `maps({ palette, asset })` gives the `map` chart |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
@@ -313,7 +313,12 @@ block. A figure that paints only once something loads calls
 when that has, so a test, a screenshot or the gallery can wait for it.
 
 Use `animate(node, ctx, dt => …)` for motion. It runs only while the figure
-is on screen and stops when the lesson closes. Guess-first figures use
+is on screen and stops when the lesson closes. For a time lapse, give a time
+slider a Play button: `player(slider, ctx, { seconds?, onEnd? })` walks the
+slider to its end through its own `onInput` (so the figure redraws as if a
+hand moved it), pauses when the reader takes the slider, offers "Play again"
+at the end, and stays locked while a guess first locks the slider. Put its
+`node` before the slider in `f.controls`. Guess-first figures use
 `guessFirst(t, f, { ask, options, answer, sliders, after })`: the sliders
 stay locked until a pick is locked in, the pick then stands out as "Your
 guess", and once the answer is known (`reveal: 'lock'`, the default, or

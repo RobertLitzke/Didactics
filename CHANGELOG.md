@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.0 (2026-11-01)
+
+- `figure`: `player(slider, ctx, { seconds?, onEnd? })`, a Play / Pause /
+  Play again button that runs a time slider from where it stands to its end
+  in `seconds` (default 12), through the slider's own `onInput`. A hand on
+  the slider pauses it; a locked slider (guess first) locks it; closing the
+  lesson stops it. Taken from Geology lesson 5's roots figure.
+
 ## 0.16.1 (2026-11-01)
 
 - `lesson`: in a lesson without a picture on top, the first line of the

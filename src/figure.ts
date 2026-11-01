@@ -330,6 +330,96 @@ export function slider(label: string, a: number | SliderOptions, max?: number, s
   };
 }
 
+export interface Player {
+  /** The Play / Pause / Play again button, to put beside the slider. */
+  node: HTMLButtonElement;
+  play: () => void;
+  pause: () => void;
+  playing: () => boolean;
+}
+
+export interface PlayerOptions {
+  /** Seconds from one end of the slider to the other. Default 12. */
+  seconds?: number;
+  /** Called when a run reaches the end. */
+  onEnd?: () => void;
+}
+
+/**
+ * A Play button that walks `s` from where it stands to its far end, a time
+ * lapse: each frame moves the input as a hand would, so the figure redraws
+ * through its own `onInput`. Moving the slider by hand pauses it; at the end
+ * it offers "Play again" from the start. A locked slider (a guess first)
+ * locks the button too. Stops for good when the figure closes.
+ */
+export function player(s: Slider, ctx: FigureContext, o: PlayerOptions = {}): Player {
+  const input = s.input;
+  const lo = () => Number(input.min);
+  const hi = () => Number(input.max);
+  const button = el('button.btn.btn-ghost.fig-play', { type: 'button' }) as HTMLButtonElement;
+  let on = false;
+  let driving = false;
+  const atEnd = () => Number(input.value) >= hi();
+  const show = () => {
+    button.textContent = on ? 'Pause' : atEnd() ? 'Play again' : 'Play';
+    button.setAttribute('aria-pressed', String(on));
+  };
+  const pause = () => {
+    on = false;
+    show();
+  };
+  const play = () => {
+    if (on || input.disabled || ctx.closed.aborted) return;
+    if (atEnd()) {
+      driving = true;
+      input.value = String(lo());
+      input.dispatchEvent(new Event('input'));
+      driving = false;
+    }
+    on = true;
+    show();
+    const rate = (hi() - lo()) / Math.max(0.5, o.seconds ?? 12);
+    let clock = Number(input.value);
+    let last = performance.now();
+    const step = (now: number) => {
+      if (!on || ctx.closed.aborted) return;
+      clock = Math.min(hi(), clock + Math.min(0.1, (now - last) / 1000) * rate);
+      last = now;
+      const before = input.value;
+      input.value = String(clock);
+      if (input.value !== before) {
+        driving = true;
+        input.dispatchEvent(new Event('input'));
+        driving = false;
+      }
+      if (clock >= hi()) {
+        input.value = input.max;
+        on = false;
+        show();
+        o.onEnd?.();
+        return;
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  button.addEventListener('click', () => (on ? pause() : play()));
+  input.addEventListener('input', () => {
+    if (driving) return;
+    if (on) pause();
+    else show();
+  });
+  // A guess first locks the slider; the button follows it.
+  new MutationObserver(() => {
+    button.disabled = input.disabled;
+    if (input.disabled) pause();
+  }).observe(input, { attributes: true, attributeFilter: ['disabled'] });
+  button.disabled = input.disabled;
+  ctx.closed.addEventListener('abort', pause, { once: true });
+  show();
+  return { node: button, play, pause, playing: () => on };
+}
+
 /** The input's own range, and the way between its positions and real values. */
 function positions(o: SliderOptions): { min: number; max: number; step: number | 'any'; to: (v: number) => number; from: (pos: number) => number } {
   const round = (v: number, step?: number) => (step ? Math.round(v / step) * step : v);
