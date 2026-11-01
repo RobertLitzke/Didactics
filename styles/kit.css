@@ -194,6 +194,8 @@ main { display: block; }
 .lesson { max-width: 720px; margin: 0 auto; min-height: 100dvh; }
 /* Without a picture on top, the paper's rounded edge starts below the status bar. */
 .lesson.no-hero { padding-top: calc(18px + env(safe-area-inset-top)); }
+/* …and its first line moves over for the round back button beside it. */
+.lesson.no-hero .article-intro > .eyebrow:first-child { padding-left: 42px; }
 /* The bar floats over the page rather than taking room in it: it is tucked
    up out of sight, all but the progress line, until the lesson's big title
    has scrolled away (lesson.ts). */

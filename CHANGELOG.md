@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.1 (2026-11-01)
+
+- `lesson`: in a lesson without a picture on top, the first line of the
+  title block moves over to make room for the round back button that
+  stands in for the tucked-away bar (0.15.1).
+
 ## 0.16.0 (2026-11-01)
 
 Zones on a map:
