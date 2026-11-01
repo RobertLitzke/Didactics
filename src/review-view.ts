@@ -8,7 +8,7 @@
 
 import { imageOf } from './check';
 import { el } from './dom';
-import type { FigureFactory } from './figure';
+import { figureReady, testContext, type FigureFactory } from './figure';
 import type { Lesson } from './lesson';
 import type { Progress } from './progress';
 import type { Card as QuizCard } from './quiz';
@@ -18,7 +18,7 @@ import {
   answer, configOf, dayCounts, emptyCollection, formatGap, nextCard, preview, Rating, RATING_NAMES, reviewAhead, studyQueue, totals,
   type Collection, type Note, type Rating as RatingT, type SchedulerConfig,
 } from './srs';
-import { fillFromLessons, lessonDeck, QUIZ_DECK, sourceOf, stepFor, syncDeck, type DeckNaming } from './review';
+import { fillFigureCards, figureFor, fillFromLessons, lessonDeck, QUIZ_DECK, sourceOf, stepFor, syncDeck, type DeckNaming } from './review';
 import type { Store } from './store';
 import { freshSeed } from './ui';
 
@@ -114,8 +114,28 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
       const m = card && o.media?.(card);
       return m ? [m] : [];
     }
+    if (s?.kind === 'figure') return [];
     const step = stepFor(n, o.lessons, o.figures, o.store.get());
     return [step?.picture?.(), step?.extra?.()].filter((x): x is Node => !!x);
+  };
+
+  /**
+   * A figure card's figure, built as a flash card: its own readings from
+   * `seed`, its guess asked afresh, its verdict to `verdict`. Null when the
+   * lesson no longer has it.
+   */
+  const figureOf = (n: Note, seed: number, verdict: (right: boolean) => void): { node: HTMLElement; ready: Promise<void>; close: () => void } | null => {
+    const f = figureFor(n, o.lessons, o.figures);
+    if (!f) return null;
+    const ctx = { ...testContext(o.store.get()), card: { seed, verdict } };
+    try {
+      // No caption: the lesson's describes the lesson's readings, and the card's question stands above it.
+      const handle = f.factory(ctx, f.factory.card!.goal ?? f.factory.goals?.[0], f.options);
+      return { node: el('figure.fig.review-figure', {}, handle.node), ready: figureReady(handle), close: ctx.close };
+    } catch {
+      ctx.close();
+      return null;
+    }
   };
 
   return (root) => {
@@ -125,6 +145,7 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
     // New lessons' questions and today's new quiz cards join first.
     setCol((c) => {
       let next = fillFromLessons(c, o.lessons, o.figures, o.store.get(), o, Date.now());
+      next = fillFigureCards(next, o.lessons, o.figures, o.store.get(), o, Date.now());
       if (o.deck?.length) next = syncDeck(next, o.deck, o.store.get(), o, Date.now(), shuffle(o.deck, makeRng(freshSeed())));
       return next;
     });
@@ -233,15 +254,26 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
           for (const n of notes) {
             k++;
             if (k % 5 === 0) say(`Gathering pictures: ${k} of ${notes.length}…`);
+            let close = () => {};
             try {
-              const pic = pictureOf(n)[0];
+              let pic: Node | undefined = pictureOf(n)[0];
+              if (sourceOf(n)?.kind === 'figure') {
+                const fig = figureOf(n, 1, () => {});
+                if (fig) {
+                  close = fig.close;
+                  await fig.ready;
+                  pic = fig.node.querySelector('svg, canvas') ?? undefined;
+                  stage.replaceChildren(fig.node);
+                }
+              } else if (pic) stage.replaceChildren(pic);
               if (!pic) continue;
-              stage.replaceChildren(pic);
               await frames();
               const file = await pictureFile(pic, `${o.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${n.guid}`);
               if (file) media[n.id] = file;
             } catch {
               // A picture that cannot be kept leaves its card with words only.
+            } finally {
+              close();
             }
           }
         } finally {
@@ -256,7 +288,7 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
             const s = sourceOf(n);
             const card = c.cards[`${n.id}/0`];
             const l = card && lessonOf.get(card.deck);
-            return s?.kind === 'check' && l ? `${o.title}, ${o.noun ?? 'Lesson'} ${l.code ?? l.n}: ${l.title}` : `${o.title}, quiz`;
+            return s?.kind !== 'deck' && l ? `${o.title}, ${o.noun ?? 'Lesson'} ${l.code ?? l.n}: ${l.title}` : `${o.title}, quiz`;
           },
         });
         const name = o.fileName ?? `${o.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.apkg`;
@@ -271,6 +303,7 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
       }
     };
 
+    let closeFigure = () => {};
     const sitting = (first: string[], ahead = false, decks?: string[]) => {
       let queue = first.slice();
       let right = 0;
@@ -286,11 +319,22 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
         if (!note) return show();
         const firstTime = !seen.has(n.id);
         seen.add(n.id);
-        const body = noteCard(note, pictureOf(note), () => preview(col(), n.id, Date.now()), (r, took) => {
+        closeFigure();
+        const rate = (r: RatingT, took: number) => {
           if (firstTime && r !== Rating.Again) right++;
           setCol((x) => answer(x, n.id, r, Date.now(), { took }));
           show();
-        });
+        };
+        const gaps = () => preview(col(), n.id, Date.now());
+        let body: HTMLElement | null = null;
+        if (sourceOf(note)?.kind === 'figure') {
+          const card = figureCard(note, gaps, rate, (seed, verdict) => figureOf(note, seed, verdict));
+          if (card) {
+            body = card.node;
+            closeFigure = card.close;
+          }
+        }
+        body ??= noteCard(note, pictureOf(note), gaps, rate);
         const left = ahead ? queue.length + 1 : dayCounts(col(), now, decks);
         page.replaceChildren(
           el('p.eyebrow', {}, `${deckName(c, card.deck)} · `, typeof left === 'number' ? `${left} left` : el('span.review-counts', {},
@@ -298,11 +342,12 @@ export function reviewView<C extends QuizCard, S extends Progress>(o: ReviewView
             el('span', { className: COUNT_CLASS.learning }, String(left.learning)),
             el('span', { className: COUNT_CLASS.review }, String(left.review)))),
           body,
-          el('div.actions', {}, el('button.btn.btn-ghost.btn-small', { type: 'button', onclick: front }, 'Stop')),
+          el('div.actions', {}, el('button.btn.btn-ghost.btn-small', { type: 'button', onclick: () => { closeFigure(); front(); } }, 'Stop')),
         );
         page.scrollIntoView({ block: 'start' });
       };
       const finish = (n: number, good: number) => {
+        closeFigure();
         const now = Date.now();
         const day = dayCounts(col(), now);
         page.replaceChildren(
@@ -331,15 +376,7 @@ export function noteCard(note: Note, pictures: readonly Node[], gaps: () => Reco
   const started = Date.now();
   const body = el('div.quiz-card');
   const after = el('div');
-  const grade = (picked: 'right' | 'wrong' | 'shown') => {
-    const took = Date.now() - started;
-    const g = gaps();
-    const buttons = (picked === 'wrong' ? [Rating.Again] : [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]).map((r) =>
-      el(`button.btn${r === Rating.Good || picked === 'wrong' ? '' : '.btn-ghost'}.rate.rate-${r}`, { type: 'button', onclick: () => onRate(r, took) },
-        el('span.rate-name', {}, RATING_NAMES[r]), el('span.rate-gap', {}, formatGap(g[r]))));
-    after.append(el('div.review-rates', {}, ...buttons));
-    (buttons.find((b) => b.classList.contains('rate-3')) ?? buttons[0]).focus();
-  };
+  const grade = (picked: 'right' | 'wrong' | 'shown') => rateRow(after, picked, gaps, (r) => onRate(r, Date.now() - started));
   body.append(...pictures.map((p) => el('div.check-picture', {}, p)), el('p.task', {}, note.front));
   if (note.model === 'choice' && note.choices) {
     const order = shuffle(note.choices.map((_, i) => i), makeRng(freshSeed()));
@@ -369,6 +406,42 @@ export function noteCard(note: Note, pictures: readonly Node[], gaps: () => Reco
   }
   body.append(after);
   return body;
+}
+
+/** Anki's buttons under a card once it is answered: only Again after a miss. */
+function rateRow(after: HTMLElement, picked: 'right' | 'wrong' | 'shown', gaps: () => Record<RatingT, number>, onRate: (r: RatingT) => void): void {
+  const g = gaps();
+  const buttons = (picked === 'wrong' ? [Rating.Again] : [Rating.Again, Rating.Hard, Rating.Good, Rating.Easy]).map((r) =>
+    el(`button.btn${r === Rating.Good || picked === 'wrong' ? '' : '.btn-ghost'}.rate.rate-${r}`, { type: 'button', onclick: () => onRate(r) },
+      el('span.rate-name', {}, RATING_NAMES[r]), el('span.rate-gap', {}, formatGap(g[r]))));
+  after.append(el('div.review-rates', {}, ...buttons));
+  (buttons.find((b) => b.classList.contains('rate-3')) ?? buttons[0]).focus({ preventScroll: true });
+}
+
+/**
+ * A live figure asked as a flash card: its question, then the figure, built
+ * afresh from new readings; once its guess is marked, what was right and
+ * Anki's buttons. "Show the answer" gives up on the guess and says it.
+ * Null when the figure cannot be built.
+ */
+export function figureCard(note: Note, gaps: () => Record<RatingT, number>, onRate: (r: RatingT, took: number) => void, build: (seed: number, verdict: (right: boolean) => void) => { node: HTMLElement; close: () => void } | null): { node: HTMLElement; close: () => void } | null {
+  const started = Date.now();
+  const after = el('div.review-figure-after');
+  let answered = false;
+  const giveUp = el('button.btn.btn-ghost.btn-small', { type: 'button' }, 'Show the answer') as HTMLButtonElement;
+  const settle = (picked: 'right' | 'wrong' | 'shown') => {
+    if (answered) return;
+    answered = true;
+    giveUp.remove();
+    after.append(el('div', { className: `verdict ${picked === 'right' ? 'good' : picked === 'wrong' ? 'bad' : ''}` },
+      el('p', {}, el('strong', {}, picked === 'right' ? 'Right. ' : picked === 'wrong' ? 'Not this time. ' : ''), note.back)));
+    rateRow(after, picked, gaps, (r) => onRate(r, Date.now() - started));
+  };
+  const fig = build(freshSeed(), (right) => settle(right ? 'right' : 'wrong'));
+  if (!fig) return null;
+  giveUp.addEventListener('click', () => settle('wrong'));
+  const node = el('div.quiz-card.review-figure-card', {}, el('p.task', {}, note.front), fig.node, el('div.actions', {}, giveUp), after);
+  return { node, close: fig.close };
 }
 
 function when(ms: number): string {

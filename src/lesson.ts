@@ -463,6 +463,7 @@ export function lessonProblems(
         else if (b.goal && !f.goals?.includes(b.goal)) out.push(`${l.id}: ${b.id} does not know the goal "${b.goal}"`);
         else if (b.task && !b.goal && !f.quiz) out.push(`${l.id}: ${b.id} has a task but no goal`);
         if (f?.options) for (const p of f.options(b.options)) out.push(`${l.id}: ${b.id} ${p}`);
+        if (f?.card?.goal && !f.goals?.includes(f.card.goal)) out.push(`${l.id}: ${b.id}'s flash card asks for the goal "${f.card.goal}", which it does not know`);
       }
     }
   }

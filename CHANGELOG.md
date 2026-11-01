@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.15.0 (2026-11-01)
+
+Predictions marked plainly, and live figures as flash cards:
+
+- `figure`: `choices().mark(answer)` turns the pick green with a tick or red
+  with a cross, rings the right option when the pick was not it, and adds a
+  verdict line; a frozen pick stands out as "Your guess". `verdict(right,
+  text)` and `showVerdict(t, where, right, text)` do the same for a guess put
+  on the drawing. `guessFirst` moves here from the courses, with `answer`
+  (a number or a function) and `reveal: 'lock' | 'done'`.
+- Flash cards from figures: `FigureSpec.card` / `FigureFactory.card`
+  (`{ front, back, goal? }`), `FigureContext.card` and `Task.card` (`{ seed,
+  verdict }`), `startRng(t)`, `tellCard(t, right)`. `rng`: `between`,
+  `oneOf`, `jitter`.
+- `review`: `FigureSource`, `fillFigureCards`, `figureFor`,
+  `figureCardBlocks`, `figureCardProblems`, `isFigureNote`. The review page
+  adds each finished lesson's figure cards and asks them with the figure
+  itself (`figureCard` in `review-view`); the Anki download gives them a
+  picture of the figure. `review-all` leaves them out of its sittings
+  (`askableHere`, `figuresWaiting`) and links to the courses that have them.
+- `lesson`: `lessonProblems` reports a card goal its figure does not know.
+
 ## 0.14.0 (2026-11-01)
 
 The log at a lesson's end becomes its summary:

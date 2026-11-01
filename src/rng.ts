@@ -21,3 +21,19 @@ export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
   }
   return out;
 }
+
+/** A number from `lo` to `hi`, rounded to `step` when given. */
+export function between(rng: Rng, lo: number, hi: number, step?: number): number {
+  const v = lo + rng() * (hi - lo);
+  return step ? Math.min(hi, Math.max(lo, Math.round(v / step) * step)) : v;
+}
+
+/** One of `items`. */
+export function oneOf<T>(rng: Rng, items: readonly T[]): T {
+  return items[Math.floor(rng() * items.length) % items.length];
+}
+
+/** `v` moved at random by up to `by` either way, rounded to `step` when given. */
+export function jitter(rng: Rng, v: number, by: number, step?: number): number {
+  return between(rng, v - by, v + by, step);
+}

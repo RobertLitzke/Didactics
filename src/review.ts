@@ -13,7 +13,7 @@
 // cards from the old Leitner quiz keep their place.
 
 import { checkSteps, type CheckStep } from './check';
-import { testContext, type AnsweredQuestion, type FigureFactory } from './figure';
+import { testContext, type AnsweredQuestion, type FigureFactory, type Options } from './figure';
 import type { Lesson } from './lesson';
 import { passed, type Progress } from './progress';
 import type { Card as QuizCard } from './quiz';
@@ -40,11 +40,21 @@ export interface DeckSource {
   card: string;
 }
 
-export type ReviewSource = CheckSource | DeckSource;
+/** A live figure asked as a flash card (figure.ts FigureCard). */
+export interface FigureSource {
+  kind: 'figure';
+  lesson: string;
+  /** The block, as "part.block". */
+  at: string;
+  figure: string;
+}
+
+export type ReviewSource = CheckSource | DeckSource | FigureSource;
 
 export const sourceOf = (n: Note): ReviewSource | undefined => {
   const s = n.source as Partial<ReviewSource> | undefined;
   if (s?.kind === 'check' && typeof s.lesson === 'string') return s as CheckSource;
+  if (s?.kind === 'figure' && typeof s.lesson === 'string' && typeof s.figure === 'string') return s as FigureSource;
   if (s?.kind === 'deck' && typeof s.card === 'string') return s as DeckSource;
   return undefined;
 };
@@ -141,6 +151,89 @@ export function fillFromLessons(col: Collection | undefined, lessons: readonly L
     }
   }
   return c;
+}
+
+/** Whether a note is a live figure, which only its own course can ask. */
+export const isFigureNote = (n: Note): boolean => sourceOf(n)?.kind === 'figure';
+
+/** A figure card's note id. */
+export const figureNoteId = (lesson: string, figure: string) => `figure:${lesson}:${figure}`;
+
+/** A lesson's figures that can be flash cards, with where each is (the first block, when one is used twice). */
+export function figureCardBlocks(l: Lesson, figures: Readonly<Record<string, FigureFactory>>): { at: string; figure: string; options?: Options }[] {
+  const out: { at: string; figure: string; options?: Options }[] = [];
+  l.parts.forEach((p, i) => p.blocks.forEach((b, j) => {
+    if (b.type === 'interactive_diagram' && figures[b.id]?.card && !out.some((x) => x.figure === b.id)) out.push({ at: `${i}.${j}`, figure: b.id, options: b.options });
+  }));
+  return out;
+}
+
+/**
+ * Each finished lesson's figures that can be flash cards join as new cards,
+ * met a few a day like any new card; a card already in is given its
+ * figure's current words.
+ */
+export function fillFigureCards(col: Collection | undefined, lessons: readonly Lesson[], figures: Readonly<Record<string, FigureFactory>>, save: Progress, naming: DeckNaming, now: number = Date.now()): Collection {
+  let c = col ?? emptyCollection(now);
+  for (const l of lessons) {
+    if (!save.lessons[l.id]?.done) continue;
+    for (const b of figureCardBlocks(l, figures)) {
+      const card = figures[b.figure].card!;
+      const deck = lessonDeck(l.id);
+      const id = figureNoteId(l.id, b.figure);
+      const old = c.notes[id];
+      if (old && old.front === card.front && old.back === card.back) continue;
+      c = ensureDeck(c, deck, lessonDeckName(l, naming), now);
+      c = addNote(c, deck, {
+        id,
+        front: card.front,
+        back: card.back,
+        image: '',
+        drawing: true,
+        tags: [`lesson:${l.code ?? l.n}`, 'figure'],
+        source: { kind: 'figure', lesson: l.id, at: b.at, figure: b.figure } satisfies FigureSource,
+      }, now);
+    }
+  }
+  return c;
+}
+
+/** Where a figure card's figure is now, with its block's options; undefined when the lesson no longer has it. */
+export function figureFor(note: Note, lessons: readonly Lesson[], figures: Readonly<Record<string, FigureFactory>>): { factory: FigureFactory; options?: Options } | undefined {
+  const s = sourceOf(note);
+  if (s?.kind !== 'figure') return undefined;
+  const l = lessons.find((x) => x.id === s.lesson);
+  const factory = figures[s.figure];
+  if (!l || !factory?.card) return undefined;
+  const blocks = l.parts.flatMap((p) => p.blocks);
+  const b = blocks.find((x) => x.type === 'interactive_diagram' && x.id === s.figure);
+  if (!b || b.type !== 'interactive_diagram') return undefined;
+  return { factory, options: b.options };
+}
+
+/**
+ * What is wrong with the course's figure cards: each is built as a flash card
+ * from a few seeds, as the review page would, and must build without
+ * throwing. For a course's content test (a DOM is needed).
+ */
+export function figureCardProblems(lessons: readonly Lesson[], figures: Readonly<Record<string, FigureFactory>>, save: Progress, seeds: readonly number[] = [1, 2, 3]): string[] {
+  const out: string[] = [];
+  for (const l of lessons) {
+    for (const b of figureCardBlocks(l, figures)) {
+      const f = figures[b.figure];
+      for (const seed of seeds) {
+        const ctx = { ...testContext(save), card: { seed, verdict: () => {} } };
+        try {
+          f(ctx, f.card!.goal ?? f.goals?.[0], b.options);
+        } catch (e) {
+          out.push(`${l.id}: ${b.figure} as a flash card (seed ${seed}): ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+          ctx.close();
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** The note for a card of the course's quiz deck. */

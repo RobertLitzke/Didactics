@@ -8,6 +8,7 @@
 
 import { el } from './dom';
 import { escapeHtml } from './anki';
+import { isFigureNote } from './review';
 import { noteCard, pictureFile } from './review-view';
 import {
   answer, dayCounts, mergeCollections, migrateCollection, nextCard, preview, Rating, studyQueue, totals, weave,
@@ -76,6 +77,28 @@ export function readCollections(courses: readonly SiteCourse[], storage: Pick<St
   return out;
 }
 
+/**
+ * A course's cards that can be asked here: all but its live figures, which
+ * need the course's own code and wait on its own Review page.
+ */
+export function askableHere(col: Collection): Collection {
+  const figures = new Set(Object.values(col.notes).filter(isFigureNote).map((n) => n.id));
+  if (!figures.size) return col;
+  return { ...col, cards: Object.fromEntries(Object.entries(col.cards).filter(([, c]) => !figures.has(c.note))) };
+}
+
+/** How many live-figure cards each course has ready today, which only its own Review page can ask. */
+export function figuresWaiting(cols: Record<string, Collection>, now: number = Date.now()): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, col] of Object.entries(cols)) {
+    const all = dayCounts(col, now);
+    const here = dayCounts(askableHere(col), now);
+    const n = all.new + all.learning + all.review - (here.new + here.learning + here.review);
+    if (n > 0) out[k] = n;
+  }
+  return out;
+}
+
 /** Write a course's review cards back into its save, keeping the rest of it as it is now. */
 export function writeCollection(course: SiteCourse, col: Collection, storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage): void {
   const save = readSave(storage, course.save);
@@ -98,8 +121,10 @@ export function allCoursesReview(o: AllReviewOptions): HTMLElement {
   const byKey = new Map(o.courses.map((c) => [c.key, c]));
 
   const front = () => {
-    const cols = readCollections(o.courses, storage);
+    const raw = readCollections(o.courses, storage);
+    const cols = Object.fromEntries(Object.entries(raw).map(([k, c]) => [k, askableHere(c)]));
     const now = Date.now();
+    const waiting = figuresWaiting(raw, now);
     const rows = o.courses.filter((c) => cols[c.key]).map((c) => ({ c, day: dayCounts(cols[c.key], now), all: totals(cols[c.key], now) }));
     const sum = rows.reduce((t, r) => ({ new: t.new + r.day.new, learning: t.learning + r.day.learning, review: t.review + r.day.review }), { new: 0, learning: 0, review: 0 });
     const ready = sum.new + sum.learning + sum.review;
@@ -117,7 +142,11 @@ export function allCoursesReview(o: AllReviewOptions): HTMLElement {
           ready
             ? el('button.ra-btn.ra-big', { type: 'button', onclick: () => sitting() }, `Study ${Math.min(SITTING, ready)} cards`)
             : el('p', {}, `All caught up for today.${Number.isFinite(next) ? ` The next card is due ${when(next - now)}.` : ''}`),
-          anki(cols))
+          Object.keys(waiting).length
+            ? el('p.ra-note', {}, 'Figure cards, which you work with the figure itself, wait on each course’s own Review page: ',
+              ...Object.entries(waiting).flatMap(([k, n], i) => [i ? ', ' : '', el('a', { href: `${byKey.get(k)!.href}#/review` }, `${byKey.get(k)!.title} (${n})`)]), '.')
+            : '',
+          anki(raw))
         : el('p', {}, 'Nothing to review yet. Answer a lesson’s check in any course and its questions come here.'),
       o.back ? el('p.ra-back', {}, el('a', { href: o.back.href }, o.back.label)) : '',
     );
@@ -168,7 +197,8 @@ export function allCoursesReview(o: AllReviewOptions): HTMLElement {
 
   const sitting = () => {
     // Each course's own queue (its limits, its order), dealt in turn.
-    const start = readCollections(o.courses, storage);
+    const read = () => Object.fromEntries(Object.entries(readCollections(o.courses, storage)).map(([k, c]) => [k, askableHere(c)]));
+    const start = read();
     const now = Date.now();
     const queues: Record<string, string[]> = {};
     for (const [k, col] of Object.entries(start)) queues[k] = studyQueue(col, now, { limit: SITTING });
@@ -177,7 +207,7 @@ export function allCoursesReview(o: AllReviewOptions): HTMLElement {
     let right = 0;
 
     const show = () => {
-      const cols = readCollections(o.courses, storage);
+      const cols = read();
       const t = Date.now();
       // A card missed a minute ago, in any course, comes first.
       let pick: { key: string; id: string } | undefined;

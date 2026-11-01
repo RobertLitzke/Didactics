@@ -9,6 +9,7 @@
 import { el, svg, type Child } from './dom';
 import type { Progress } from './progress';
 import type { Talk } from './radio';
+import { makeRng, type Rng } from './rng';
 
 export interface FigureContext {
   /** The reader's progress and settings (units, the radio); an app may pass its own larger save. */
@@ -29,6 +30,35 @@ export interface FigureContext {
    * on, to be kept for review (review.ts). Absent outside a lesson.
    */
   answered?: (q: AnsweredQuestion) => void;
+  /**
+   * The figure is being asked as a flash card on the review page, not shown
+   * in a lesson (see FigureCard): it starts from readings of its own, drawn
+   * from `seed`, asks its guess afresh, and says through `verdict` whether
+   * the guess was right once that is known.
+   */
+  card?: CardRun;
+}
+
+/** A figure asked as a flash card: where its readings come from, and where its verdict goes. */
+export interface CardRun {
+  seed: number;
+  verdict: (right: boolean) => void;
+}
+
+/**
+ * What a figure that can be a flash card says about that card: the words it
+ * goes by away from the figure (the Anki package, the review of every course),
+ * and the goal it is built with when asked. A card's figure starts from
+ * readings drawn at random each time (`t.card.seed`), so the answer cannot
+ * be learned by heart, asks its guess, and gives its verdict.
+ */
+export interface FigureCard {
+  /** The card's question, in words. */
+  front: string;
+  /** Its answer, in words, as said when the figure cannot be shown. */
+  back: string;
+  /** The goal to build it with; default the first of its goals. */
+  goal?: string;
 }
 
 /** A check question as answered, with what it takes to ask it again (check.ts, review.ts). */
@@ -86,6 +116,8 @@ export type FigureFactory = ((ctx: FigureContext, goal?: string, options?: Optio
   goals?: readonly string[];
   quiz?: true;
   options?: OptionsCheck;
+  /** It can be asked as a flash card once its lesson is done (review.ts). */
+  card?: FigureCard;
   /** Drawn from its options alone (charts.ts), so each block that uses it is a different drawing: a gallery shows every one. */
   each?: true;
 };
@@ -94,6 +126,8 @@ export type FigureFactory = ((ctx: FigureContext, goal?: string, options?: Optio
 export interface FigureSpec {
   /** Checks a block's options, so a wrong id in a lesson's JSON fails the content test, not the reader. */
   options?: OptionsCheck;
+  /** It is also a flash card, once its lesson is done (review.ts). */
+  card?: FigureCard;
 }
 
 /** The figure's ready promise, or a settled one when it draws at once. */
@@ -125,6 +159,17 @@ export interface Task {
    * promise given, and settles even if one fails.
    */
   waitFor: (p: Promise<unknown>) => void;
+  /** Present when the figure is asked as a flash card: see FigureContext.card. */
+  readonly card?: CardRun;
+}
+
+/**
+ * Where a figure's starting readings come from: the flash card's seed when it
+ * is one, so each asking is new, otherwise a fresh seed each time it is built.
+ * Draw from it with rng.ts `between`, `oneOf` and `jitter`.
+ */
+export function startRng(t: Pick<Task, 'card'>): Rng {
+  return makeRng(t.card?.seed ?? (Math.random() * 2 ** 32) >>> 0);
 }
 
 const task = (ctx: FigureContext, goal: string | undefined, p: { promise: Promise<void>; resolve: () => void }, waits: Promise<unknown>[]): Task => ({
@@ -135,6 +180,7 @@ const task = (ctx: FigureContext, goal: string | undefined, p: { promise: Promis
   keep: ctx.memo?.keep ?? (() => {}),
   restored: ctx.memo?.restored ?? false,
   waitFor: (w) => void waits.push(w),
+  ...(ctx.card ? { card: ctx.card } : {}),
 });
 
 const settled = (waits: Promise<unknown>[]): Promise<void> | undefined =>
@@ -151,7 +197,7 @@ export function figure<O extends Options = Options>(goals: readonly string[], bu
     const node = build(ctx, task(ctx, goal, p, waits), options as O | undefined);
     return { node, done: goal ? p.promise : undefined, ready: settled(waits) };
   };
-  return Object.assign(make, { goals }, spec.options ? { options: spec.options } : {});
+  return Object.assign(make, { goals }, spec.options ? { options: spec.options } : {}, spec.card ? { card: spec.card } : {});
 }
 
 /** A figure that is a test: its task is to be answered, whatever the lesson says. */
@@ -320,32 +366,156 @@ export interface Choices {
   node: HTMLElement;
   /** The option picked, or -1. */
   picked: () => number;
-  /** Stop or allow picking. */
+  /** Stop or allow picking. Frozen, the pick stands out as the reader's guess. */
   freeze: (frozen: boolean) => void;
   /** Pick option `i`, as a tap would. */
   pick: (i: number) => void;
+  /**
+   * Say which option was right: the pick turns green with a tick or red with
+   * a cross, the right one is ringed when the pick was not it, and a verdict
+   * line says so under them. Returns whether the pick was right. Freezes them.
+   */
+  mark: (answer: number) => boolean;
 }
 
 /** A row of options for a guess, one of which can be picked. */
 export function choices(options: readonly string[], onPick: (i: number) => void): Choices {
   let at = -1;
   const chips = options.map((text, i) => el('button.chip', { type: 'button', onclick: () => pick(i) }, text) as HTMLButtonElement);
+  const node = el('div.chips.fig-choices', {}, chips);
   const pick = (i: number) => {
     at = i;
     chips.forEach((c, k) => c.classList.toggle('on', k === i));
     onPick(i);
   };
-  return {
-    node: el('div.chips.fig-choices', {}, chips),
-    picked: () => at,
-    freeze: (frozen) => chips.forEach((c) => (c.disabled = frozen)),
-    pick,
+  const freeze = (frozen: boolean) => {
+    chips.forEach((c) => (c.disabled = frozen));
+    node.classList.toggle('frozen', frozen);
+    chips.forEach((c, k) => {
+      if (frozen && k === at) c.setAttribute('aria-label', `Your guess: ${options[k]}`);
+      else c.removeAttribute('aria-label');
+    });
   };
+  let marked: { at: number; answer: number } | undefined;
+  const mark = (answer: number) => {
+    const right = at === answer;
+    // Marked the same already: a figure may mark on every redraw.
+    if (marked?.at === at && marked.answer === answer) return right;
+    marked = { at, answer };
+    freeze(true);
+    chips.forEach((c, k) => {
+      c.classList.toggle('right', k === at && right);
+      c.classList.toggle('wrong', k === at && !right);
+      c.classList.toggle('answer', k === answer && !right);
+    });
+    node.querySelector(':scope > .fig-verdict')?.remove();
+    node.append(verdict(right, right ? 'Your guess was right.' : `Your guess was wrong. The answer: ${options[answer]}.`));
+    return right;
+  };
+  return { node, picked: () => at, freeze, pick, mark };
+}
+
+/**
+ * A guess's verdict, plain to see: a green tick or a red cross, and words.
+ * For a guess put on the drawing (see placeable), set it in the controls.
+ */
+export function verdict(right: boolean, text?: string): HTMLElement {
+  return el(`p.fig-verdict.${right ? 'right' : 'wrong'}`, { role: 'status' },
+    el('span.fig-verdict-mark', { 'aria-hidden': 'true' }, right ? '✓' : '✗'),
+    el('span', {}, text ?? (right ? 'Your guess was right.' : 'Your guess was wrong.')));
+}
+
+/** Pass a verdict on when the figure is a flash card; returns `right`. Use it as `tellCard(t, pick.mark(answer))`, so the marking happens either way. */
+export function tellCard(t: Pick<Task, 'card'>, right: boolean): boolean {
+  t.card?.verdict(right);
+  return right;
+}
+
+/**
+ * Show a guess's verdict in `where`, in place of any shown there before, and
+ * pass it on when the figure is a flash card. Returns `right`.
+ */
+export function showVerdict(t: Pick<Task, 'card'>, where: HTMLElement, right: boolean, text?: string): boolean {
+  where.querySelector(':scope > .fig-verdict')?.remove();
+  where.append(verdict(right, text));
+  t.card?.verdict(right);
+  return right;
 }
 
 /** The button that locks a guess in. */
 export function lockIn(text: string, onClick: () => void): HTMLButtonElement {
   return el('button.btn.btn-small', { type: 'button', onclick: onClick }, text) as HTMLButtonElement;
+}
+
+export interface GuessFirstOptions {
+  /** The question, shown in the readout until the guess is in. */
+  ask: string;
+  options: readonly string[];
+  /** Locked until the guess is in. */
+  sliders: readonly Slider[];
+  /** Other controls disabled until the guess is in. */
+  buttons?: readonly HTMLButtonElement[];
+  /** Controls hidden until the guess is in. */
+  hidden?: readonly HTMLElement[];
+  /** The right option, or a function giving it (for readings drawn at random); leave out when no option is wrong. */
+  answer?: number | (() => number);
+  /**
+   * When the verdict shows: as the guess is locked in (default), or when the
+   * figure's task is done, for a figure whose controls are there to find the
+   * answer. A flash card always shows it as the guess is locked in.
+   */
+  reveal?: 'lock' | 'done';
+  /** Runs once the guess is in, with the option picked. */
+  after: (guess: number) => void;
+  /** The lock-in button's words. Default "Lock it in". */
+  lockText?: string;
+}
+
+/**
+ * A guess before the controls: `ask` in the readout, the options as chips, and
+ * the sliders locked until a pick is locked in; then `after(guess)` runs. The
+ * pick stays standing out as the reader's guess, and with an `answer` it is
+ * marked right or wrong (see Choices.mark). The guess is kept, so a reader who
+ * comes back finds it made; a flash card asks it afresh. Returns whether the
+ * guess is in.
+ */
+export function guessFirst(t: Task, f: { controls: HTMLElement; readout: HTMLElement }, o: GuessFirstOptions): () => boolean {
+  let open = false;
+  const pick = choices(o.options, () => (go.disabled = false));
+  const answerOf = () => (typeof o.answer === 'function' ? o.answer() : o.answer);
+  const reveal = () => {
+    const a = answerOf();
+    if (a === undefined) return;
+    const right = pick.mark(a);
+    t.card?.verdict(right);
+  };
+  const go = lockIn(o.lockText ?? 'Lock it in', () => {
+    const guess = pick.picked();
+    if (guess < 0 || open) return;
+    if (!t.card) t.keep(guess);
+    pick.freeze(true);
+    go.remove();
+    lock(o.sliders, false);
+    for (const b of o.buttons ?? []) b.disabled = false;
+    for (const h of o.hidden ?? []) h.style.display = '';
+    open = true;
+    o.after(guess);
+    if (o.reveal === 'done' && !t.card && !t.restored) void t.promise.then(reveal);
+    else reveal();
+  });
+  go.disabled = true;
+  lock(o.sliders, true);
+  for (const b of o.buttons ?? []) b.disabled = true;
+  for (const h of o.hidden ?? []) h.style.display = 'none';
+  f.controls.prepend(pick.node, go);
+  f.readout.textContent = o.ask;
+  queueMicrotask(() => {
+    if (!t.card && typeof t.kept === 'number' && !open) {
+      pick.pick(t.kept);
+      go.click();
+    }
+  });
+  return () => open;
 }
 
 /**

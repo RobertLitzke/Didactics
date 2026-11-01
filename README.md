@@ -151,7 +151,7 @@ pin back before committing.
 | `course-view` | `courseSection({ edits, fileName, pieces? })`, the Settings section to download (all, or one piece such as a lesson), load and reset the course's text; `pieceFileName` |
 | `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
-| `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`lock`, `choices`, `lockIn`, `placeable`) |
+| `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
 | `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `scaleBar`; `maps({ palette, asset })` gives the `map` chart |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
@@ -168,7 +168,7 @@ pin back before committing.
 | `srs` | Spaced repetition in Anki's shape, pure functions over plain data: a `Collection` of `Deck`s, `Note`s (basic or multiple choice), `Card`s (new, learning, review, relearning; due, interval, ease, reps, lapses, FSRS stability and difficulty) and a `ReviewLog`. Schedulers `fsrs()` (via ts-fsrs, the default) and `sm2()` (Anki's classic); `answer`, `preview`, `studyQueue` (due first, new ones woven through, daily limits), `nextCard`, `reviewAhead`, `dayCounts`, `totals`, `suspend`, `bury`, `forget`, `addNote`, `removeNote`, `migrateCollection`, `fromLeitner`, `formatGap` |
 | `anki` | `toApkg(collection, { media?, html?, sourceLabel? })`: the collection as an Anki package, schedules and review log included, notes matched again on a later import by guid |
 | `sqlite` | `sqliteFile(tables, indexes)`: a small writer of SQLite database files (what an .apkg holds), with no WebAssembly |
-| `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day, Leitner places kept), `stepFor` (a check question made again, picture and all) |
+| `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day, Leitner places kept), `stepFor` (a check question made again, picture and all), `fillFigureCards` and `figureFor` (live figures as flash cards), `figureCardProblems` |
 | `review-all` | `allCoursesReview({ courses: [{ key, title, save, href, icon?, theme? }] })`, every course's cards in one sitting, each in its colours, answers written back to each save, one .apkg of all; style with `didactics/styles/review-all.css` |
 | `review-view` | `reviewView({ store, title, lessons, figures, deck?, media?, blurb? })`, the review page: today's counts, decks, sittings with Anki's four buttons, options, and the .apkg download |
 | `quiz` | The flash-card shape (`Card`, `conceptCard` for hand-written cards); its Leitner scheduling (`review`, `deal`, `tally`) is kept for old saves |
@@ -313,10 +313,26 @@ block. A figure that paints only once something loads calls
 when that has, so a test, a screenshot or the gallery can wait for it.
 
 Use `animate(node, ctx, dt => …)` for motion. It runs only while the figure
-is on screen and stops when the lesson closes. Guess-first figures lock
-their sliders with `lock(sliders, true)`, offer a `choices([...])` row and a
-`lockIn('Lock it in', …)` button, then unlock the sliders. See Clouds'
-`heaps.ts` parcel figure for a full example.
+is on screen and stops when the lesson closes. Guess-first figures use
+`guessFirst(t, f, { ask, options, answer, sliders, after })`: the sliders
+stay locked until a pick is locked in, the pick then stands out as "Your
+guess", and once the answer is known (`reveal: 'lock'`, the default, or
+`'done'` when the controls are there to find it) the pick turns green with a
+tick or red with a cross and the right option is ringed, with a verdict line
+under them. Hand-built guesses use the same pieces: `choices([...])` and its
+`mark(answer)`, `lockIn('Lock it in', …)`, `lock(sliders, on)`, and
+`verdict(right, text)` / `showVerdict(t, where, right, text)` for a guess put
+on the drawing with `placeable`. See Clouds' `heaps.ts` parcel figure.
+
+A figure can also be a flash card: `figure(goals, build, { card: { front,
+back, goal? } })`. Once its lesson is done it joins the Review page, where it
+is built afresh with `t.card` set: it draws its starting readings from
+`startRng(t)` (with rng.ts `between`, `oneOf`, `jitter`), so the answer
+cannot be learned by heart, asks its guess again (a kept guess is not put
+back), and passes its verdict on (`guessFirst` does this; a hand-built guess
+calls `tellCard(t, pick.mark(answer))`). A lesson shows the readings its text
+describes; only cards jitter. `figureCardProblems(lessons, figures, save)` in
+`didactics/review` builds each card from a few seeds for a course's tests.
 
 ### Charts from JSON, with no code
 
@@ -823,6 +839,13 @@ subsets keep the page small.
   answer at `options[0]`; `conceptCard` makes one from a hand-written JSON
   card. A card with `after: 'lesson-id'` is dealt only once that lesson is
   passed or skipped. `media: (card) => node | null` puts a picture above it.
+- **Figure cards**: each finished lesson's figures that declare a `card`,
+  worked on the page itself with fresh readings each time: guess, verdict,
+  then Anki's buttons (only Again after a miss; "Show the answer" counts as
+  a miss). The review of every course cannot run a course's figures, so it
+  leaves these out of its sittings and links to each course's Review page
+  with how many wait there; in Anki they are words, with a picture of the
+  figure as it starts.
 
 The data is Anki's: notes, cards with a type (new, learning, review,
 relearning) and a queue, due times, intervals, ease, reps, lapses, and every
