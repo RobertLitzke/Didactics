@@ -65,6 +65,8 @@ export function lessonShapeProblems(raw: unknown, where: string): string[] {
   const out: string[] = [];
   const str = (v: unknown) => typeof v === 'string';
   for (const k of ['id', 'title'] as const) if (!str((raw as Record<string, unknown>)[k])) out.push(`${where}: "${k}" should be text`);
+  const summary = (raw as Record<string, unknown>).summary;
+  if (summary !== undefined && !(Array.isArray(summary) && summary.every(str))) out.push(`${where}: "summary" should be a list of points`);
   raw.parts.forEach((p, i) => {
     const at = `${where}, part ${i + 1}`;
     const part = p as { title?: unknown; blocks?: unknown };

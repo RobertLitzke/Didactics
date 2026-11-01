@@ -248,8 +248,11 @@ export const LESSONS: readonly Lesson[] = Object.values(found).sort((a, b) => a.
         },
         { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Two questions', task: 'Answer them' }] },
       ],
-      learned: ['A lesson is text, figures and a check.'],
-      next: 'Next: write the second lesson.',
+      summary: [
+        'A lesson is text, figures and a check, in parts that open one after another.',
+        'Every interactive figure shows a cause and its effect.',
+        'The summary lists the lesson\'s main points, and opens a finished lesson.',
+      ],
       journal: [],
     }),
 

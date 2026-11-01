@@ -53,6 +53,7 @@ const HOW_TO =
   'A callout\'s "caption" and "task" are words to edit; its "id", "goal" and "options" wire it to the code, so keep them unless the code changes too. ' +
   'The exception is a chart, a callout with the "id" "timeline", "tree", "scale" or "plate": it is drawn from its "options" alone, ' +
   'so its labels, notes, numbers and colours are all there to edit, and a new chart is only a new block. ' +
+  'A lesson\'s "summary" is its main points, five to ten, shown in a box after the check and at the top when the lesson is opened again. ' +
   'Blocks can be added, removed and moved. A callout with an id the course has no code for yet shows as a box saying that the diagram goes there, ' +
   '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]] and [^footnote]. ' +
   '"code", when there is one, has the words written in the course\'s code (labels, commentary, buttons), one table per source file: ' +
@@ -104,7 +105,7 @@ export function readCourse(raw: unknown, known?: CourseFiles, knownCode?: CodeTe
     else if (known && !(path in known)) problems.push(`${p}: the course has no such file`);
     else if (isLessonShaped(json) || (known && isLessonShaped(known[path]))) problems.push(...lessonShapeProblems(json, path));
     else if (isReferenceShaped(json) || (known && isReferenceShaped(known[path]))) problems.push(...referenceShapeProblems(json, path));
-    files[path] = json;
+    files[path] = upgradeSummary(json);
   }
   return problems.length ? { files: {}, code: {}, problems } : { files, code: changedCode(f.code), problems };
 }
@@ -269,6 +270,17 @@ export function courseEdits(o: CourseEditsOptions): CourseEdits {
 }
 
 /**
+ * A lesson from before 0.14.0, with "learned" (written into a log the reader
+ * signed) and "next", as one with a "summary": what was learned becomes the
+ * summary, and "next" goes. Anything else comes back as it was.
+ */
+export function upgradeSummary<T>(raw: T): T {
+  if (!isLessonShaped(raw) || !('learned' in raw || 'next' in raw)) return raw;
+  const { learned, next: _next, ...rest } = raw as Record<string, unknown>;
+  return { ...rest, summary: (rest as { summary?: unknown }).summary ?? learned ?? [] } as T;
+}
+
+/**
  * A lesson in the earlier JSON shape, with `kind` blocks ("text", "key",
  * "figure" with a "figure" name), in the typed shape of blocks.ts. `typeOf`
  * says what each figure is (lesson.ts diagramType); left out, or for an id it
@@ -276,6 +288,7 @@ export function courseEdits(o: CourseEditsOptions): CourseEdits {
  * without as a still. Files already typed come back as they were.
  */
 export function upgradeLesson<T>(raw: T, typeOf?: (id: string) => DiagramType | undefined): T {
+  raw = upgradeSummary(raw);
   if (!isLessonShaped(raw)) return raw;
   const parts = (raw.parts as { blocks?: Record<string, unknown>[] }[]).map((p) => ({
     ...p,

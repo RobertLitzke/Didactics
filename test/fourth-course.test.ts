@@ -21,7 +21,7 @@ globalThis.IntersectionObserver ??= class { observe() {} disconnect() {} } as un
 
 const nav = { params: {}, navigate: () => {}, replace: () => {} };
 const lesson = (id: string, n: number, blocks: Lesson['parts'][number]['blocks'] = [{ type: 'text', text: 'Hi.' }], written = true): Lesson => ({
-  id, n, title: id, teaches: '', learned: [], next: '', journal: [], coming: !written || undefined,
+  id, n, title: id, teaches: '', summary: [], journal: [], coming: !written || undefined,
   parts: written ? [{ title: 'One', blocks }] : [],
 });
 

@@ -35,7 +35,7 @@ describe('top bar', () => {
 });
 
 describe('lessons not written yet', () => {
-  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', learned: [], next: '', journal: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
+  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', summary: [], journal: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
   const open = (lesson: Lesson) => {
     const store = createStore({ key: 'coming-test', empty: emptyProgress, migrate: migrateProgress });
     const went: string[] = [];

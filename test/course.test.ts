@@ -16,7 +16,7 @@ import { lessonSignature } from '../src/resume';
 import { createStore } from '../src/store';
 
 const lesson = (): Lesson => ({
-  id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', learned: [], next: '', journal: [],
+  id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [], journal: [],
   parts: [
     { title: 'Push', blocks: [
       { type: 'text', text: 'Push it.' },
@@ -100,6 +100,16 @@ describe('course file', () => {
     let h = 0x811c9dc5;
     for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
     expect(lessonSignature(lesson())).toBe((h >>> 0).toString(36));
+  });
+
+  it('reads a lesson from before summaries: what was learned becomes the summary', () => {
+    const old = { id: 'push', n: 1, title: 'Pushing', teaches: 't', learned: ['Pushes move things'], next: 'Next: pulls.', journal: [], parts: [] };
+    const up = upgradeLesson(old) as Record<string, unknown>;
+    expect(up.summary).toEqual(['Pushes move things']);
+    expect('learned' in up || 'next' in up).toBe(false);
+    const file = exportCourse('T', { 'src/data/push.json': old });
+    expect(readCourse(file).files['src/data/push.json']).toMatchObject({ summary: ['Pushes move things'] });
+    expect(lessonShapeProblems({ ...old, summary: 'one' }, 'p')).toContain('p: "summary" should be a list of points');
   });
 
   it('round-trips through the command line', () => {

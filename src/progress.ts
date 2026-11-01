@@ -4,7 +4,7 @@
 // adds its own fields alongside these (Clouds' core/save.ts is an example) and repairs them
 // after migrateProgress has done these.
 
-import { migrateResume, type LessonResume } from './resume';
+import { emptyResume, migrateResume, type LessonResume } from './resume';
 import { migrateCollection, type Collection } from './srs';
 import type { Units } from './units';
 
@@ -37,7 +37,7 @@ export interface Progress {
   fixedUnits?: true;
   /** Quiz cards seen, by card id: their spaced-repetition box and when each is next due (quiz.ts). */
   quiz: Record<string, { box: number; due: number }>;
-  /** Lessons left part way, by id, to pick up again where the reader was (resume.ts). */
+  /** Lessons left part way, by id, to pick up again where the reader was (resume.ts); for a finished lesson, only how its figures were left. */
   resume: Record<string, LessonResume>;
   /**
    * The review page's cards: every check question answered and every quiz
@@ -154,11 +154,16 @@ export function moveLesson(p: Progress, from: string, to: string): void {
   delete p.lessons[from];
 }
 
-/** Record a finished lesson, keeping the best score and the first finish date, and drop where it was left part way. */
+/**
+ * Record a finished lesson, keeping the best score and the first finish date.
+ * Where it was left part way is dropped, all but what its figures kept and
+ * how their sliders were set, so that it opens again as the reader left it.
+ */
 export function finishLesson<S extends Progress>(save: S, id: string, right: number, of: number, journal: readonly string[], now: Date): S {
   const prev = save.lessons[id];
   const better = !prev || prev.of === 0 || right / Math.max(1, of) > prev.best / Math.max(1, prev.of);
-  const { [id]: _left, ...resume } = save.resume ?? {};
+  const { [id]: left, ...resume } = save.resume ?? {};
+  if (left) resume[id] = { ...emptyResume(left.sig), sliders: left.sliders, kept: left.kept };
   return {
     ...save,
     resume,

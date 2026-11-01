@@ -1,10 +1,10 @@
 /* Didactics' stylesheet: the shell (top bar, buttons, toasts, the update
-   banner, settings), a lesson on paper, figures, the radio slip, the log and
-   the quiz. Colours and type come from the custom properties below; an app
+   banner, settings), a lesson on paper, figures, the radio slip, the
+   lesson's summary and the quiz. Colours and type come from the custom properties below; an app
    imports this file first and then sets its own values for them (see Clouds'
    src/app/styles/tokens.css), along with @font-face rules for the families it
-   names. The radio slip types in var(--type) and the log is handwritten in
-   var(--hand). README.md lists every property. */
+   names. The radio slip types in var(--type). README.md lists every
+   property. */
 
 :root {
   --bg: #1b172f;
@@ -27,7 +27,6 @@
 
   --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --display: 'Arial Narrow', system-ui, sans-serif;
-  --hand: 'Segoe Print', 'Bradley Hand', cursive;
   /* The radio slip and transcripts. */
   --type: 'Special Elite', 'Courier New', monospace;
   /* How wide the ordinary pages run. */
@@ -391,7 +390,6 @@ body.radio-up main { padding-bottom: 50vh; }
 
 .gate { margin: 26px 0 0; text-align: center; }
 .gate-hint { margin: 0; font-size: 0.85rem; color: var(--ink-soft); }
-.log { margin-top: 30px; }
 
 .actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 .count { font: 500 0.8rem/1 var(--display); letter-spacing: 0.1em; color: var(--ink-soft); }
@@ -415,37 +413,51 @@ body.radio-up main { padding-bottom: 50vh; }
 .verdict.bad { background: rgba(201, 71, 63, 0.12); }
 .verdict .said { margin: 0; }
 
-.logbook {
-  /* Every line in the log is one --rule tall and every gap a whole number of
-     rules, so the text keeps to the ruling however it wraps. The top padding
-     is one rule too, so the ruling starts in step with the first line. */
-  --rule: 30px;
-  --rule-drop: -5px; /* lift the ruling to sit just under the baseline */
-  background: repeating-linear-gradient(transparent 0 calc(var(--rule) - 1px), #e2cfae calc(var(--rule) - 1px) var(--rule)) #fdf6e8;
-  background-position: 0 var(--rule-drop);
-  border-radius: 6px;
-  padding: var(--rule) 18px;
-  box-shadow: 0 4px 0 var(--panel-2);
-  color: var(--ink);
-  font: 19px/var(--rule) var(--hand);
+/* The lesson's summary: its main points, set apart from the paper in the
+   page's dark ink, after the check the first time through and at the top of
+   a finished lesson opened again. */
+.summary-end { margin-top: 30px; }
+.summary {
+  margin: 22px -4px 8px;
+  padding: 18px 20px 8px;
+  background: var(--ink);
+  color: var(--panel);
+  border-radius: var(--radius);
+  border-top: 4px solid var(--sun);
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.55);
 }
-.logbook > * { margin: 0; line-height: var(--rule); }
-.logbook .eyebrow { color: var(--rose); }
-.logbook h2 { color: var(--ink); font-size: 1.4rem; }
-.logbook .score { color: var(--teal); margin-bottom: var(--rule); }
-.logbook ul { padding-left: 20px; margin-bottom: var(--rule); }
-.logbook .next { color: var(--ink-soft); margin-bottom: var(--rule); }
-/* The ruling is the signature line, so the field drops its own underline. */
-.logbook .sign { font: 19px var(--hand); height: var(--rule); padding: 0 4px; border-bottom: 0; vertical-align: top; }
-.sign {
-  border: 0;
-  border-bottom: 2px solid var(--ink);
-  background: transparent;
-  font: italic 1.1rem var(--font);
-  color: var(--ink);
-  padding: 4px;
-  width: min(220px, 60%);
+.summary-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--panel) 22%, transparent);
 }
+.summary-head p { margin: 0; }
+.summary-eyebrow { font: 600 0.8rem/1.2 var(--display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sun); }
+.summary-score { font: 500 0.8rem/1.2 var(--display); letter-spacing: 0.08em; color: color-mix(in srgb, var(--panel) 72%, transparent); }
+.summary-points { list-style: none; margin: 0; padding: 0; counter-reset: point; }
+.summary-points li {
+  counter-increment: point;
+  display: grid;
+  grid-template-columns: 2em 1fr;
+  gap: 0 6px;
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--panel) 12%, transparent);
+}
+.summary-points li:last-child { border-bottom: 0; }
+.summary-points li::before {
+  content: counter(point, decimal-leading-zero);
+  font: 600 0.85rem/1.65 var(--display);
+  letter-spacing: 0.06em;
+  color: var(--sun);
+}
+.summary-points p { margin: 0; font-size: 0.95em; line-height: 1.5; }
+.summary-points b { color: #fff; }
+/* A word tinted to match a figure is in the figure's colour on paper; here it is only bold. */
+.summary-points b.tint { color: #fff !important; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .field > span { font: 500 0.8rem/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 .field input { font: 1rem var(--font); padding: 10px 12px; border-radius: 10px; border: 0; background: var(--panel); color: var(--ink); max-width: 320px; }

@@ -2,8 +2,8 @@
 // an interactive explainer: a picture at the top, then the lesson's parts one
 // after another, each paragraphs and live figures. The next part opens once
 // every task in this one is done, so the lesson is read in order the first
-// time; a finished lesson opens in full. The last part is the check, and its
-// score goes into the log at the end, which the reader signs.
+// time. The last part is the check; after it come the lesson's summary, its
+// five to ten main points, and the lesson is done.
 //
 // A lesson's words live in a JSON file (the Lesson shape below, less what the
 // app adds), so they can be edited outside the code. Its blocks are typed
@@ -22,8 +22,10 @@
 // back to where they were: the parts they had opened, the figures they had
 // done and how they had set them, their check answers, and the place on the
 // page (resume.ts). The opening talk is not played again past the first part.
-// Finishing the lesson forgets all that. A lesson already finished opens in
-// full, as before, and keeps no place.
+// Finishing the lesson forgets the place but keeps what the figures were left
+// with. A lesson already finished opens in full with nothing to do first: its
+// summary at the top, then every part with no gates, its figures as the
+// reader left them (guesses made, sliders set), and no place kept.
 
 import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './blocks.ts';
 import { el, type Child } from './dom';
@@ -60,10 +62,12 @@ export interface Lesson<F extends string = string> {
   parts: Part<F>[];
   /** Not written yet: listed (tree.ts shows it greyed), but opening it goes back home. */
   coming?: boolean;
-  /** What was learned, written into the log. */
-  learned: string[];
-  /** A line at the foot of the log, on what comes next. */
-  next: string;
+  /**
+   * The lesson's main points, five to ten, each a sentence or two that holds
+   * on its own. Shown after the check, and at the top when the lesson is
+   * opened again. Takes the same markup as text, less footnotes.
+   */
+  summary: string[];
   /** Journal entries this lesson unlocks. */
   journal: string[];
   /** Notes its text marks with [^id], shown in a popup (footnote.ts). */
@@ -112,7 +116,7 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
   intro?: (lesson: L) => Child;
   /** The lesson's radio talks, the slip to play them on, and the station they come from. */
   radio?: { talks: (lessonId: string) => readonly Talk[]; play: (talk: Talk) => Promise<boolean>; clear: () => void; them?: { call: string; place: string } };
-  /** Where the back arrow and signing the log go. Default /home. */
+  /** Where the back arrow and the summary's button go. Default /home. */
   home?: string;
   /** What a lesson is called in the headings. Default "Lesson". */
   noun?: string;
@@ -194,30 +198,32 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     const replay = save.lessons[lesson.id]?.done === true;
     // Where the reader is, kept in the save as they go so a visit can be picked up again.
     const stored = save.resume?.[lesson.id];
-    const resumed = replay ? undefined : resumeFor(save.resume ?? {}, lesson.id, lesson);
-    const here: LessonResume = resumed ? structuredClone(resumed) : emptyResume(lessonSignature(lesson));
+    // A finished lesson keeps what its figures were left with (progress.ts finishLesson).
+    const fitting = resumeFor(save.resume ?? {}, lesson.id, lesson);
+    const resumed = replay ? undefined : fitting;
+    const here: LessonResume = fitting ? structuredClone(fitting) : emptyResume(lessonSignature(lesson));
     let finished = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const flush = () => {
       clearTimeout(timer);
       timer = undefined;
-      if (replay || finished) return;
+      if (finished) return;
       o.store.update((s) => ({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }));
     };
     /** Save soon: sliders and scrolling change many times a second. */
     const keepSoon = () => {
-      if (replay || finished) return;
+      if (finished) return;
       clearTimeout(timer);
       timer = setTimeout(flush, 300);
     };
     // Made for another version of this lesson: forget it.
-    if (stored && !resumed && !replay) {
+    if (stored && !fitting) {
       o.store.update((s) => {
         const { [lesson.id]: _old, ...rest } = s.resume ?? {};
         return { ...s, resume: rest };
       });
     }
-    const passed = (part: number, key: string) => part < here.part || here.done.includes(key);
+    const passed = (part: number, key: string) => replay || part < here.part || here.done.includes(key);
     const scoreTotal = () => Object.values(here.scores).reduce((t, [r, n]) => ({ right: t.right + r, of: t.of + n }), { right: 0, of: 0 });
     const footnotes = lesson.footnotes ?? {};
     const notes = footnoteSet(footnotes, lessonTexts(lesson), (t) => o.prose(t));
@@ -240,7 +246,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
           here.scores[key] = mine;
           keepSoon();
         },
-        memo: replay ? undefined : {
+        memo: {
           restored: passed(part, key),
           kept: here.kept[key],
           keep: (state) => {
@@ -250,7 +256,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
         },
       };
     };
-    const keeping = (part: number, key: string): Keeping | undefined => (replay ? undefined : {
+    const keeping = (part: number, key: string): Keeping => ({
       key,
       done: passed(part, key),
       sliders: here.sliders[key],
@@ -306,7 +312,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
 
     /** A button at the end of a part, enabled once its tasks are done. */
     const gate = (ready: Promise<void>, last: boolean): Promise<void> => {
-      const btn = el('button.btn.btn-big', { type: 'button', disabled: true }, last ? 'Write up the log' : 'Continue') as HTMLButtonElement;
+      const btn = el('button.btn.btn-big', { type: 'button', disabled: true }, last ? 'Finish the lesson' : 'Continue') as HTMLButtonElement;
       const hint = el('p.gate-hint', {}, 'Finish the tasks above to go on.');
       const box = el('div.gate', {}, hint, btn);
       article.append(box);
@@ -320,30 +326,29 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       }));
     };
 
-    /** The log: what was learned, the check's score, and a line to sign. */
-    const renderLog = () => {
-      const score = scoreTotal();
-      const name = el('input.sign', { type: 'text', maxLength: 40, placeholder: 'Your name', value: save.name, 'aria-label': 'Your name' }) as HTMLInputElement;
-      const sign = el('button.btn.btn-big', { type: 'button' }, 'Sign the log') as HTMLButtonElement;
-      const section = el('section.part.log', {},
-        el('div.logbook', {},
-          el('p.eyebrow', {}, `${noun} ${lesson.code ?? lesson.n} log`),
-          el('h2', {}, lesson.title),
-          score.of ? el('p.score', {}, `${o.radio && save.talk ? 'Radio check' : 'Check'}: ${score.right} of ${score.of} right`) : null,
-          el('ul', {}, lesson.learned.map((l) => el('li', {}, l))),
-          el('p.next', {}, lesson.next),
-          el('label', {}, 'Signed, ', name),
+    /** The lesson's main points, under a line on the check. */
+    const summary = (scoreLine: string | null): HTMLElement =>
+      el('section.summary', { 'aria-label': 'Summary' },
+        el('header.summary-head', {},
+          el('p.summary-eyebrow', {}, 'Summary'),
+          scoreLine ? el('p.summary-score', {}, scoreLine) : null,
         ),
-        el('div.gate', {}, sign),
+        el('ol.summary-points', {}, lesson.summary.map((point) => el('li', {}, o.prose(point)))),
+      );
+
+    /** Done: keep it, then show the summary and the way back. */
+    const finish = () => {
+      const score = scoreTotal();
+      finished = true;
+      clearTimeout(timer);
+      // The figures' guesses and sliders go too, so the lesson reopens as it was left.
+      o.store.update((s) => finishLesson({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }, lesson.id, score.right, score.of, lesson.journal, new Date()));
+      const section = el('section.part.summary-end', {},
+        summary(score.of ? `Check: ${score.right} of ${score.of} right` : null),
+        el('div.gate', {}, el('a.btn.btn-big', { href: `#${home}` }, 'Back to the lessons')),
       );
       article.append(section);
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      sign.addEventListener('click', () => {
-        finished = true;
-        clearTimeout(timer);
-        o.store.update((s) => ({ ...finishLesson(s, lesson.id, score.right, score.of, lesson.journal, new Date()), name: name.value.trim() || s.name }));
-        nav.navigate(home);
-      });
     };
 
     /** Scroll to the block the reader was at, or else to `fallback`. */
@@ -355,35 +360,35 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
 
     void (async () => {
       if (replay) {
-        // Everything at once; only the check (the last part) gates the log.
-        let last: Promise<void> = Promise.resolve();
-        lesson.parts.forEach((p, i) => (last = renderPart(p, i)));
-        reached(total - 1);
-        await gate(last, true);
-      } else {
-        const opening = waiting('start');
-        // Coming back past the first part, the reader has heard it start already.
-        if (opening && here.part === 0) void o.radio!.play(opening);
-        for (const [i, part] of lesson.parts.entries()) {
-          reached(i);
-          const last = i === lesson.parts.length - 1;
-          const ready = renderPart(part, i);
-          if (i < here.part) {
-            // Passed on an earlier visit.
-            if (last) await ready;
-            continue;
-          }
-          if (resumed && i === resumed.part) backToPlace(article.lastElementChild as HTMLElement);
-          else if (i > 0) article.lastElementChild!.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          await gate(ready, last);
-          here.part = i + 1;
-          flush();
+        // Done before: the summary first, then everything, with nothing to do to see it.
+        const best = save.lessons[lesson.id];
+        article.before(summary(best?.of ? `Best check: ${best.best} of ${best.of} right` : null));
+        lesson.parts.forEach((p, i) => void renderPart(p, i));
+        reached(total);
+        article.append(el('div.gate', {}, el('a.btn.btn-big', { href: `#${home}` }, 'Back to the lessons')));
+        return;
+      }
+      const opening = waiting('start');
+      // Coming back past the first part, the reader has heard it start already.
+      if (opening && here.part === 0) void o.radio!.play(opening);
+      for (const [i, part] of lesson.parts.entries()) {
+        reached(i);
+        const last = i === lesson.parts.length - 1;
+        const ready = renderPart(part, i);
+        if (i < here.part) {
+          // Passed on an earlier visit.
+          if (last) await ready;
+          continue;
         }
+        if (resumed && i === resumed.part) backToPlace(article.lastElementChild as HTMLElement);
+        else if (i > 0) article.lastElementChild!.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        await gate(ready, last);
+        here.part = i + 1;
+        flush();
       }
       if (!alive) return;
       reached(total);
-      renderLog();
-      if (resumed && resumed.part === lesson.parts.length) backToPlace(null);
+      finish();
     })();
 
     // Note the block at the top of the screen as the reader scrolls, and save

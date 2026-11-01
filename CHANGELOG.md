@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.14.0 (2026-11-01)
+
+The log at a lesson's end becomes its summary:
+
+- `lesson`: `Lesson.summary` (five to ten main points, with text markup)
+  replaces `learned` and `next`. After the check, "Finish the lesson" saves
+  the lesson as done and shows the summary in a dark box (`.summary`) with
+  the check's score and a "Back to the lessons" button. No name, no
+  signature, no handwriting: the ruled `.logbook` card, `input.sign` and the
+  `--hand` property are gone.
+- A finished lesson opened again shows its summary at the top, under the
+  title, then every part with no Continue or Finish buttons. Its figures get
+  `t.restored` and their own `t.kept`, and their sliders are put back:
+  `finishLesson` now keeps a finished lesson's sliders and kept figure state
+  (its place is still dropped), so guess-first figures reopen with their
+  guess made and their controls free.
+- `course`: `upgradeSummary(raw)` reads a lesson with `learned`/`next` as one
+  with `summary`; `readCourse` applies it, so course files and edits saved
+  before this load as they were, and `upgradeLesson` (and `didactics-course
+  upgrade`) include it. `lessonShapeProblems` checks `summary` is a list of
+  text. The course file's how-to says what the summary is.
+- Breaking: lesson files and `Lesson` objects need `summary` in place of
+  `learned` and `next`.
+
 ## 0.13.0 (2026-10-31)
 
 Review across every course on a site:

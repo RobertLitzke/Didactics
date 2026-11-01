@@ -88,6 +88,12 @@ export interface CourseEditsOptions {
  */
 export declare function courseEdits(o: CourseEditsOptions): CourseEdits;
 /**
+ * A lesson from before 0.14.0, with "learned" (written into a log the reader
+ * signed) and "next", as one with a "summary": what was learned becomes the
+ * summary, and "next" goes. Anything else comes back as it was.
+ */
+export declare function upgradeSummary<T>(raw: T): T;
+/**
  * A lesson in the earlier JSON shape, with `kind` blocks ("text", "key",
  * "figure" with a "figure" name), in the typed shape of blocks.ts. `typeOf`
  * says what each figure is (lesson.ts diagramType); left out, or for an id it

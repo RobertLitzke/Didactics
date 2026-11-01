@@ -156,7 +156,7 @@ describe('Settings in a course with no photos', () => {
 
 describe('the lesson count', () => {
   const lesson = (id: string, n: number, written = true): Lesson => ({
-    id, n, title: id, teaches: '', learned: [], next: '', journal: [], coming: !written || undefined,
+    id, n, title: id, teaches: '', summary: [], journal: [], coming: !written || undefined,
     parts: written ? [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] : [],
   });
   const eyebrow = (lessons: Lesson[], of?: (l: Lesson) => number) => {

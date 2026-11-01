@@ -63,7 +63,7 @@ describe('Didactics', () => {
     });
     const check = quiz((ctx, t) => el('button', { onclick: () => { ctx.score(1, 1); t.done(); } }, 'Answer'));
     const lessons: Lesson[] = [{
-      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', learned: ['Pushes move things'], next: 'Next: pulling.', journal: [],
+      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: ['Pushes move things'], journal: [],
       parts: [
         { title: 'Push', blocks: [{ type: 'text', text: 'A **push** in [[red|warm]].' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal: 'far' }] },
         { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'One question', task: 'Answer' }] },
@@ -89,7 +89,10 @@ describe('Didactics', () => {
     await new Promise((r) => setTimeout(r));
     (root.querySelector('.gate button') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r));
-    expect(root.querySelector('.logbook .score')?.textContent).toBe('Check: 1 of 1 right');
+    expect(root.querySelector('.summary .summary-score')?.textContent).toBe('Check: 1 of 1 right');
+    expect([...root.querySelectorAll('.summary-points li')].map((li) => li.textContent)).toEqual(['Pushes move things']);
+    // Finishing needs no signature: the lesson is done once the summary is up.
+    expect(store.get().lessons.push).toMatchObject({ done: true, best: 1, of: 1 });
   });
 
   it('numbers footnotes in reading order and opens one at a time', () => {
@@ -120,7 +123,7 @@ describe('Didactics', () => {
 
   it('builds a glossary from technical footnotes and a list, A to Z, and searches it', () => {
     const lesson: Lesson = {
-      id: 'l', n: 1, title: 'L', teaches: 't', learned: [], next: '', journal: [], parts: [],
+      id: 'l', n: 1, title: 'L', teaches: 't', summary: [], journal: [], parts: [],
       footnotes: {
         t: { kind: 'technical', title: 'Torque', text: 'Turning force.' },
         d: { kind: 'digression', title: 'Archimedes', text: 'Give me a place to stand.' },
@@ -178,7 +181,7 @@ describe('Didactics', () => {
     it('hands the check talk to the check instead of playing it', async () => {
       const played: string[] = [];
       const lesson: Lesson = {
-        id: 'sums', n: 1, title: 'Sums', teaches: 'Adding', learned: [], next: '', journal: [],
+        id: 'sums', n: 1, title: 'Sums', teaches: 'Adding', summary: [], journal: [],
         parts: [{ title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Sums', task: 'Answer' }] }],
       };
       const store = createStore({ key: 'check-test', empty: emptyProgress, migrate: migrateProgress });
@@ -226,7 +229,7 @@ describe('Didactics', () => {
     });
     const figures = { push, check };
     const lesson = (goal = 'far'): Lesson => ({
-      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', learned: [], next: '', journal: [],
+      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [], journal: [],
       parts: [
         { title: 'Push', blocks: [{ type: 'text', text: 'Push it.' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal }] },
         { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Two questions', task: 'Answer' }] },
@@ -270,23 +273,33 @@ describe('Didactics', () => {
       expect(v.root.querySelector('.result')?.textContent).toBe('1 right');
       v.close();
 
-      // The check done and the log not yet signed: it opens at the log, with the score.
+      // The check done and the lesson not yet finished: it opens at the last button.
       v = open([lesson()], store);
       await tick();
       await tick();
-      expect(v.root.querySelector('.gate button')).not.toBeNull();
+      expect(v.root.querySelector('.gate button')?.textContent).toBe('Finish the lesson');
       (v.root.querySelector('.gate button') as HTMLButtonElement).click();
       await tick();
-      expect(v.root.querySelector('.logbook .score')?.textContent).toBe('Check: 1 of 2 right');
-      v.close();
-      v = open([lesson()], store);
-      await tick();
-      await tick();
-      expect(v.root.querySelector('.logbook .score')?.textContent).toBe('Check: 1 of 2 right');
-      (v.root.querySelector('.log .gate button') as HTMLButtonElement).click();
+      expect(v.root.querySelector('.summary .summary-score')?.textContent).toBe('Check: 1 of 2 right');
       v.close();
       expect(store.get().lessons.push).toMatchObject({ done: true, best: 1, of: 2 });
-      expect(store.get().resume.push).toBeUndefined();
+      // The place goes; how the figures were left stays.
+      expect(store.get().resume.push).toMatchObject({ part: 0, done: [], sliders: { '0.1': [9] }, kept: { '1.0': [true, false] } });
+
+      // Opened again: the summary first, then everything as it was left, with nothing to do.
+      v = open([lesson()], store);
+      await tick();
+      const paper = v.root.querySelector('.paper')!;
+      expect(paper.firstElementChild!.nextElementSibling!.classList.contains('summary')).toBe(true);
+      expect(v.root.querySelector('.summary .summary-score')?.textContent).toBe('Best check: 1 of 2 right');
+      expect(v.root.querySelectorAll('.part')).toHaveLength(2);
+      expect(v.root.querySelector('.gate button')).toBeNull();
+      expect(v.root.querySelector('.gate a')?.textContent).toBe('Back to the lessons');
+      expect(v.root.querySelector('[data-figure=push]')!.classList.contains('done')).toBe(true);
+      expect((v.root.querySelector('input[type=range]') as HTMLInputElement).value).toBe('9');
+      expect(v.root.querySelector('.result')?.textContent).toBe('1 right');
+      v.close();
+      expect(store.get().lessons.push).toMatchObject({ done: true, best: 1, of: 2 });
     });
 
     it('starts over when the figures change, but not for a change of words', async () => {

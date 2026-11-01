@@ -2,8 +2,8 @@
 
 Small libraries for building interactive explainers: lessons written as
 JSON, made of paragraphs and live figures that show cause and effect, with
-tasks that open the next part, a check at the end, and a log the reader
-signs. Alongside the lessons there are footnotes, a glossary, a lesson tree,
+tasks that open the next part, a check at the end, and a summary of the
+lesson's main points. Alongside the lessons there are footnotes, a glossary, a lesson tree,
 spaced-repetition review in Anki's shape (with an Anki export), optional radio talks typed out on a paper slip, a
 settings page, and a PWA shell and build that work offline and as a single
 HTML file.
@@ -146,7 +146,7 @@ pin back before committing.
 | **Lessons** | |
 | `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
 | `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems`; the reference file's (`RefBlock`, `RefSection`, `referenceShapeProblems`) |
-| `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and log card), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
+| `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and its summary), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
 | `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `pieceOf`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
 | `course-view` | `courseSection({ edits, fileName, pieces? })`, the Settings section to download (all, or one piece such as a lesson), load and reset the course's text; `pieceFileName` |
 | `code-text` | The words a course writes in its code, as the course file's `"code"` table: `isProse`, `templateParts`, `codeTextProblems`, `liveCodeText` (shows edited words in the running page) |
@@ -406,14 +406,18 @@ itself and keeps it in the save under `resume`, by lesson id:
 - figures whose tasks were done count as done, and every figure's sliders
   are put back where they were (only sliders the figure leaves unlocked, so
   a guess-first figure still waiting for its guess stays locked);
-- each check's score is kept, so the log adds up the same;
+- each check's score is kept, so the summary's score adds up the same;
 - the opening radio talk is not played again past the first part, and a
   footnote popup is never reopened.
 
 It is saved at once when a task is done or a part is passed, a moment after
 a slider or the scroll stops, and when the page is hidden or closed.
-Finishing the lesson (signing the log) forgets it. A lesson already finished
-opens in full as before and keeps no place.
+Finishing the lesson (the button under the check) forgets the place but
+keeps the sliders and what the figures kept. A lesson already finished opens
+with nothing to do first: its summary at the top, under the title, then every
+part with no buttons between them, figures counted done (`t.restored`) and
+set as they were left, so a guess-first figure finds its guess and opens. It
+keeps no place on the page.
 
 A figure with a state worth coming back to (a guess made, quiz answers
 given, a random deal) keeps it with `t.keep(state)` (any JSON) and puts
@@ -459,8 +463,10 @@ save loads as before.
     ]},
     { "title": "Check", "blocks": [ { "type": "quiz", "id": "check", "caption": "Three questions", "task": "Answer them" } ] }
   ],
-  "learned": ["A lever trades distance for force."],
-  "next": "Next: pulleys.",
+  "summary": [
+    "A lever trades distance for force: a long push at the end moves a heavy load a short way.",
+    "What turns a lever is force × distance from the pivot."
+  ],
   "journal": []
 }
 ```
@@ -485,8 +491,13 @@ whose `type` does not match its code.
 
 Text markup: `**bold**`, `*italic*`, `[[words|key]]`, which colours the
 words with `COL[key]`, and `[^id]`, a footnote. A part opens once every task
-in the part before it is done. The last part is the check, and its score goes
-into the log.
+in the part before it is done. The last part is the check. After it comes
+the `summary`, five to ten points that each hold on their own (the same
+markup as text, less footnotes), in a dark box that stands apart from the
+paper, with the check's score; it also heads the lesson whenever it is opened
+again. A lesson from before 0.14.0, with `learned` and `next`, is read with
+`learned` as its summary (`upgradeSummary`, applied to loaded course files
+too).
 
 Lessons written in the earlier shape (`"kind": "text" | "key" | "figure"`)
 convert with `npx didactics-course upgrade <folder>`, or `upgradeLesson` in
@@ -761,7 +772,7 @@ with `treeProblems(lessons, branches)`. Its styles are in kit.css.
 ### Layout and theme
 
 The page layout (top bar, `.page` column, buttons, the lesson on paper,
-figures, slip, log, quiz, settings) is all in `kit.css`, and everything a
+figures, slip, summary, quiz, settings) is all in `kit.css`, and everything a
 course would change about it is a custom property with a default there.
 Import `kit.css`, then set your own values in a `:root` rule, and add
 `@font-face` rules for the fonts you name. Clouds' `src/app/styles/tokens.css`
@@ -778,7 +789,6 @@ is a full example.
 | `--fn-technical`, `--fn-digression` | The two kinds of footnote |
 | `--font` | Body text |
 | `--display` | Headings, buttons, the menu, labels |
-| `--hand` | The handwritten log |
 | `--type` | The typewritten radio slip |
 | `--radius` | Card corners |
 | `--page-width` | How wide ordinary pages run (720px) |

@@ -10,7 +10,9 @@
 // Blocks are named by place, "part.block". A lesson whose figures change (one
 // added, moved, given another goal or other options) gets a new signature,
 // and a resume made for the old one is dropped rather than restored onto the
-// wrong figures. Edits to the text alone keep it. Finishing the lesson drops it.
+// wrong figures. Edits to the text alone keep it. Finishing the lesson drops
+// the place but keeps the sliders and what the figures kept, for when it is
+// opened again.
 
 // progress.ts imports this file, so these two are its own copies rather than progress.ts's.
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);

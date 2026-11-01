@@ -53,7 +53,7 @@ const plate = {
 };
 const OPTIONS = { scale, timeline, tree, plate } as const;
 
-const lesson = (blocks: Lesson['parts'][number]['blocks']): Lesson => ({ id: 'l', n: 1, title: 'L', teaches: '', learned: [], next: '', journal: [], parts: [{ title: 'One', blocks }] });
+const lesson = (blocks: Lesson['parts'][number]['blocks']): Lesson => ({ id: 'l', n: 1, title: 'L', teaches: '', summary: [], journal: [], parts: [{ title: 'One', blocks }] });
 
 describe('charts', () => {
   it('draws each chart from its options, with every word in the drawing', () => {

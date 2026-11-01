@@ -29,7 +29,7 @@ const items: Q[] = [
   { ask: 'What cloud is this?', choices: ['Cirrus', 'Stratus'], answer: 1, why: 'Flat.', photo: 'p2' },
 ];
 const lesson = (id: string, n: number): Lesson => ({
-  id, n, title: `About ${id}`, teaches: '', learned: [], next: '', journal: [],
+  id, n, title: `About ${id}`, teaches: '', summary: [], journal: [],
   parts: [{ title: 'Check', blocks: [{ type: 'text', text: 'Now.' }, { type: 'quiz', id: 'check', caption: 'Check', task: 'Answer', options: { items } }] }],
 });
 const figures = { check: quizCheck };
