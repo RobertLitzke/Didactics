@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.1 (2026-11-01)
+
+- `maps`: `mapKey(items)`, the map chart's key on its own, for a figure
+  that draws its own map. The key, credit and note styles now apply to any
+  map, not only the map chart's.
+
 ## 0.17.0 (2026-11-01)
 
 - `figure`: `player(slider, ctx, { seconds?, onEnd? })`, a Play / Pause /

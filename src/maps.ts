@@ -493,6 +493,15 @@ export interface MapKeyItem {
   text: string;
 }
 
+/** A map's key: a swatch and its words for each item, to put under a map (the map chart's own, or a figure's). */
+export function mapKey(items: readonly MapKeyItem[]): HTMLElement {
+  return el('ul.map-key', {}, ...items.map((k) => {
+    const sw = el('span.map-swatch');
+    sw.style.background = k.color;
+    return el('li', {}, sw, k.text);
+  }));
+}
+
 /** A round length for a scale bar about a fifth of the map wide, in the reader's units. */
 function niceLength(metres: number, units: Units): { m: number; say: string } {
   const unit = units === 'metric' ? (metres >= 1000 ? 1000 : 1) : metres >= 1609 ? 1609.344 : 0.3048;
@@ -629,11 +638,7 @@ function drawMap(r: Relief, o: MapOptions, units: Units, pal: Record<string, str
   if (o.title) parts.push(el('p.map-title', {}, o.title));
   parts.push(v.node);
   if (o.key?.length) {
-    parts.push(el('ul.map-key', {}, ...o.key.map((k) => {
-      const sw = el('span.map-swatch');
-      sw.style.background = color(k.color) ?? k.color;
-      return el('li', {}, sw, k.text);
-    })));
+    parts.push(mapKey(o.key.map((k) => ({ ...k, color: color(k.color) ?? k.color }))));
   }
   parts.push(el('p.map-credit', {}, `Heights: ${r.meta.credit}`));
   if (o.note) parts.push(el('p.map-note', {}, o.note));
