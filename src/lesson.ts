@@ -276,18 +276,35 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     const total = lesson.parts.length + 1;
     const reached = (n: number) => (bar.style.width = `${(100 * n) / total}%`);
 
+    // The bar names the lesson, so it stays tucked away (all but the progress
+    // line along the top) while the big title is on screen, and slides in
+    // once the title has scrolled up under where the bar would be. A small
+    // back button stands in for it meanwhile.
+    const head = el('header.lesson-head.tucked', {},
+      el('a.back', { href: `#${home}`, 'aria-label': 'Back home' }, '‹'),
+      el('div', {}, el('p.eyebrow', {}, `${noun} ${lesson.code ?? lesson.n}`), el('h1', {}, lesson.title)),
+      progress,
+    );
+    const backFloat = el('a.back-float', { href: `#${home}`, 'aria-label': 'Back home' }, '‹');
+    const posterTitle = el('h1.poster-type', {}, lesson.title);
+    const tuck = () => {
+      const tucked = posterTitle.getBoundingClientRect().bottom > head.offsetHeight;
+      if (tucked === head.classList.contains('tucked')) return;
+      head.classList.toggle('tucked', tucked);
+      head.toggleAttribute('inert', tucked);
+      backFloat.toggleAttribute('hidden', !tucked);
+    };
+    head.toggleAttribute('inert', true);
+
     root.append(
-      el('div.lesson', {},
-        el('header.lesson-head', {},
-          el('a.back', { href: `#${home}`, 'aria-label': 'Back home' }, '‹'),
-          el('div', {}, el('p.eyebrow', {}, `${noun} ${lesson.code ?? lesson.n}`), el('h1', {}, lesson.title)),
-          progress,
-        ),
+      el(o.hero ? 'div.lesson' : 'div.lesson.no-hero', {},
+        head,
+        backFloat,
         o.hero ? el('div.article-hero', {}, o.hero(lesson)) : null,
         el('div.paper', {},
           el('div.article-intro', {},
             el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n} of ${of(lesson)}`),
-            el('h1.poster-type', {}, lesson.title),
+            posterTitle,
             el('p.lede', {}, /[.!?]$/.test(lesson.teaches) ? lesson.teaches : lesson.teaches + '.'),
             o.intro?.(lesson),
             footnoteLegend(Object.values(footnotes).map((n) => n.kind)),
@@ -407,6 +424,9 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     };
     const onPageHide = () => timer !== undefined && flush();
     window.addEventListener('scroll', onScroll, { passive: true, signal: closed.signal });
+    window.addEventListener('scroll', tuck, { passive: true, signal: closed.signal });
+    window.addEventListener('resize', tuck, { signal: closed.signal });
+    requestAnimationFrame(tuck);
     document.addEventListener('visibilitychange', onHide, { signal: closed.signal });
     window.addEventListener('pagehide', onPageHide, { signal: closed.signal });
 

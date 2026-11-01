@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.1 (2026-11-01)
+
+- `lesson`: the bar at the top of a lesson no longer repeats the big title
+  at the start. It floats over the page, tucked up out of sight but for its
+  progress line, and slides in once the title has scrolled up under it; a
+  small round back button stands in for it meanwhile. Lessons without a
+  picture on top get room for the status bar (`.lesson.no-hero`).
+
 ## 0.15.0 (2026-11-01)
 
 Predictions marked plainly, and live figures as flash cards:
