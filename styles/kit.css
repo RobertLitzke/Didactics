@@ -399,6 +399,10 @@ body.radio-up main { padding-bottom: 50vh; }
 .fig .shake { animation: shake 0.35s 2; }
 .answer-list { display: grid; gap: 8px; }
 .btn.wide { width: 100%; text-align: left; justify-content: flex-start; }
+/* Answers in a check, a quiz or a review card can be whole sentences: the
+   reader's type at its usual weight in a softly rounded box, not the poster
+   lettering of a pill button. */
+.answer-list .btn { font-family: var(--font, inherit); font-size: 0.95rem; font-weight: 500; text-transform: none; letter-spacing: normal; line-height: 1.35; padding: 11px 14px; border-radius: 10px; }
 .fig-body .task { margin-top: 12px; }
 .fig-body .actions { margin-bottom: 10px; }
 
@@ -604,8 +608,6 @@ body.radio-up main { padding-bottom: 50vh; }
 .quiz-card .verdict p { margin: 0 0 4px; }
 .quiz .btn-ghost { color: var(--text); box-shadow: inset 0 0 0 2px var(--text); text-decoration: none; }
 .quiz .btn-ghost.right, .quiz .btn-ghost.wrong { color: #fff; box-shadow: none; }
-/* Answers can be whole sentences: plain type, not the poster lettering. */
-.quiz .answer-list .btn { font: inherit; font-weight: 600; text-transform: none; letter-spacing: normal; line-height: 1.35; padding-top: 12px; padding-bottom: 12px; border-radius: 16px; }
 /* A figure that asks for a guess first: its sliders wait, greyed, until it is made. */
 .fig-slider input:disabled { opacity: 0.4; }
 .fig-guess { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 6px; }
@@ -638,7 +640,6 @@ body.radio-up main { padding-bottom: 50vh; }
 @media (prefers-reduced-motion: no-preference) { .fig-verdict { animation: verdict-in 0.35s ease-out; } }
 @keyframes verdict-in { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .fig-order { margin: 0; font-size: 0.85rem; color: var(--ink-soft); }
-.fig .answer-list .btn { line-height: 1.3; }
 
 /* A figure asked as a flash card on the review page: the figure keeps its own ink on the page's colours. */
 .review-figure-card .fig { color: var(--ink); margin: 6px 0 10px; }

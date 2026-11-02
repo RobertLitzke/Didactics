@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.2 (2026-11-02)
+
+- Styles: answer buttons in a lesson's check, the quiz and review cards
+  (`.answer-list .btn`) use the reader's type at normal weight, in sentence
+  case, with a 10px corner instead of the pill's round ends.
+
 ## 0.17.1 (2026-11-01)
 
 - `maps`: `mapKey(items)`, the map chart's key on its own, for a figure
