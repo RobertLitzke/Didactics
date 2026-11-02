@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.18.0 (2026-11-02)
+
+Desktop layout: the room either side of a lesson on a wide screen is used.
+
+- `footnote`: `sideNotes(scope, signal)`. From 1180px wide
+  (`SIDE_NOTES_FROM`) every note of a lesson sits in the right-hand margin,
+  level with its marker's line and pushed down when the one above runs long;
+  clicking a marker outlines its note (scrolling to it if need be) instead of
+  opening the popup, and hovering either lights the other. It keeps up as
+  parts open, figures change height and the window is resized. Narrower
+  screens keep the popup. `lessonView` turns it on for every lesson.
+- `lesson`: from 1180px, the lesson's parts are listed in the left margin,
+  the one being read lit, those opened so far a click away, the rest greyed.
+- Styles: from 1360px the radio slip stands in the left margin, off the
+  text, and its reopen button moves to the left too.
+- `shell`: `pageMenu` also returns `tabs`, the pages as a row of links;
+  `appShell` puts them beside the dropdown, and from 960px kit.css shows the
+  tabs instead of the dropdown.
+
 ## 0.17.2 (2026-11-02)
 
 - Styles: answer buttons in a lesson's check, the quiz and review cards

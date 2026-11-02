@@ -68,13 +68,20 @@ export function footnoteMarker(id: string, set: FootnoteSet): HTMLElement | null
     'aria-haspopup': 'dialog',
     'aria-expanded': 'false',
   }, String(n || '•')) as HTMLButtonElement;
+  marked.set(btn, { id, note, n, render: set.render });
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (open?.anchor === btn) closeFootnote();
+    // On a wide screen the note is already in the margin: point it out instead.
+    const side = sideOf(btn);
+    if (side) side.point(btn);
+    else if (open?.anchor === btn) closeFootnote();
     else openFootnote(btn, note, set.render);
   });
   return btn;
 }
+
+/** What each marker on the page stands for, for the margin notes. */
+const marked = new WeakMap<HTMLElement, { id: string; note: Footnote; n: number; render: (text: string) => Node }>();
 
 let open: { anchor: HTMLElement; node: HTMLElement; off: AbortController } | null = null;
 
@@ -179,4 +186,117 @@ export function footnoteProblems(label: string, notes: Footnotes | undefined, te
     if (/\[\^[\w-]+\]/.test(n.text)) out.push(`${label}: footnote "${id}" has a marker inside it`);
   }
   return out;
+}
+
+/** The screen width from which notes sit in the margin rather than in a popup. */
+export const SIDE_NOTES_FROM = 1180;
+
+interface SideNotes { point: (marker: HTMLElement) => void }
+const sides = new WeakMap<HTMLElement, SideNotes>();
+/** The margin notes the marker's text is in, while they are showing. */
+function sideOf(marker: HTMLElement): SideNotes | undefined {
+  for (let p = marker.parentElement; p; p = p.parentElement) {
+    const s = sides.get(p);
+    if (s) return p.classList.contains('side-notes-on') ? s : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * On a screen at least SIDE_NOTES_FROM wide, show every note of the text in
+ * `scope` in a column beside it, each level with its marker's line (pushed
+ * down when the one above runs long), as in the margin of a book. A marker
+ * then points out its note rather than opening a popup. Narrower, nothing
+ * shows and the popups work as before. The column goes in `scope`, which
+ * should be positioned (it is laid out against its top edge), and it keeps up
+ * as text is added, figures change height or the window is resized, until
+ * `signal` aborts.
+ */
+export function sideNotes(scope: HTMLElement, signal: AbortSignal, o: { from?: number } = {}): void {
+  const wide = window.matchMedia(`(min-width: ${o.from ?? SIDE_NOTES_FROM}px)`);
+  const column = el('div.fn-side', { 'aria-label': 'Notes' });
+  column.setAttribute('role', 'complementary');
+  scope.append(column);
+  const cards = new Map<string, HTMLElement>();
+  const markers = () => [...scope.querySelectorAll<HTMLElement>('button.fn')].filter((m) => marked.has(m) && m.offsetParent);
+
+  const card = (id: string): HTMLElement => {
+    let c = cards.get(id);
+    if (c) return c;
+    const { note, n, render } = marked.get(markers().find((m) => marked.get(m)!.id === id)!)!;
+    c = el(`aside.fn-note.fn-${note.kind}`, {},
+      el('p.fn-note-head', {}, el('span.fn.fn-sample', { 'aria-hidden': 'true' }, String(n || '•')), el('b', {}, note.title)),
+      el('div.fn-note-body', {}, render(note.text)),
+    );
+    cards.set(id, c);
+    return c;
+  };
+
+  let queued = 0;
+  const layout = () => {
+    queued = 0;
+    const on = wide.matches;
+    scope.classList.toggle('side-notes-on', on);
+    if (!on) {
+      column.replaceChildren();
+      return;
+    }
+    closeFootnote();
+    const top = scope.getBoundingClientRect().top;
+    const seen = new Set<string>();
+    let floor = 0;
+    for (const m of markers()) {
+      const { id } = marked.get(m)!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const c = card(id);
+      if (c.parentElement !== column) column.append(c);
+      // The note's first line sits on the marker's line.
+      const want = m.getBoundingClientRect().top - top - 6;
+      const at = Math.max(want, floor);
+      c.style.top = `${Math.round(at)}px`;
+      floor = at + c.offsetHeight + 14;
+    }
+    for (const [id, c] of cards) if (!seen.has(id)) c.remove();
+  };
+  const soon = () => {
+    if (!queued) queued = requestAnimationFrame(layout);
+  };
+
+  sides.set(scope, {
+    point: (m) => {
+      const c = cards.get(marked.get(m)!.id);
+      if (!c) return;
+      for (const other of cards.values()) other.classList.toggle('on', other === c);
+      const r = c.getBoundingClientRect();
+      if (r.top < 70 || r.bottom > window.innerHeight) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+  });
+  // A marker under the pointer lights its note, and the note its marker.
+  scope.addEventListener('pointerover', (e) => {
+    const m = (e.target as HTMLElement).closest?.('button.fn') as HTMLElement | null;
+    const note = (e.target as HTMLElement).closest?.('.fn-note') as HTMLElement | null;
+    const id = m ? marked.get(m)?.id : note ? [...cards].find(([, c]) => c === note)?.[0] : undefined;
+    for (const [cid, c] of cards) c.classList.toggle('hover', cid === id);
+    for (const mk of markers()) mk.classList.toggle('lit', id !== undefined && marked.get(mk)!.id === id);
+  }, { signal });
+
+  const resized = new ResizeObserver(soon);
+  resized.observe(scope);
+  // New text (a part opening) can bring markers; a figure redrawing its own
+  // words cannot, and changes height only through the ResizeObserver.
+  const changed = new MutationObserver((records) => {
+    if (records.some((r) => !column.contains(r.target) && !(r.target as Element).closest?.('.fig'))) soon();
+  });
+  changed.observe(scope, { childList: true, subtree: true });
+  wide.addEventListener('change', soon, { signal });
+  void document.fonts?.ready.then(soon);
+  soon();
+  signal.addEventListener('abort', () => {
+    resized.disconnect();
+    changed.disconnect();
+    cancelAnimationFrame(queued);
+    sides.delete(scope);
+    column.remove();
+  });
 }

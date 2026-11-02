@@ -157,7 +157,7 @@ pin back before committing.
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
-| `footnote` | Footnotes that open in a popup: `footnoteSet`, `footnoteMarker`, `openFootnote`, `closeFootnote`, `footnoteLegend`, `footnoteProblems` |
+| `footnote` | Footnotes that open in a popup, or sit in the margin on a wide screen: `footnoteSet`, `footnoteMarker`, `openFootnote`, `closeFootnote`, `sideNotes`, `footnoteLegend`, `footnoteProblems` |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
 | `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
 | `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
@@ -635,7 +635,12 @@ side trip off the main line; `--fn-digression`, rose). Markers show as small
 raised numbers counted through the lesson, and the lesson's intro gets a
 one-line legend. Technical notes also go into the glossary; add
 `"glossary": false` to keep one out, `"glossary": true` to put a digression
-in, or a string to list it under another term. `lessonProblems` reports a
+in, or a string to list it under another term. On a screen 1180px or wider
+(`SIDE_NOTES_FROM`), a lesson shows every note in the right-hand margin
+instead, level with its marker's line, as in the margin of a book; clicking
+a marker then points out its note, and the popup is for narrower screens.
+`sideNotes(scope, signal)` does the same for any other page of text.
+`lessonProblems` reports a
 marker with no note and a note with no marker. Use them sparingly: a note
 for what would trip up a casual reader, or what is interesting but off the
 line, not for every term. Clouds keeps it to about four per lesson.
@@ -728,7 +733,8 @@ page shows its whole plan, drafted lessons too, passes `countComing: true`
 to `lessonView` (or `of: (lesson) => n` to say exactly).
 
 `appShell` is the top bar: the wordmark on the left (a link home) and a
-dropdown of the pages on the right, showing the current page's name. Pages
+dropdown of the pages on the right, showing the current page's name; from
+960px wide the pages show as a row of tabs instead (`pageMenu(…).tabs`). Pages
 for which `fullScreen` is true hide the bar. `title` can be words or a node,
 and `mark` puts a logo before it, such as
 `el('img', { src: 'icons/icon.svg', alt: '' })`, with the words stacked

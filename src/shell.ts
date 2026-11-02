@@ -26,6 +26,11 @@ export interface NavLink {
 
 export interface PageMenu {
   node: HTMLDetailsElement;
+  /**
+   * The same pages as a row of tabs, for a wide screen; kit.css shows it
+   * instead of the dropdown from 960px when it sits just before `node`.
+   */
+  tabs: HTMLElement;
   /** Show `path` as the current page. */
   mark: (path: string) => void;
 }
@@ -33,6 +38,8 @@ export interface PageMenu {
 /** The dropdown of pages. It closes when a page is picked or on a tap elsewhere. */
 export function pageMenu(links: readonly NavLink[], fallback = 'Menu'): PageMenu {
   const anchors = links.map((l) => el(l.href ? 'a.away' : 'a', { href: l.href ?? `#${l.path}` }, l.label));
+  const tabLinks = links.map((l) => el(l.href ? 'a.away' : 'a', { href: l.href ?? `#${l.path}` }, l.label));
+  const tabs = el('nav.navtabs', { 'aria-label': 'Pages' }, tabLinks);
   const current = el('span');
   const node = el('details.navmenu', {}, el('summary', {}, current), el('nav', {}, anchors)) as HTMLDetailsElement;
   node.addEventListener('click', (e) => {
@@ -42,11 +49,11 @@ export function pageMenu(links: readonly NavLink[], fallback = 'Menu'): PageMenu
     if (node.open && !node.contains(e.target as Node)) node.open = false;
   });
   const mark = (path: string) => {
-    anchors.forEach((a, i) => a.classList.toggle('here', !links[i].href && path.startsWith(links[i].path)));
+    for (const set of [anchors, tabLinks]) set.forEach((a, i) => a.classList.toggle('here', !links[i].href && path.startsWith(links[i].path)));
     current.textContent = links.find((l) => !l.href && path.startsWith(l.path))?.label ?? fallback;
     node.open = false;
   };
-  return { node, mark };
+  return { node, tabs, mark };
 }
 
 export interface TopBarOptions {
@@ -91,7 +98,7 @@ export interface AppShell {
 
 export function appShell(o: AppShellOptions): AppShell {
   const menu = pageMenu(o.nav);
-  const header = topBar({ title: o.title, subtitle: o.subtitle, mark: o.mark, home: o.home, right: menu.node });
+  const header = topBar({ title: o.title, subtitle: o.subtitle, mark: o.mark, home: o.home, right: el('div.topbar-right', {}, menu.tabs, menu.node) });
   const outlet = el('main');
   o.mount.replaceChildren(header, outlet);
   return {

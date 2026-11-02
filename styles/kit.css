@@ -117,6 +117,7 @@ p { margin: 0 0 0.75em; }
 .wordmark.with-mark > :first-child { flex: none; height: 2.2em; width: auto; }
 .wordmark-words { display: flex; flex-direction: column; }
 /* The page menu (shell.ts pageMenu): the current page's name, opening a short list. */
+.topbar-right { display: flex; align-items: center; }
 .navmenu { position: relative; }
 .navmenu summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px;
@@ -138,6 +139,19 @@ p { margin: 0 0 0.75em; }
 .navmenu nav a.here { background: var(--bg); color: var(--sun); }
 /* A link out of the course, to the site's catalog: set apart below the pages. */
 .navmenu nav a.away { margin-top: 4px; border-top: 1px solid var(--bg); border-radius: 0 0 8px 8px; }
+/* On a wide screen the pages are all on the bar, as tabs, and the dropdown goes. */
+.navtabs { display: none; }
+@media (min-width: 960px) {
+  .navtabs { display: flex; align-items: center; gap: 2px; }
+  .navtabs + .navmenu { display: none; }
+  .navtabs a {
+    color: var(--muted); text-decoration: none; font: 600 0.8rem/1 var(--display); text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 9px 12px; border-radius: 999px;
+  }
+  .navtabs a:hover { color: var(--text); background: var(--bg-2); }
+  .navtabs a.here { color: var(--sun); background: var(--bg-2); }
+  .navtabs a.away { margin-left: 8px; box-shadow: inset 0 0 0 1px var(--bg-2); }
+}
 body.in-lesson .topbar { display: none; }
 
 main { display: block; }
@@ -277,6 +291,35 @@ main { display: block; }
 .part > p { margin: 0 0 14px; }
 .part b.tint { font-weight: 700; }
 
+/* The lesson's parts, in the left margin of a wide screen (lesson.ts). */
+.lesson-outline { display: none; }
+@media (min-width: 1180px) {
+  .lesson-outline {
+    display: block;
+    position: fixed;
+    top: 84px;
+    right: calc(50% + 360px + 28px);
+    width: clamp(180px, calc(50vw - 360px - 56px), 260px);
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+    color: var(--muted);
+  }
+  .lesson-outline .eyebrow { margin: 0 0 2px; }
+  .outline-title { margin: 0 0 12px; font: 600 1rem/1.25 var(--display); color: var(--text); letter-spacing: 0.02em; }
+  .lesson-outline ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .lesson-outline button {
+    appearance: none; border: 0; background: none; width: 100%; text-align: left; cursor: pointer;
+    display: flex; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px;
+    font: 0.88rem/1.35 var(--font); color: var(--text);
+  }
+  .lesson-outline button:hover { background: var(--bg-2); }
+  .lesson-outline button:disabled { color: var(--muted); opacity: 0.55; cursor: default; background: none; }
+  .lesson-outline .part-n { width: 22px; height: 22px; font-size: 0.75rem; transform: none; background: var(--bg-2); color: var(--text); }
+  .lesson-outline li.here button { background: var(--bg-2); color: var(--title, var(--text)); }
+  .lesson-outline li.here .part-n { background: var(--rose); color: var(--paper); }
+  .lesson-outline button:disabled .part-n { background: none; box-shadow: inset 0 0 0 1px var(--muted); color: var(--muted); }
+}
+
 /* The radio slip: a transcript typed on a torn strip of paper, over the foot
    of the screen. */
 .radio-slip {
@@ -301,6 +344,14 @@ main { display: block; }
 /* Room to read the end of the page with the slip up. */
 body.radio-up main { padding-bottom: 50vh; }
 .radio-slip.in { transform: translate(-50%, 0); }
+/* With room either side of the lesson, the slip stands in the left margin,
+   off the text, below the lesson's outline. */
+@media (min-width: 1360px) {
+  .radio-slip { left: 16px; width: min(440px, calc(50% - 360px - 40px)); transform: translate(0, 110%); }
+  .radio-slip.in { transform: none; }
+  body.radio-up main { padding-bottom: 0; }
+  .radio-reopen { right: auto; left: 16px; }
+}
 .slip-head { display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed rgba(43, 38, 32, 0.4); padding-bottom: 6px; }
 .slip-head p { flex: 1; margin: 0; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.3; }
 .slip-head p span { display: block; text-transform: none; letter-spacing: 0; opacity: 0.7; }
@@ -700,6 +751,37 @@ button.fn:focus-visible { outline: 2px solid var(--fn-color); outline-offset: 2p
 .fn-pop.up { animation-name: fn-in-up; }
 @keyframes fn-in-up { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) { .fn-pop { animation: none; } }
+
+/* ---- Margin notes: on a wide screen, every note beside its line ------- */
+/* footnote.ts sideNotes: the column hangs off the paper's right edge, in the
+   room either side of the lesson; each note is placed level with its marker. */
+.fn-side { display: none; }
+.side-notes-on > .fn-side {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 24px);
+  width: clamp(190px, calc(50vw - 360px - 52px), 300px);
+}
+.fn-note {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  background: var(--paper);
+  color: var(--ink);
+  border-left: 4px solid var(--fn-color);
+  border-radius: 4px 12px 12px 4px;
+  padding: 8px 12px 2px;
+  font: 0.86rem/1.5 var(--font);
+  transition: box-shadow 0.15s;
+}
+.fn-note.hover, .fn-note.on { box-shadow: 0 0 0 2px var(--fn-color); }
+.fn-note-head { margin: 0 0 4px; display: flex; align-items: baseline; gap: 6px; }
+.fn-note-head b { font: 600 0.92rem/1.3 var(--display); letter-spacing: 0.02em; }
+.fn-note-head .fn { position: static; flex: none; font-size: 0.72rem; }
+.fn-note-body p { margin: 0 0 6px; }
+.side-notes-on button.fn.lit { background: var(--fn-color); color: var(--paper); }
 
 /* ---- A card over the page (ui.ts sheet) -------------------------------- */
 .sheet-back {

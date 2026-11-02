@@ -30,7 +30,7 @@
 import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './blocks.ts';
 import { el, type Child } from './dom';
 import { placeCaption, type AnsweredQuestion, type FigureContext, type FigureFactory } from './figure';
-import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, type FootnoteSet, type Footnotes } from './footnote';
+import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, sideNotes, type FootnoteSet, type Footnotes } from './footnote';
 import { finishLesson, type Progress } from './progress';
 import type { Cue, Talk } from './radio';
 import { blockKey, emptyResume, lessonSignature, resumeFor, type LessonResume } from './resume';
@@ -296,28 +296,55 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     };
     head.toggleAttribute('inert', true);
 
+    // On a wide screen, the lesson's parts listed in the left margin: those
+    // opened so far to jump to, the one being read lit, the rest to come greyed.
+    const outlineItems = lesson.parts.map((part, i) => el('li', {},
+      el('button', {
+        type: 'button',
+        disabled: true,
+        onclick: () => article.querySelectorAll<HTMLElement>('section.part')[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      }, el('span.part-n', {}, String(i + 1)), el('span', {}, part.title)),
+    ));
+    const outline = el('nav.lesson-outline', { 'aria-label': 'Parts of this lesson' },
+      el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n}`),
+      el('p.outline-title', {}, lesson.title),
+      el('ol', {}, outlineItems),
+    );
+    const outlineHere = () => {
+      const parts = [...article.querySelectorAll<HTMLElement>('section.part:not(.summary-end)')];
+      let here = -1;
+      parts.forEach((p, i) => { if (p.getBoundingClientRect().top < window.innerHeight * 0.4) here = i; });
+      outlineItems.forEach((li, i) => li.classList.toggle('here', i === here));
+    };
+
+    const paper = el('div.paper', {},
+      el('div.article-intro', {},
+        el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n} of ${of(lesson)}`),
+        posterTitle,
+        el('p.lede', {}, /[.!?]$/.test(lesson.teaches) ? lesson.teaches : lesson.teaches + '.'),
+        o.intro?.(lesson),
+        footnoteLegend(Object.values(footnotes).map((n) => n.kind)),
+      ),
+      article,
+    );
     root.append(
       el(o.hero ? 'div.lesson' : 'div.lesson.no-hero', {},
         head,
         backFloat,
         o.hero ? el('div.article-hero', {}, o.hero(lesson)) : null,
-        el('div.paper', {},
-          el('div.article-intro', {},
-            el('p.eyebrow', {}, lesson.code ? `${noun} ${lesson.code}` : `${noun} ${lesson.n} of ${of(lesson)}`),
-            posterTitle,
-            el('p.lede', {}, /[.!?]$/.test(lesson.teaches) ? lesson.teaches : lesson.teaches + '.'),
-            o.intro?.(lesson),
-            footnoteLegend(Object.values(footnotes).map((n) => n.kind)),
-          ),
-          article,
-        ),
+        paper,
+        outline,
       ),
     );
+    // On a wide screen the notes sit in the margin, beside their lines.
+    sideNotes(paper, closed.signal);
 
     const renderPart = (part: Part, i: number): Promise<void> => {
       const tasks: Promise<void>[] = [];
       const section = el('section.part', {}, el('h2', {}, el('span.part-n', {}, String(i + 1)), part.title));
       article.append(section);
+      (outlineItems[i].firstElementChild as HTMLButtonElement).disabled = false;
+      requestAnimationFrame(outlineHere);
       section.append(...part.blocks.map((b, j) => {
         const key = blockKey(i, j);
         const node = renderBlock(b, blockCtx(i, key, isDiagram(b) ? b.id : ''), tasks, notes, keeping(i, key));
@@ -425,6 +452,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
     const onPageHide = () => timer !== undefined && flush();
     window.addEventListener('scroll', onScroll, { passive: true, signal: closed.signal });
     window.addEventListener('scroll', tuck, { passive: true, signal: closed.signal });
+    window.addEventListener('scroll', outlineHere, { passive: true, signal: closed.signal });
     window.addEventListener('resize', tuck, { signal: closed.signal });
     requestAnimationFrame(tuck);
     document.addEventListener('visibilitychange', onHide, { signal: closed.signal });
