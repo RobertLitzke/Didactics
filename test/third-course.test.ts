@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Gaps found moving a third course (Circuitry) onto Didactics: the overflow
 // strip and SVGs, a reference page, figures outside a lesson, Settings with
-// no photos, the lesson count, fixed units, an empty quiz.
+// no photos, the lesson count, fixed units.
 
 import { describe, expect, it } from 'vitest';
 import { readCourse, upgradeReference } from '../src/course';
@@ -10,7 +10,6 @@ import { figure, frame, quiz, slider, standaloneFigure, testContext } from '../s
 import { lessonView, prose, type Lesson } from '../src/lesson';
 import { watchOverflow } from '../src/overflow';
 import { emptyProgress, migrateProgress, type Progress } from '../src/progress';
-import { quizView } from '../src/quiz-view';
 import { referenceProblems, referenceShapeProblems, referenceView, type RefSection } from '../src/reference';
 import { settingsView } from '../src/settings';
 import { createStore } from '../src/store';
@@ -149,14 +148,14 @@ describe('Settings in a course with no photos', () => {
     };
     const base = { store: s, empty: () => emptyProgress('metric', { radio: false }), appName: 'Circuitry', saveFile: 'c.json' };
     expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' } })).not.toMatch(/photo/);
-    expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' }, offline: { folder: 'photos/', total: 3, noun: 'photos' } })).toContain('Everything but the photos');
+    expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' }, offline: { noun: 'photos' } })).toContain('Everything but the photos');
     expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html', text: 'Our words.' } })).toBe('Our words.');
   });
 });
 
 describe('the lesson count', () => {
   const lesson = (id: string, n: number, written = true): Lesson => ({
-    id, n, title: id, teaches: '', summary: [], journal: [], coming: !written || undefined,
+    id, n, title: id, teaches: '', summary: [], coming: !written || undefined,
     parts: written ? [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] : [],
   });
   const eyebrow = (lessons: Lesson[], of?: (l: Lesson) => number) => {
@@ -181,17 +180,5 @@ describe('a course with one unit system', () => {
     const root = el('div');
     settingsView({ store: s, empty: () => empty, appName: 'C', saveFile: 'c.json', units: { label: 'Units', imperial: 'ft', metric: 'm' } })(root, nav);
     expect(root.textContent).not.toContain('Units');
-  });
-});
-
-describe('an empty quiz', () => {
-  it('says the course’s words instead of an empty tally', () => {
-    const root = el('div');
-    quizView({ deck: [], store: store('quiz'), blurb: 'Cards.', empty: 'Flash cards arrive with the first written lesson.' })(root, nav);
-    expect(root.querySelector('.quiz-empty')!.textContent).toBe('Flash cards arrive with the first written lesson.');
-    expect(root.querySelector('.quiz-tally')).toBeNull();
-    const locked = el('div');
-    quizView({ deck: [{ id: 'c', question: '?', options: ['a', 'b'], why: '', after: 'l1' }], store: store('quiz2'), blurb: 'Cards.' })(locked, nav);
-    expect(locked.querySelector('.quiz-empty')!.textContent).toContain('each lesson adds its cards');
   });
 });

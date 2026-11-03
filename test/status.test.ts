@@ -20,7 +20,7 @@ describe('lesson status', () => {
     expect(lessonStatus(save, LESSON)).toBe('new');
     expect(lessonStatus(leftAt(save, 1), LESSON)).toBe('started');
     expect(progressLine(leftAt(save, 1), LESSON)).toBe('In progress: part 2 of 2');
-    expect(lessonStatus(finishLesson(leftAt(save, 1), 'a', 1, 1, [], new Date(0)), LESSON)).toBe('done');
+    expect(lessonStatus(finishLesson(leftAt(save, 1), 'a', 1, 1, new Date(0)), LESSON)).toBe('done');
     // A place kept for another version of the lesson does not count.
     expect(lessonStatus({ ...save, resume: { a: { ...emptyResume('old'), part: 1 } } }, LESSON)).toBe('new');
   });

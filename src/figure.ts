@@ -383,7 +383,7 @@ export function player(s: Slider, ctx: FigureContext, o: PlayerOptions = {}): Pl
     let last = performance.now();
     const step = (now: number) => {
       if (!on || ctx.closed.aborted) return;
-      clock = Math.min(hi(), clock + Math.min(0.1, (now - last) / 1000) * rate);
+      clock = Math.min(hi(), clock + Math.min(1 / REDUCED_FPS, (now - last) / 1000) * rate);
       last = now;
       const before = input.value;
       input.value = String(clock);
@@ -399,9 +399,9 @@ export function player(s: Slider, ctx: FigureContext, o: PlayerOptions = {}): Pl
         o.onEnd?.();
         return;
       }
-      requestAnimationFrame(step);
+      nextFrame(step);
     };
-    requestAnimationFrame(step);
+    nextFrame(step);
   };
   button.addEventListener('click', () => (on ? pause() : play()));
   input.addEventListener('input', () => {
@@ -661,12 +661,40 @@ export function placeable(s: SVGSVGElement, handle: SVGElement, to: (x: number, 
  * own; that box is returned, to go under the figure.
  */
 export function placeCaption(node: HTMLElement, caption: HTMLElement): HTMLElement | null {
+  nameDrawing(node, caption);
   const box = node.querySelector('.fig-text');
   if (box) {
     box.prepend(caption);
     return null;
   }
   return el('div.fig-text', {}, caption);
+}
+
+let captions = 0;
+
+/** The figure's drawing (its first SVG or canvas) is an image to a screen reader, named by its caption. */
+function nameDrawing(node: HTMLElement, caption: HTMLElement): void {
+  const drawing = node.querySelector('svg, canvas');
+  if (!drawing || drawing.hasAttribute('aria-label') || drawing.hasAttribute('aria-labelledby')) return;
+  caption.id ||= `fig-caption-${++captions}`;
+  drawing.setAttribute('role', 'img');
+  drawing.setAttribute('aria-labelledby', caption.id);
+}
+
+/** The reader has asked for less motion: continuous animation steps a few times a second instead. */
+export const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Frames per second to step at under reduced motion. */
+const REDUCED_FPS = 2;
+
+/**
+ * requestAnimationFrame, or under reduced motion a slow tick: the figure
+ * still moves, as a cause still has its effect, but in steps rather than a
+ * smooth run.
+ */
+export function nextFrame(cb: (now: number) => void): void {
+  if (reducedMotion()) setTimeout(() => cb(performance.now()), 1000 / REDUCED_FPS);
+  else requestAnimationFrame(cb);
 }
 
 export interface StandaloneFigure {
@@ -716,9 +744,9 @@ function promised(): { promise: Promise<void>; resolve: () => void } {
 }
 
 /**
- * Run `tick` every frame while the figure is on screen and the shift is open.
+ * Run `tick` every frame while the figure is on screen and the lesson is open.
  * `tick` gets the seconds since the last frame (capped, so a tab that was
- * hidden does not jump).
+ * hidden does not jump). Under reduced motion it runs a few times a second.
  */
 export function animate(node: Element, ctx: FigureContext, tick: (dt: number) => void): void {
   let visible = false;
@@ -729,16 +757,16 @@ export function animate(node: Element, ctx: FigureContext, tick: (dt: number) =>
       running = false;
       return;
     }
-    tick(Math.min(0.05, (now - last) / 1000));
+    tick(Math.min(reducedMotion() ? 1 / REDUCED_FPS : 0.05, (now - last) / 1000));
     last = now;
-    requestAnimationFrame(loop);
+    nextFrame(loop);
   };
   const io = new IntersectionObserver((entries) => {
     visible = entries.some((e) => e.isIntersecting);
     if (visible && !running) {
       running = true;
       last = performance.now();
-      requestAnimationFrame(loop);
+      nextFrame(loop);
     }
   });
   io.observe(node);

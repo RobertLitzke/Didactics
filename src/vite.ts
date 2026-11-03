@@ -12,6 +12,9 @@ import { extname, join, resolve } from 'node:path';
 import type { Plugin, UserConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { COURSE_FILES_CACHE, OFFLINE_LIST } from './offline.ts';
+
+export { COURSE_FILES_CACHE, OFFLINE_LIST };
 
 /**
  * Writes dist/index.html again as dist/`name`. A second name, so the browser
@@ -154,6 +157,38 @@ export function offlineCopy(root: string, name: string, globs: string[]): Plugin
 }
 
 /**
+ * Writes dist/offline.json: every file matching `globs` under dist/, so the
+ * page can save them for offline on request (offline.ts saveForOffline) on a
+ * site whose worker does not precache a course's large files.
+ */
+export function offlineList(root: string, globs: string[], name = OFFLINE_LIST): Plugin {
+  return {
+    name: 'offline-list',
+    apply: 'build',
+    closeBundle() {
+      const out = resolve(root, 'dist');
+      const tests = globs.map(globRegExp);
+      const files = filesUnder(out).filter((f) => tests.some((t) => t.test(f))).sort();
+      writeFileSync(resolve(out, name), JSON.stringify(files));
+    },
+  };
+}
+
+/**
+ * The workbox route a site's service worker serves course files from: a
+ * course's photos, maps and data folders, cached as they are first fetched
+ * (and filled all at once by offline.ts saveForOffline), in the course-files
+ * cache. For the site's `workbox.runtimeCaching`.
+ */
+export function courseFilesRoute() {
+  return {
+    urlPattern: /\/(photos|maps|data)\/[^/?#]+$/,
+    handler: 'CacheFirst' as const,
+    options: { cacheName: COURSE_FILES_CACHE, cacheableResponse: { statuses: [0, 200] } },
+  };
+}
+
+/**
  * Inlines public/icons/icon.svg, the favicon, as a data URI in the built page,
  * so the one-file copy keeps its tab icon when opened from file://.
  */
@@ -194,9 +229,11 @@ export interface LessonAppOptions {
    */
   manifest: { name: string; short_name: string; description: string; theme_color: string; background_color?: string; id?: string; icons?: ManifestIcon[] };
   /**
-   * Files besides index.html and the icons that the service worker downloads
-   * when it installs, as globs under dist/: a poster, 'photos/*.webp'. A file
-   * whose contents have not changed is not downloaded again by a new version.
+   * The course's large files, as globs under dist/: a poster, 'photos/*.webp',
+   * 'maps/*'. Listed in dist/offline.json for Settings' Offline section. A
+   * course on its own has its worker download them when it installs (a file
+   * whose contents have not changed is not downloaded again by a new version);
+   * on a site (`inSite`) they are fetched as read and saved on request.
    */
   precache?: string[];
   /**
@@ -248,6 +285,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
       inlineFavicon(o.root),
       oneFileCopy(o.root, o.oneFile),
       o.offlineFile ? offlineCopy(o.root, o.offlineFile, o.precache ?? []) : null,
+      o.precache?.length ? offlineList(o.root, o.precache) : null,
       VitePWA({
         ...(o.inSite ? { buildBase: '../', scope: '../' } : {}),
         registerType: 'prompt',
@@ -256,7 +294,9 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
         // a second time without a revision and workbox refuses the conflict.
         includeManifestIcons: false,
         workbox: {
-          globPatterns: ['index.html', ...(o.precache ?? []), 'icons/*.{png,svg}'],
+          // A course on its own keeps its large files from the start; on a
+          // site, the site's worker leaves them to the Save button (courseFilesRoute).
+          globPatterns: ['index.html', ...(o.precache?.length ? [...(o.inSite ? [] : o.precache), OFFLINE_LIST] : []), 'icons/*.{png,svg}'],
           inlineWorkboxRuntime: true,
           navigateFallback: 'index.html',
           cleanupOutdatedCaches: true,

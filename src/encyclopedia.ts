@@ -190,9 +190,6 @@ export interface Encyclopedia extends EncyclopediaOptions {
 
 let current: Encyclopedia | undefined;
 
-/** The encyclopedia the page is using, if any. */
-export const activeEncyclopedia = () => current;
-
 /**
  * Makes `o` the encyclopedia that [[links]] in lesson text open, and that the
  * glossary and technical notes point into. The entries are read the first

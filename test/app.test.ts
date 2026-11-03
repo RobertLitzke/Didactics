@@ -11,7 +11,7 @@ import { courseId, scaffold, squarePng } from '../src/scaffold';
 globalThis.IntersectionObserver ??= class { observe() {} disconnect() {} } as unknown as typeof IntersectionObserver;
 
 const lesson = (id: string, n: number): Lesson => ({
-  id, n, title: `Lesson about ${id}`, teaches: `What ${id} is`, summary: [], journal: [],
+  id, n, title: `Lesson about ${id}`, teaches: `What ${id} is`, summary: [],
   parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }, { type: 'interactive_diagram', id: 'push', caption: 'Push', task: 'Push', goal: 'far' }] }],
 });
 const push = figure(['far'], () => frame(100, 50).node);

@@ -35,7 +35,7 @@ describe('top bar', () => {
 });
 
 describe('lessons not written yet', () => {
-  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', summary: [], journal: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
+  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', summary: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
   const open = (lesson: Lesson) => {
     const store = createStore({ key: 'coming-test', empty: emptyProgress, migrate: migrateProgress });
     const went: string[] = [];
@@ -59,7 +59,7 @@ describe('a save with no radio', () => {
     const empty = emptyProgress('imperial', { radio: false });
     expect(empty).not.toHaveProperty('talk');
     expect(empty).not.toHaveProperty('heard');
-    const stored = JSON.parse(JSON.stringify({ ...finishLesson(emptyProgress(), 'a', 1, 2, [], new Date('2026-01-01')), talk: true, heard: { x: [0] } }));
+    const stored = JSON.parse(JSON.stringify({ ...finishLesson(emptyProgress(), 'a', 1, 2, new Date('2026-01-01')), talk: true, heard: { x: [0] } }));
     const back = migrateProgress(stored, empty);
     expect(back).not.toHaveProperty('talk');
     expect(back).not.toHaveProperty('introSeen');
@@ -125,10 +125,10 @@ describe('lesson file layout', () => {
 
   it('reads where a file breaks its lines', () => {
     const l = jsonLayouts(compact);
-    expect(l.get('["journal"]')).toEqual({ open: false, between: false, close: false, flat: true });
-    expect(l.get('["parts",0]')).toEqual({ open: false, between: false, close: false, flat: false });
-    expect(l.get('["parts",0,"blocks",0,"points"]')).toEqual({ open: true, between: true, close: true, flat: false });
-    expect(l.get('["parts",0,"blocks",4]')).toEqual({ open: true, between: true, close: true, flat: false });
+    expect(l.get('["journal"]')).toEqual({ open: false, between: false, close: false, flat: true, pad: false, gap: true });
+    expect(l.get('["parts",0]')).toEqual({ open: false, between: false, close: false, flat: false, pad: true, gap: true });
+    expect(l.get('["parts",0,"blocks",0,"points"]')).toEqual({ open: true, between: true, close: true, flat: false, pad: false, gap: true });
+    expect(l.get('["parts",0,"blocks",4]')).toEqual({ open: true, between: true, close: true, flat: false, pad: false, gap: true });
     expect(jsonLayouts('{ not json').size).toBe(0);
   });
 
@@ -144,6 +144,18 @@ describe('lesson file layout', () => {
     expect(out).toContain('"Two.",\n        "Three."\n      ] },');
     expect(out).toContain('"options": { "n": 3, "m": [1, 2] } },');
     expect(JSON.parse(out)).toEqual(more);
+  });
+
+  it('keeps a flat value spaced as the file spaced it, and spaces a new one like its container', () => {
+    const bare = '{\n  "blocks": [\n    {"type": "text", "text": "A", "options": {"n": 1}},\n    {"type":"text","text":"B","list":[1,2]}\n  ]\n}\n';
+    const v = JSON.parse(bare);
+    expect(formatJson(v, bare)).toBe(bare);
+    v.blocks[0].options.more = { m: [1, 2] };
+    v.blocks[1].list.push(3);
+    v.blocks[1].extra = { x: 'y' };
+    const out = formatJson(v, bare);
+    expect(out).toContain('{"type": "text", "text": "A", "options": {"n": 1, "more": {"m": [1, 2]}}},');
+    expect(out).toContain('{"type":"text","text":"B","list":[1,2,3],"extra":{"x":"y"}}');
   });
 
   it('is JSON.stringify layout with nothing to match', () => {

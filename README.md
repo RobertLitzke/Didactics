@@ -135,16 +135,18 @@ pin back before committing.
 | `scaffold` | Node only: `scaffold(options)`, the files of a new course, which `didactics-course new` writes; `courseId`, `squarePng` |
 | `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
-| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline` shows how many photos are saved on the device, `oneFile.offline` offers the copy with photos inside |
+| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline: { noun }` shows how many of the course's large files (the build's `offline.json`) are saved on the device, with a button to save the rest (and one to let them go), `oneFile.offline` offers the copy with photos inside |
 | `update` | `watchForUpdates({ title, text, icon?, beforeReload? })`, gets a new deploy into the installed app, with a "new version" banner |
 | `splash` | `showSplash({ src, alt })`, a poster as the loading screen |
 | `asset` | `assetFrom(siteUrl)`, `fromDisk` (lets the one-file copy fetch photos from the live site), `selfContained` (the offline copy, photos inlined) |
-| `offline` | `savedCount(folder)`, `retireWhenSaved(folder, total, oldCaches)` |
+| `offline` | What a course keeps for use with no connection: `offlineFiles()` (the build's `offline.json`), `savedCount(files)`, `savedPaths(folder)`, `saveForOffline(onProgress, signal?)` (fetches the list into the `course-files` cache), `forgetOffline(files)`, `retireWhenSaved(files, oldCaches)`; `COURSE_FILES_CACHE`, `OFFLINE_LIST` |
 | `overflow` | Dev only: flags anything wider than the screen |
-| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`; `inSite` for a course in a folder of a site with one service worker); also its parts `oneFileCopy`, `offlineCopy`, `inlineFavicon`, `codeTextModule`, `globRegExp` |
-| `styles/kit.css` | All the styles, themed through CSS custom properties |
+| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`; `precache` lists the course's large files, precached by a course on its own and written to `offline.json` for Settings' Save button; `inSite` for a course in a folder of a site with one service worker, which leaves them to that button); also its parts `oneFileCopy`, `offlineCopy`, `offlineList`, `courseFilesRoute` (the site worker's cache-as-fetched route for `photos/`, `maps/` and `data/`), `inlineFavicon`, `codeTextModule`, `globRegExp` |
+| `styles/kit.css` | All the styles, themed through CSS custom properties: the shell, lessons, figures, review, the course's own home page (hero, letter, lesson board, reference card) and photos with their credit |
+| `styles/plain-type.css` | The plain skin, for a course whose display face is a text face: headings keep their case, labels in the body face. Import after kit.css |
+| `kit` | `courseKit(COL)`: a course's `slider` and `prose` coloured by its palette's keys, and `tint(hex, alpha)` |
 | **Lessons** | |
-| `progress` | The shared save fields (`Progress`): lessons done, best scores, journal, units, radio, quiz, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
+| `progress` | The shared save fields (`Progress`): lessons done, best scores, units, review, lessons left part way, and the radio's fields (`RadioProgress`) unless made with `emptyProgress(units, { radio: false })`. Also `emptyProgress`, `migrateProgress`, `finishLesson`, `skipLesson`, `passed`, `moveLesson` |
 | `blocks` | The typed blocks of a lesson's JSON (`text`, `key_ideas`, `interactive_diagram`, `diagram`, `quiz`), `isDiagram`, `lessonShapeProblems`; the reference file's (`RefBlock`, `RefSection`, `referenceShapeProblems`) |
 | `lesson` | The lesson JSON types, `prose(text, palette, notes?)`, `lessonView(options)` (the lesson player and its summary), `lessonTexts()`, `lessonProblems()` for content tests, `diagramType(factory)` |
 | `course` | The whole course as one JSON file: `courseFiles`, `exportCourse`, `readCourse`, `injectCourse`, `courseEdits`, `pieceOf`, `upgradeLesson`, `upgradeReference`, `formatJson` (keeps a file's layout); the command line `didactics-course` |
@@ -161,7 +163,7 @@ pin back before committing.
 | `encyclopedia` | A site-wide encyclopedia of ideas, people, places and things, with a page per course (its one-page glossary): `useEncyclopedia`, `encyclopediaView`, `entryLink` (the `[[words]]` link in lesson text), `readEntries`, `entryIndex`, `encyclopediaProblems`, `entryLinkProblems`; the build serves the data (`vite` `encyclopediaModule`, `readEncyclopedia`) |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
 | `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
-| `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
+| `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `photoFigure(photo, src, { alt?, mirrored?, aspect?, position? })` (the picture over its credit, styled by kit.css), `stillPhoto({ find, src })` (the figure a lesson names a photo in by id), `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
 | `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
@@ -171,11 +173,10 @@ pin back before committing.
 | `srs` | Spaced repetition in Anki's shape, pure functions over plain data: a `Collection` of `Deck`s, `Note`s (basic or multiple choice), `Card`s (new, learning, review, relearning; due, interval, ease, reps, lapses, FSRS stability and difficulty) and a `ReviewLog`. Schedulers `fsrs()` (via ts-fsrs, the default) and `sm2()` (Anki's classic); `answer`, `preview`, `studyQueue` (due first, new ones woven through, daily limits), `nextCard`, `reviewAhead`, `dayCounts`, `totals`, `suspend`, `bury`, `forget`, `addNote`, `removeNote`, `migrateCollection`, `fromLeitner`, `formatGap` |
 | `anki` | `toApkg(collection, { media?, html?, sourceLabel? })`: the collection as an Anki package, schedules and review log included, notes matched again on a later import by guid |
 | `sqlite` | `sqliteFile(tables, indexes)`: a small writer of SQLite database files (what an .apkg holds), with no WebAssembly |
-| `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day, Leitner places kept), `stepFor` (a check question made again, picture and all), `fillFigureCards` and `figureFor` (live figures as flash cards), `figureCardProblems` |
+| `review` | What a course keeps for review: `recordAnswer` (a check question answered in a lesson), `fillFromLessons` (checks of lessons finished before), `syncDeck` (the course's quiz deck, a few new cards a day; places from the old Leitner quiz kept), `stepFor` (a check question made again, picture and all), `fillFigureCards` and `figureFor` (live figures as flash cards), `figureCardProblems` |
 | `review-all` | `allCoursesReview({ courses: [{ key, title, save, href, icon?, theme? }] })`, every course's cards in one sitting, each in its colours, answers written back to each save, one .apkg of all; style with `didactics/styles/review-all.css` |
 | `review-view` | `reviewView({ store, title, lessons, figures, deck?, media?, blurb? })`, the review page: today's counts, decks, sittings with Anki's four buttons, options, and the .apkg download |
-| `quiz` | The flash-card shape (`Card`, `conceptCard` for hand-written cards); its Leitner scheduling (`review`, `deal`, `tally`) is kept for old saves |
-| `quiz-view` | `quizView`, the old quiz page, no longer used by `defineCourse` |
+| `quiz` | The flash-card shape (`Card`, `conceptCard` for hand-written cards) a course's deck is written in |
 | **Radio** | |
 | `radio` | Talk, Turn and Reply types, `transcript()` |
 | `slip` | `createSlip({ stations, snubs, signOff, onHeard, onOff })` returns `{ play, clear }`, the typewriter slip |
@@ -240,6 +241,13 @@ If you add your own fields, repair them in `migrate` after
 `migrateProgress` runs. Clouds' `src/core/save.ts` shows how. Rename a lesson
 with `moveLesson(save, 'old-id', 'new-id')` so readers keep their progress.
 
+A course made with `defineCourse` needs none of this: it keeps `<id>.save`
+and `<id>.course`. A course whose keys predate its id passes them (`save: {
+key: 'outofauto.save' }`, `text: { key: 'out-of-auto.course' }`), because
+changing a key loses everyone's progress. Fields from before 0.22.0 that are
+no longer kept (`journal`, the old quiz's `quiz`) are read for what they can
+still feed and then dropped.
+
 ### A palette and the figure kit
 
 Each topic picks a few colours that always mean the same thing in every
@@ -247,16 +255,18 @@ figure and in the text, like Clouds' orange for rising air.
 
 ```ts
 // src/figures/kit.ts
-import { slider as kitSlider, type Slider } from 'didactics/figure';
-import { prose as kitProse } from 'didactics/lesson';
+import { courseKit } from 'didactics/kit';
 export * from 'didactics/figure';
 export const COL = { ink: '#2a2547', soft: '#6a5c80', paper: '#fffaf0', effort: '#e0663f', load: '#3a7bd5', pivot: '#0e7a8f' } as const;
 export type ColorKey = keyof typeof COL;
-export const slider = (label: string, min: number, max: number, step: number, value: number,
-  show: (v: number) => string, onInput: (v: number) => void, color: ColorKey = 'ink'): Slider =>
-  kitSlider(label, min, max, step, value, show, onInput, COL[color]);
-export const prose = (text: string) => kitProse(text, COL);
+export const { slider, prose, tint } = courseKit(COL);
 ```
+
+`slider` is Didactics' slider with its colour named by a palette key
+(`slider('Load', 0, 10, 1, 4, (v) => `${v} kg`, set, 'load')`, or the
+options form `slider({ label, min, max, value, color: 'load', … })`),
+`prose` colours `[[words|key]]` from the palette, and `tint('#e0663f', 0.3)`
+is the colour with an alpha.
 
 ### A figure
 
@@ -398,7 +408,7 @@ A relief is made once, ahead of time, by a script that writes
 `public/maps/<name>.png` (heights in the Terrarium encoding) and
 `<name>.json` (where it lies, its credit and licence, and the command that
 made it). Nothing is fetched from a map service while reading, so maps work
-offline once those files are cached (add `'maps/*'` to `precache`).
+offline once those files are saved (add `'maps/*'` to `precache`).
 
 ```ts
 import { loadRelief, mapView, mapLabels, outcrops } from 'didactics/maps';
@@ -492,8 +502,7 @@ save loads as before.
   "summary": [
     "A lever trades distance for force: a long push at the end moves a heavy load a short way.",
     "What turns a lever is force × distance from the pivot."
-  ],
-  "journal": []
+  ]
 }
 ```
 
@@ -759,11 +768,15 @@ router, shell, text, asset }`. More, each optional:
 - `text`: the course's words, as `courseEdits` options or edits already made
   (make them in a module the entry imports first when the course's modules
   copy words out as they load, as Clouds' `src/course.ts` does);
-  `textPieces` to download a lesson at a time.
+  `textPieces: { modules: import.meta.glob('/src/figures/*.ts', { eager: true }) }`
+  makes a downloadable piece per lesson, its file and the words in its
+  figures' code (`files` and `alongside` add to a piece; or give the
+  pieces themselves).
 - `site` (the live URL, for the one-file copy opened from disk), `oneFile`,
-  `offline: { folder, total, noun, retire? }`, `splash`, `update`, and
-  `settings` for anything else on that page (units label, radio blurb, more
-  sections).
+  `offline: { noun, retire? }` (Settings' Offline section: how many of the
+  course's large files, the build's `offline.json`, are on the device; on a
+  site whose worker precaches only the pages, a button saves them all), `splash`, `update`, and `settings` for anything else on
+  that page (units label, radio blurb, more sections).
 
 Clouds' `src/main.ts` uses nearly all of them. A course that wants a
 different arrangement can still put the parts together itself:

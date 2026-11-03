@@ -1,4 +1,6 @@
 import type { Plugin, UserConfig } from 'vite';
+import { COURSE_FILES_CACHE, OFFLINE_LIST } from './offline.ts';
+export { COURSE_FILES_CACHE, OFFLINE_LIST };
 /**
  * Writes dist/index.html again as dist/`name`. A second name, so the browser
  * saves it as a file rather than opening the app, and so it is not the page
@@ -43,6 +45,28 @@ export declare function globRegExp(glob: string): RegExp;
  */
 export declare function offlineCopy(root: string, name: string, globs: string[]): Plugin;
 /**
+ * Writes dist/offline.json: every file matching `globs` under dist/, so the
+ * page can save them for offline on request (offline.ts saveForOffline) on a
+ * site whose worker does not precache a course's large files.
+ */
+export declare function offlineList(root: string, globs: string[], name?: string): Plugin;
+/**
+ * The workbox route a site's service worker serves course files from: a
+ * course's photos, maps and data folders, cached as they are first fetched
+ * (and filled all at once by offline.ts saveForOffline), in the course-files
+ * cache. For the site's `workbox.runtimeCaching`.
+ */
+export declare function courseFilesRoute(): {
+    urlPattern: RegExp;
+    handler: "CacheFirst";
+    options: {
+        cacheName: string;
+        cacheableResponse: {
+            statuses: number[];
+        };
+    };
+};
+/**
  * Inlines public/icons/icon.svg, the favicon, as a data URI in the built page,
  * so the one-file copy keeps its tab icon when opened from file://.
  */
@@ -79,9 +103,11 @@ export interface LessonAppOptions {
         icons?: ManifestIcon[];
     };
     /**
-     * Files besides index.html and the icons that the service worker downloads
-     * when it installs, as globs under dist/: a poster, 'photos/*.webp'. A file
-     * whose contents have not changed is not downloaded again by a new version.
+     * The course's large files, as globs under dist/: a poster, 'photos/*.webp',
+     * 'maps/*'. Listed in dist/offline.json for Settings' Offline section. A
+     * course on its own has its worker download them when it installs (a file
+     * whose contents have not changed is not downloaded again by a new version);
+     * on a site (`inSite`) they are fetched as read and saved on request.
      */
     precache?: string[];
     /**

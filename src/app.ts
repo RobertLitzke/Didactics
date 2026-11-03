@@ -9,7 +9,7 @@
 // ...), so a course that outgrows this can call them itself.
 
 import { assetFrom } from './asset';
-import { courseEdits, type CourseEdits, type CourseEditsOptions, type CoursePiece } from './course';
+import { courseEdits, lessonPieces, type CourseEdits, type CourseEditsOptions, type CoursePiece, type LessonPiecesOptions } from './course';
 import { courseSection } from './course-view';
 import { el, type Child } from './dom';
 import { encyclopediaView, useEncyclopedia, type EncyclopediaData } from './encyclopedia';
@@ -17,10 +17,9 @@ import type { FootnoteSet } from './footnote';
 import type { FigureFactory } from './figure';
 import { glossaryFromLessons, glossaryView, mergeGlossary, type GlossaryEntry } from './glossary';
 import { lessonView, type Lesson, type LessonViewOptions } from './lesson';
-import { retireWhenSaved } from './offline';
+import { offlineFiles, retireWhenSaved } from './offline';
 import { creditsView, type CreditsViewOptions, type Photo } from './photos';
 import { emptyProgress, migrateProgress, skipLesson, type EmptyOptions, type Progress, type Units } from './progress';
-import type { QuizViewOptions } from './quiz-view';
 import type { Card } from './quiz';
 import { recordAnswer } from './review';
 import { reviewView, type ReviewViewOptions } from './review-view';
@@ -34,9 +33,12 @@ import { lessonGo, lessonStatus, progressLine } from './status';
 import { nextLesson, treeView, type TreeBranch, type TreeNode } from './tree';
 import type { UpdateBannerText } from './update';
 
-/** A page of the course's own, such as a lab or a journal. */
+/** How to make the per-lesson text pieces: the figure modules, and what else goes in a lesson's piece. */
+export type LessonPiecesFrom<L extends Lesson> = Omit<LessonPiecesOptions<L>, 'lessons' | 'figures' | 'noun' | 'fileName'> & { fileName?: (lesson: L) => string };
+
+/** A page of the course's own, such as a lab or a field guide. A page that reads the save takes the store from `courseStore`, as main.ts does. */
 export interface CoursePage {
-  /** Its route, such as "/lab" or "/journal/:tab". */
+  /** Its route, such as "/lab" or "/guide/:tab". */
   path: string;
   view: View;
   /** Its name in the page menu; left out, the page is reached only by links. */
@@ -47,9 +49,15 @@ export interface CoursePage {
 
 /** How the save is made: given whole, or from these settings. */
 export type CourseSave<S extends Progress> =
-  | { store: Store<S>; empty: () => S }
+  | { store: Store<S>; empty: () => S; key?: undefined }
   | {
       store?: undefined;
+      /**
+       * The localStorage key the save lives under. Default "<id>.save". For a
+       * course whose key predates its id (Out of Auto keeps "outofauto.save"),
+       * so that readers keep their progress.
+       */
+      key?: string;
       /** Units a new reader starts in. Default metric. */
       units?: Units;
       /** One unit system only: no switch in Settings. */
@@ -104,7 +112,7 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
    * the lessons' check questions. (Before 0.12 they had a Quiz page of their
    * own; /quiz now opens the review page.)
    */
-  quiz?: Omit<QuizViewOptions<C, S>, 'store'> & { label?: string };
+  quiz?: QuizOptions<C>;
   /**
    * The review page at /review, in the menu as "Review": every check question
    * answered and every quiz card met, on Anki's schedule, with an Anki
@@ -130,9 +138,15 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
    * first, for a course whose modules copy words out at import), or what to
    * make them from now (kept under "<id>.course").
    */
-  text?: CourseEdits | Omit<CourseEditsOptions, 'key' | 'title'>;
-  /** Parts of the words to download on their own, such as one per lesson (course-view.ts). */
-  textPieces?: CoursePiece[];
+  text?: CourseEdits | (Omit<CourseEditsOptions, 'key' | 'title'> & { key?: string });
+  /**
+   * Parts of the words to download on their own (course-view.ts): the pieces
+   * themselves, or how to make one per lesson (course.ts lessonPieces) from
+   * the modules the figures are written in, `{ modules:
+   * import.meta.glob('/src/figures/*.ts', { eager: true }) }`, so each
+   * lesson's piece holds its file and the words in its figures' code.
+   */
+  textPieces?: CoursePiece[] | LessonPiecesFrom<L>;
 
   /** Settings beyond what defineCourse fills in (units label, radio blurb, more sections). */
   settings?: Partial<Omit<SettingsOptions<S>, 'store' | 'empty'>>;
@@ -149,11 +163,12 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   /** The new-version banner's words. Default "New version", "A fresh version of <title> is ready." */
   update?: UpdateBannerText;
   /**
-   * Large files the service worker keeps for offline (lessonApp's
-   * `precache`), for Settings' Offline section; `retire` lists caches of an
-   * older scheme to delete once every file is saved.
+   * The course has large files (lessonApp's `precache`, listed in the build's
+   * `offline.json`) that Settings' Offline section saves on request: what to
+   * call them, such as "photos" or "photos and maps"; `retire` lists caches of
+   * an older scheme to delete once every file is saved.
    */
-  offline?: { folder: string; total: number; noun: string; retire?: string[] };
+  offline?: { noun: string; retire?: string[] };
   /** The page the app opens on. Default /home. */
   start?: string;
   /**
@@ -163,6 +178,17 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
    * opened from disk, links to the catalog on the live site (`site`).
    */
   catalog?: { href: string; label?: string };
+}
+
+/** The course's own flash cards (review-view.ts shows them with the check questions). */
+export interface QuizOptions<C extends Card> {
+  /** The whole deck; built once, so wrong answers stay the same each time a card comes up. */
+  deck: readonly C[];
+  /** The paragraph under the review page's heading. */
+  blurb?: string;
+  /** A picture to show above a card's question, if it has one. */
+  media?: (card: C) => Node | null;
+  label?: string;
 }
 
 export interface Course<S extends Progress> {
@@ -183,7 +209,7 @@ export function courseStore<S extends Progress>(id: string, save: CourseSave<S> 
   if (save.store) return save;
   const make = emptyProgress as (units: Units, o: EmptyOptions) => Progress;
   const empty = () => make(save.units ?? 'metric', { radio: save.radio ?? radio, fixedUnits: save.fixedUnits }) as S;
-  return { store: createStore({ key: `${id}.save`, empty, migrate: (raw) => migrateProgress(raw, empty()) }), empty };
+  return { store: createStore({ key: save.key ?? `${id}.save`, empty, migrate: (raw) => migrateProgress(raw, empty()) }), empty };
 }
 
 /** The default home page: the welcome, a button for the lesson that is next, and the lessons as a tree. */
@@ -243,7 +269,11 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   const textOptions = o.text && !isEdits(o.text) && encFile && o.encyclopedia!.data.files[encFile]
     ? { ...o.text, files: { ...o.text.files, [encFile]: o.encyclopedia!.data.files[encFile] } }
     : o.text;
-  const text = textOptions && (isEdits(textOptions) ? textOptions : courseEdits({ key: `${o.id}.course`, title: o.title, ...textOptions }));
+  const text = textOptions && (isEdits(textOptions) ? textOptions : courseEdits({ title: o.title, ...textOptions, key: textOptions.key ?? `${o.id}.course` }));
+  const pieces = Array.isArray(o.textPieces)
+    ? o.textPieces
+    : o.textPieces && lessonPieces({ lessons: o.lessons, figures: o.figures, noun: o.lesson?.noun, fileName: (l) => `${o.id}-${l.id}.json`, ...o.textPieces });
+
   const lessonPath = o.lessonPath ?? '/lesson';
   const naming = { title: o.title, noun: o.lesson?.noun };
   if (o.splash) showSplash(o.splash);
@@ -299,7 +329,7 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
       saveFile: `${o.id}-save.json`,
       oneFile: oneFile ? { href: asset(oneFile), name: oneFile } : undefined,
       offline: o.offline,
-      sections: text ? courseSection({ edits: text, fileName: `${o.id}-course.json`, pieces: o.textPieces }) : undefined,
+      sections: text ? courseSection({ edits: text, fileName: `${o.id}-course.json`, pieces }) : undefined,
       about: o.photos ? el('p', {}, el('a', { href: '#/credits' }, 'Credits'), ': who made the photos, and under what licence.') : undefined,
       ...o.settings,
       store,
@@ -340,7 +370,8 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   if (import.meta.env?.PROD && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     // Loaded only here: the service worker's register module exists only in the app's build.
     void import('./update').then((m) => m.watchForUpdates(o.update ?? { title: 'New version', text: `A fresh version of ${o.title} is ready.` }));
-    if (o.offline?.retire) void retireWhenSaved(o.offline.folder, o.offline.total, o.offline.retire);
+    const retire = o.offline?.retire;
+    if (retire) void offlineFiles().then((files) => retireWhenSaved(files, retire), () => undefined);
   }
   return { store, empty, router, shell, text, asset };
 }

@@ -16,7 +16,7 @@ import { lessonSignature } from '../src/resume';
 import { createStore } from '../src/store';
 
 const lesson = (): Lesson => ({
-  id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [], journal: [],
+  id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [],
   parts: [
     { title: 'Push', blocks: [
       { type: 'text', text: 'Push it.' },
@@ -103,7 +103,7 @@ describe('course file', () => {
   });
 
   it('reads a lesson from before summaries: what was learned becomes the summary', () => {
-    const old = { id: 'push', n: 1, title: 'Pushing', teaches: 't', learned: ['Pushes move things'], next: 'Next: pulls.', journal: [], parts: [] };
+    const old = { id: 'push', n: 1, title: 'Pushing', teaches: 't', learned: ['Pushes move things'], next: 'Next: pulls.', parts: [] };
     const up = upgradeLesson(old) as Record<string, unknown>;
     expect(up.summary).toEqual(['Pushes move things']);
     expect('learned' in up || 'next' in up).toBe(false);

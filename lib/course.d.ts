@@ -66,6 +66,41 @@ export interface CoursePiece {
     fileName?: string;
 }
 /** Only the files and code tables of `file` that `piece` names. */
+/** What lessonPieces needs of a lesson: its id, number and name, and the figure ids its blocks name. */
+export interface PieceLesson {
+    id: string;
+    n: number;
+    code?: string;
+    title: string;
+    parts: readonly {
+        blocks: readonly ({
+            id?: unknown;
+        } | Record<string, unknown>)[];
+    }[];
+}
+export interface LessonPiecesOptions<L extends PieceLesson> {
+    lessons: readonly L[];
+    /** Each figure id to its factory, as the course gives defineCourse. */
+    figures: Readonly<Record<string, unknown>>;
+    /** The figure modules by path, as `import.meta.glob('/src/figures/*.ts', { eager: true })`: where each factory is written. */
+    modules: Readonly<Record<string, Record<string, unknown>>>;
+    /** The JSON files a lesson's piece holds. Default the file named by `modules`' sibling folder: "src/lessons/<id>.json". */
+    files?: (lesson: L) => string[];
+    /** Other source files whose words go with a figure file, such as the model behind it ("src/core/fog.ts" for "src/app/figures/fog.ts"). */
+    alongside?: (figureFile: string) => string[];
+    /** What a lesson is called. Default "Lesson". */
+    noun?: string;
+    /** The downloaded file's name. */
+    fileName?: (lesson: L) => string;
+}
+/**
+ * One CoursePiece per lesson, for Settings' download menu: the lesson's own
+ * file, and the words in the code of every figure it shows (found by which
+ * module exports each factory). Words shared by every lesson (a glossary, a
+ * quiz deck, the pages) are in "All" only.
+ */
+export declare function lessonPieces<L extends PieceLesson>(o: LessonPiecesOptions<L>): CoursePiece[];
+/** The piece of a course file that one CoursePiece names. */
 export declare function pieceOf(file: CourseFile, piece: CoursePiece): CourseFile;
 export interface CourseEditsOptions {
     /** The localStorage key edits are kept under. */
@@ -115,10 +150,18 @@ export declare function upgradeReference<T>(raw: T, typeOf?: (id: string) => Dia
  * (`close`); `flat` when it is all on one line.
  */
 export interface JsonLayout {
+    /** A line break after the opening bracket. */
     open: boolean;
+    /** Line breaks between the entries. */
     between: boolean;
+    /** A line break before the closing bracket. */
     close: boolean;
+    /** The whole value on one line; the two below say how it is spaced then. */
     flat: boolean;
+    /** A space inside an object's braces: `{ "a": 1 }` rather than `{"a": 1}`. */
+    pad: boolean;
+    /** A space after each colon and comma: `"a": 1, "b": 2` rather than `"a":1,"b":2`. */
+    gap: boolean;
 }
 /**
  * JSON text for a course file, laid out like the file it replaces (`like`,

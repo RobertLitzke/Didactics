@@ -12,9 +12,7 @@ import { closeFootnote, footnoteProblems, footnoteSet } from '../src/footnote';
 import { glossaryFromLessons, glossaryView, mergeGlossary } from '../src/glossary';
 import { lessonProblems, lessonView, prose, type Lesson } from '../src/lesson';
 import { emptyProgress, finishLesson, migrateProgress, passed, skipLesson } from '../src/progress';
-import { deal, review, tally } from '../src/quiz';
 import { lessonSignature, migrateResume } from '../src/resume';
-import { makeRng } from '../src/rng';
 import { createStore } from '../src/store';
 
 const SRC = resolve(__dirname, '../src');
@@ -40,18 +38,10 @@ describe('Didactics', () => {
 
   it('migrates junk to an empty save and keeps the best score', () => {
     expect(migrateProgress('x')).toEqual(emptyProgress());
-    const once = finishLesson(emptyProgress(), 'a', 3, 4, ['j'], new Date('2026-01-02'));
-    const worse = finishLesson(once, 'a', 1, 4, [], new Date('2026-02-02'));
+    const once = finishLesson(emptyProgress(), 'a', 3, 4, new Date('2026-01-02'));
+    const worse = finishLesson(once, 'a', 1, 4, new Date('2026-02-02'));
     expect(worse.lessons.a).toEqual({ done: true, best: 3, of: 4, finishedAt: '2026-01-02' });
     expect(migrateProgress(JSON.parse(JSON.stringify(worse)))).toEqual(worse);
-  });
-
-  it('schedules cards further apart as they are got right', () => {
-    const deck = [{ id: 'c1', question: '?', options: ['yes', 'no'], why: '' }];
-    const s1 = review(undefined, true, 0);
-    expect(review(s1, true, 0).due).toBeGreaterThan(s1.due);
-    expect(tally(deck, {}, 0).fresh).toBe(1);
-    expect(deal(deck, {}, 0, 5, 5, makeRng(1))).toHaveLength(1);
   });
 
   it('runs a lesson made of one paragraph and one figure', async () => {
@@ -63,7 +53,7 @@ describe('Didactics', () => {
     });
     const check = quiz((ctx, t) => el('button', { onclick: () => { ctx.score(1, 1); t.done(); } }, 'Answer'));
     const lessons: Lesson[] = [{
-      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: ['Pushes move things'], journal: [],
+      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: ['Pushes move things'],
       parts: [
         { title: 'Push', blocks: [{ type: 'text', text: 'A **push** in [[red|warm]].' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal: 'far' }] },
         { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'One question', task: 'Answer' }] },
@@ -123,7 +113,7 @@ describe('Didactics', () => {
 
   it('builds a glossary from technical footnotes and a list, A to Z, and searches it', () => {
     const lesson: Lesson = {
-      id: 'l', n: 1, title: 'L', teaches: 't', summary: [], journal: [], parts: [],
+      id: 'l', n: 1, title: 'L', teaches: 't', summary: [], parts: [],
       footnotes: {
         t: { kind: 'technical', title: 'Torque', text: 'Turning force.' },
         d: { kind: 'digression', title: 'Archimedes', text: 'Give me a place to stand.' },
@@ -181,7 +171,7 @@ describe('Didactics', () => {
     it('hands the check talk to the check instead of playing it', async () => {
       const played: string[] = [];
       const lesson: Lesson = {
-        id: 'sums', n: 1, title: 'Sums', teaches: 'Adding', summary: [], journal: [],
+        id: 'sums', n: 1, title: 'Sums', teaches: 'Adding', summary: [],
         parts: [{ title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Sums', task: 'Answer' }] }],
       };
       const store = createStore({ key: 'check-test', empty: emptyProgress, migrate: migrateProgress });
@@ -229,7 +219,7 @@ describe('Didactics', () => {
     });
     const figures = { push, check };
     const lesson = (goal = 'far'): Lesson => ({
-      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [], journal: [],
+      id: 'push', n: 1, title: 'Pushing', teaches: 'What a push does', summary: [],
       parts: [
         { title: 'Push', blocks: [{ type: 'text', text: 'Push it.' }, { type: 'interactive_diagram', id: 'push', caption: 'A block', task: 'Push it far', goal }] },
         { title: 'Check', blocks: [{ type: 'quiz', id: 'check', caption: 'Two questions', task: 'Answer' }] },
@@ -334,7 +324,7 @@ describe('Didactics', () => {
       expect(passed(skipped, 'b')).toBe(false);
       expect(skipped.resume.a).toBeUndefined();
       expect(migrateProgress(JSON.parse(JSON.stringify(skipped))).lessons.a).toEqual({ done: false, best: 0, of: 0, skipped: true });
-      const done = finishLesson(skipped, 'a', 2, 2, [], new Date('2026-01-02'));
+      const done = finishLesson(skipped, 'a', 2, 2, new Date('2026-01-02'));
       expect(done.lessons.a.skipped).toBeUndefined();
       expect(skipLesson(done, 'a')).toBe(done);
     });

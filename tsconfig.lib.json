@@ -15,5 +15,5 @@
     "outDir": "lib",
     "rootDir": "src"
   },
-  "include": ["src/vite.ts", "src/course.ts", "src/blocks.ts", "src/code-text.ts", "src/code-scan.ts", "src/scaffold.ts"]
+  "include": ["src/vite.ts", "src/offline.ts", "src/course.ts", "src/blocks.ts", "src/code-text.ts", "src/code-scan.ts", "src/scaffold.ts"]
 }

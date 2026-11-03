@@ -69,8 +69,6 @@ export interface Lesson<F extends string = string> {
    * opened again. Takes the same markup as text, less footnotes.
    */
   summary: string[];
-  /** Journal entries this lesson unlocks. */
-  journal: string[];
   /** Notes its text marks with [^id], shown in a popup (footnote.ts). */
   footnotes?: Footnotes;
 }
@@ -402,7 +400,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       finished = true;
       clearTimeout(timer);
       // The figures' guesses and sliders go too, so the lesson reopens as it was left.
-      o.store.update((s) => finishLesson({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }, lesson.id, score.right, score.of, lesson.journal, new Date()));
+      o.store.update((s) => finishLesson({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }, lesson.id, score.right, score.of, new Date()));
       const section = el('section.part.summary-end', {},
         summary(score.of ? `Check: ${score.right} of ${score.of} right` : null),
         el('div.gate', {}, el('a.btn.btn-big', { href: `#${home}` }, 'Back to the lessons')),
