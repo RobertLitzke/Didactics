@@ -768,9 +768,10 @@ router, shell, text, asset }`. More, each optional:
 - `text`: the course's words, as `courseEdits` options or edits already made
   (make them in a module the entry imports first when the course's modules
   copy words out as they load, as Clouds' `src/course.ts` does);
-  `figureModules: import.meta.glob('/src/figures/*.ts', { eager: true })`
+  `textPieces: { modules: import.meta.glob('/src/figures/*.ts', { eager: true }) }`
   makes a downloadable piece per lesson, its file and the words in its
-  figures' code (`textPieces` to say the pieces yourself).
+  figures' code (`files` and `alongside` add to a piece; or give the
+  pieces themselves).
 - `site` (the live URL, for the one-file copy opened from disk), `oneFile`,
   `offline: { folder, total, noun, retire? }` (Settings' Offline section: how
   many of the course's large files are on the device; on a site whose worker

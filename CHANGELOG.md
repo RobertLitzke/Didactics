@@ -26,7 +26,9 @@ read as before; nothing a reader has done is lost.
 - `app`: `save: { key }` and `text: { key }` keep a course on the storage
   keys it has always used when they differ from its id, so the old courses
   can drop their store and course modules without anyone losing progress;
-  `figureModules` makes the per-lesson text pieces.
+  `textPieces: { modules }` makes the per-lesson text pieces.
+- `didactics/course` resolves to the built `lib/course.js` under Node (a
+  tool script can import `formatJson`); in a bundler it is the source as before.
 - `course`: `lessonPieces({ lessons, figures, modules })`.
 - `figure`: every figure is `role="img"` named by its caption; `animate` and
   `player` run at two frames a second under `prefers-reduced-motion`

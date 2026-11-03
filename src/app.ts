@@ -9,7 +9,7 @@
 // ...), so a course that outgrows this can call them itself.
 
 import { assetFrom } from './asset';
-import { courseEdits, lessonPieces, type CourseEdits, type CourseEditsOptions, type CoursePiece } from './course';
+import { courseEdits, lessonPieces, type CourseEdits, type CourseEditsOptions, type CoursePiece, type LessonPiecesOptions } from './course';
 import { courseSection } from './course-view';
 import { el, type Child } from './dom';
 import { encyclopediaView, useEncyclopedia, type EncyclopediaData } from './encyclopedia';
@@ -33,9 +33,12 @@ import { lessonGo, lessonStatus, progressLine } from './status';
 import { nextLesson, treeView, type TreeBranch, type TreeNode } from './tree';
 import type { UpdateBannerText } from './update';
 
-/** A page of the course's own, such as a lab or a journal. */
+/** How to make the per-lesson text pieces: the figure modules, and what else goes in a lesson's piece. */
+export type LessonPiecesFrom<L extends Lesson> = Omit<LessonPiecesOptions<L>, 'lessons' | 'figures' | 'noun' | 'fileName'> & { fileName?: (lesson: L) => string };
+
+/** A page of the course's own, such as a lab or a field guide. A page that reads the save takes the store from `courseStore`, as main.ts does. */
 export interface CoursePage {
-  /** Its route, such as "/lab" or "/journal/:tab". */
+  /** Its route, such as "/lab" or "/guide/:tab". */
   path: string;
   view: View;
   /** Its name in the page menu; left out, the page is reached only by links. */
@@ -137,16 +140,13 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
    */
   text?: CourseEdits | (Omit<CourseEditsOptions, 'key' | 'title'> & { key?: string });
   /**
-   * Parts of the words to download on their own, such as one per lesson
-   * (course-view.ts). Default: one piece per lesson, its file and the words
-   * in the code of the figures it shows, when `figureModules` is given.
+   * Parts of the words to download on their own (course-view.ts): the pieces
+   * themselves, or how to make one per lesson (course.ts lessonPieces) from
+   * the modules the figures are written in, `{ modules:
+   * import.meta.glob('/src/figures/*.ts', { eager: true }) }`, so each
+   * lesson's piece holds its file and the words in its figures' code.
    */
-  textPieces?: CoursePiece[];
-  /**
-   * The modules the figures are written in, as `import.meta.glob('/src/figures/*.ts', { eager: true })`,
-   * so each lesson's piece can carry the words of its figures' code (course.ts lessonPieces).
-   */
-  figureModules?: Readonly<Record<string, Record<string, unknown>>>;
+  textPieces?: CoursePiece[] | LessonPiecesFrom<L>;
 
   /** Settings beyond what defineCourse fills in (units label, radio blurb, more sections). */
   settings?: Partial<Omit<SettingsOptions<S>, 'store' | 'empty'>>;
@@ -269,7 +269,10 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
     ? { ...o.text, files: { ...o.text.files, [encFile]: o.encyclopedia!.data.files[encFile] } }
     : o.text;
   const text = textOptions && (isEdits(textOptions) ? textOptions : courseEdits({ title: o.title, ...textOptions, key: textOptions.key ?? `${o.id}.course` }));
-  const pieces = o.textPieces ?? (o.figureModules && lessonPieces({ lessons: o.lessons, figures: o.figures, modules: o.figureModules, noun: o.lesson?.noun, fileName: (l) => `${o.id}-${l.id}.json` }));
+  const pieces = Array.isArray(o.textPieces)
+    ? o.textPieces
+    : o.textPieces && lessonPieces({ lessons: o.lessons, figures: o.figures, noun: o.lesson?.noun, fileName: (l) => `${o.id}-${l.id}.json`, ...o.textPieces });
+
   const lessonPath = o.lessonPath ?? '/lesson';
   const naming = { title: o.title, noun: o.lesson?.noun };
   if (o.splash) showSplash(o.splash);

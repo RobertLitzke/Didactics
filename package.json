@@ -25,7 +25,7 @@
     "./check": "./src/check.ts",
     "./code-scan": "./src/code-scan.ts",
     "./code-text": "./src/code-text.ts",
-    "./course": "./src/course.ts",
+    "./course": { "node": "./lib/course.js", "default": "./src/course.ts" },
     "./course-view": "./src/course-view.ts",
     "./dom": "./src/dom.ts",
     "./encyclopedia": "./src/encyclopedia.ts",
@@ -74,6 +74,7 @@
     },
     "./package.json": "./package.json",
     "./styles/kit.css": "./styles/kit.css",
+    "./styles/plain-type.css": "./styles/plain-type.css",
     "./styles/review-all.css": "./styles/review-all.css"
   },
   "scripts": {
