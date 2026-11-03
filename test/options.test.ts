@@ -35,7 +35,7 @@ describe('top bar', () => {
 });
 
 describe('lessons not written yet', () => {
-  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', summary: [], journal: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
+  const written: Lesson = { id: 'a', n: 1, title: 'A', teaches: '', summary: [], parts: [{ title: 'One', blocks: [{ type: 'text', text: 'Hi.' }] }] };
   const open = (lesson: Lesson) => {
     const store = createStore({ key: 'coming-test', empty: emptyProgress, migrate: migrateProgress });
     const went: string[] = [];
@@ -59,7 +59,7 @@ describe('a save with no radio', () => {
     const empty = emptyProgress('imperial', { radio: false });
     expect(empty).not.toHaveProperty('talk');
     expect(empty).not.toHaveProperty('heard');
-    const stored = JSON.parse(JSON.stringify({ ...finishLesson(emptyProgress(), 'a', 1, 2, [], new Date('2026-01-01')), talk: true, heard: { x: [0] } }));
+    const stored = JSON.parse(JSON.stringify({ ...finishLesson(emptyProgress(), 'a', 1, 2, new Date('2026-01-01')), talk: true, heard: { x: [0] } }));
     const back = migrateProgress(stored, empty);
     expect(back).not.toHaveProperty('talk');
     expect(back).not.toHaveProperty('introSeen');

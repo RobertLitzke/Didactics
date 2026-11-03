@@ -20,7 +20,7 @@ const BRANCHES: TreeBranch[] = [
   { id: 'x', title: 'Side trip', promise: 'Somewhere else', from: 'a', prefix: 'X' },
   { id: 'l', title: 'Afterword', promise: '', from: 'c', leaf: true },
 ];
-const done = (save: Progress, ...ids: string[]) => ids.reduce((s, id) => finishLesson(s, id, 1, 1, [], new Date(0)), save);
+const done = (save: Progress, ...ids: string[]) => ids.reduce((s, id) => finishLesson(s, id, 1, 1, new Date(0)), save);
 const state = (save: Progress) => Object.fromEntries([...treeStates(LESSONS, save)].map(([id, n]) => [id, n.state]));
 
 describe('lesson tree', () => {

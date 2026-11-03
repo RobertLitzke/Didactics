@@ -950,6 +950,34 @@ body.sheet-up { overflow: hidden; }
 .ref-section .gl-none { color: var(--ink-soft); }
 .ref-section .glossary { max-height: 70vh; overflow-y: auto; overscroll-behavior: contain; }
 
+/* ---- Photos with their credit (photos.ts photoFigure) ------------------ */
+/* figure.photo > img + figcaption > p.credit. On the dark page the credit sits
+   on a strip of the page colour; inside a figure or a reference section it sits
+   on their paper. A course that crops every photo alike sets --photo-aspect. */
+.photo { margin: 0; background: #000; }
+.photo img { display: block; width: 100%; height: auto; aspect-ratio: var(--photo-aspect, auto); object-fit: cover; }
+.photo img.mirrored { transform: scaleX(-1); }
+.photo figcaption { background: var(--bg); padding: 4px 16px 10px; }
+.photo.sketch { background: transparent; }
+.photo.sketch svg, .photo.sketch .scene { display: block; width: 100%; height: auto; aspect-ratio: var(--photo-aspect, 400 / 260); }
+.credit { font-size: 0.72rem; color: var(--muted); margin: 0; }
+.credit a { color: var(--muted); }
+.fig .photo, .ref-section .photo, .sheet .photo { background: transparent; }
+.fig .photo figcaption, .ref-section .photo figcaption { background: transparent; padding: 4px 14px 0; }
+.fig .photo .credit, .fig .photo .credit a, .ref-section .photo .credit, .ref-section .photo .credit a { color: var(--ink-soft); }
+.ref-section .photo { margin: 8px -16px; }
+.ref-section .photo figcaption { padding: 4px 16px 0; }
+.check .photo { margin: 0 -14px 10px; }
+.quiz-card .photo { margin: 0 0 12px; }
+.credit-list { padding-left: 18px; }
+
+/* ---- Figure extras a course's figures share ---------------------------- */
+.fig-hint { font-size: 0.86rem; color: var(--ink-soft); margin: 0 0 8px; }
+.fig-hint a { color: var(--rose); }
+.chip-label { align-self: center; font-size: 0.85rem; font-weight: 800; color: var(--ink-soft); min-width: 4.5em; }
+.detective .key-title { font-weight: 800; margin: 4px 0 4px; }
+.detective .steps { margin: 0 0 8px; }
+
 /* ---- A callout with no code yet (lesson.ts) ---------------------------- */
 .fig-placeholder {
   display: grid; place-items: center; margin: 0 14px; border: 2px dashed var(--ink-soft); border-radius: 10px;
@@ -972,6 +1000,30 @@ body.sheet-up { overflow: hidden; }
 .tree-rail .lesson-card { background: rgba(255, 255, 255, 0.05); }
 .lesson-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .lesson-actions .btn-ghost { color: var(--text); box-shadow: inset 0 0 0 2px var(--muted); }
+
+/* A course's own home page (its views/home.ts): a drawn hero with the title
+   over it, a letter under it, a board of numbered lesson cards and a card
+   pointing to the reference. Each course sets the hero's type and colours;
+   the stripe of the reference card is --stripe. */
+.hero { position: relative; overflow: hidden; }
+.hero .scene { display: block; width: 100%; height: min(60vh, 500px); }
+.hero-text { position: absolute; inset: 0; padding: 6vh 16px 0; text-align: center; pointer-events: none; }
+.hero-text h1 { margin: 0; }
+.hero .eyebrow { margin-bottom: 1.5vh; }
+.letter { background: var(--panel); color: var(--ink); border-radius: var(--radius); padding: 16px 18px; margin-top: -36px; position: relative; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+.letter p:last-child { margin-bottom: 0; }
+.lesson-board { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lesson-board .lesson-card { grid-template-columns: auto 1fr auto; }
+.lesson-board .lesson-card h3 { font-size: 1.1rem; font-weight: 600; }
+.lesson-n { font: 700 1.3rem/1 var(--display); width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--sun); color: var(--ink); }
+.lesson-card.soon { opacity: 0.7; }
+.lesson-card.soon .lesson-n { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 2px var(--muted); }
+.lesson-card.done .lesson-n { background: var(--good); color: #fff; }
+.lesson-card.stand-started .lesson-n { background: var(--rose); color: #fff; }
+.ref-card { margin-top: 24px; padding: 16px 18px; border-radius: var(--radius); background: repeating-linear-gradient(135deg, var(--bg-2) 0 14px, var(--stripe, var(--bg)) 14px 28px); }
+.ref-card h2 { margin-top: 0; }
+.ref-card p { color: var(--muted); }
+.ref-card .btn { margin-top: 4px; }
 
 /* Where the reader stands with a lesson (status.ts). Its button is filled
    peach (▸ Start) before it is begun, filled rose (◐ Continue) when left part

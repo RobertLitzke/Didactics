@@ -1,4 +1,6 @@
 import type { Plugin, UserConfig } from 'vite';
+import { COURSE_FILES_CACHE, OFFLINE_LIST } from './offline.ts';
+export { COURSE_FILES_CACHE, OFFLINE_LIST };
 /**
  * Writes dist/index.html again as dist/`name`. A second name, so the browser
  * saves it as a file rather than opening the app, and so it is not the page
@@ -42,6 +44,12 @@ export declare function globRegExp(glob: string): RegExp;
  * page to finish parsing.
  */
 export declare function offlineCopy(root: string, name: string, globs: string[]): Plugin;
+/**
+ * Writes dist/offline.json: every file matching `globs` under dist/, so the
+ * page can save them for offline on request (offline.ts saveForOffline) on a
+ * site whose worker does not precache a course's large files.
+ */
+export declare function offlineList(root: string, globs: string[], name?: string): Plugin;
 /**
  * Inlines public/icons/icon.svg, the favicon, as a data URI in the built page,
  * so the one-file copy keeps its tab icon when opened from file://.

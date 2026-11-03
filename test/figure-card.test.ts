@@ -87,7 +87,7 @@ describe('marking a guess', () => {
 });
 
 const lesson: Lesson = {
-  id: 'a', n: 1, title: 'Twice', teaches: '', summary: [], journal: [],
+  id: 'a', n: 1, title: 'Twice', teaches: '', summary: [],
   parts: [{ title: 'One', blocks: [{ type: 'interactive_diagram', id: 'doubling', caption: 'Doubling', goal: 'look', task: 'Guess' }] }],
 };
 

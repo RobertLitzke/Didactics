@@ -159,6 +159,67 @@ export interface CoursePiece {
 }
 
 /** Only the files and code tables of `file` that `piece` names. */
+/** What lessonPieces needs of a lesson: its id, number and name, and the figure ids its blocks name. */
+export interface PieceLesson {
+  id: string;
+  n: number;
+  code?: string;
+  title: string;
+  parts: readonly { blocks: readonly ({ id?: unknown } | Record<string, unknown>)[] }[];
+}
+
+export interface LessonPiecesOptions<L extends PieceLesson> {
+  lessons: readonly L[];
+  /** Each figure id to its factory, as the course gives defineCourse. */
+  figures: Readonly<Record<string, unknown>>;
+  /** The figure modules by path, as `import.meta.glob('/src/figures/*.ts', { eager: true })`: where each factory is written. */
+  modules: Readonly<Record<string, Record<string, unknown>>>;
+  /** The JSON files a lesson's piece holds. Default the file named by `modules`' sibling folder: "src/lessons/<id>.json". */
+  files?: (lesson: L) => string[];
+  /** Other source files whose words go with a figure file, such as the model behind it ("src/core/fog.ts" for "src/app/figures/fog.ts"). */
+  alongside?: (figureFile: string) => string[];
+  /** What a lesson is called. Default "Lesson". */
+  noun?: string;
+  /** The downloaded file's name. */
+  fileName?: (lesson: L) => string;
+}
+
+/**
+ * One CoursePiece per lesson, for Settings' download menu: the lesson's own
+ * file, and the words in the code of every figure it shows (found by which
+ * module exports each factory). Words shared by every lesson (a glossary, a
+ * quiz deck, the pages) are in "All" only.
+ */
+export function lessonPieces<L extends PieceLesson>(o: LessonPiecesOptions<L>): CoursePiece[] {
+  const where = new Map<unknown, string>();
+  let folder = 'src/lessons';
+  for (const [path, mod] of Object.entries(o.modules)) {
+    if (path.endsWith('/index.ts')) continue;
+    for (const value of Object.values(mod)) if (!where.has(value)) where.set(value, path.replace(/^\//, ''));
+    folder = path.replace(/^\//, '').replace(/\/figures\/[^/]*$/, '/lessons');
+  }
+  const noun = o.noun ?? 'Lesson';
+  return o.lessons.map((l) => {
+    const code = new Set<string>();
+    for (const part of l.parts) {
+      for (const b of part.blocks) {
+        const id = (b as { id?: unknown }).id;
+        const file = typeof id === 'string' ? where.get(o.figures[id]) : undefined;
+        if (!file) continue;
+        code.add(file);
+        for (const f of o.alongside?.(file) ?? []) code.add(f);
+      }
+    }
+    return {
+      label: `${noun} ${l.code ?? l.n}: ${l.title}`,
+      files: o.files?.(l) ?? [`${folder}/${l.id}.json`],
+      code: [...code].sort(),
+      ...(o.fileName ? { fileName: o.fileName(l) } : {}),
+    };
+  });
+}
+
+/** The piece of a course file that one CoursePiece names. */
 export function pieceOf(file: CourseFile, piece: CoursePiece): CourseFile {
   const pick = <T>(table: Record<string, T>, paths: string[]) => Object.fromEntries(paths.filter((p) => p in table).map((p) => [p, table[p]]));
   const out: CourseFile = { ...file, part: piece.label, files: pick(file.files, piece.files) };

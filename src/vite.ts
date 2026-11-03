@@ -12,6 +12,9 @@ import { extname, join, resolve } from 'node:path';
 import type { Plugin, UserConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import { COURSE_FILES_CACHE, OFFLINE_LIST } from './offline.ts';
+
+export { COURSE_FILES_CACHE, OFFLINE_LIST };
 
 /**
  * Writes dist/index.html again as dist/`name`. A second name, so the browser
@@ -154,6 +157,24 @@ export function offlineCopy(root: string, name: string, globs: string[]): Plugin
 }
 
 /**
+ * Writes dist/offline.json: every file matching `globs` under dist/, so the
+ * page can save them for offline on request (offline.ts saveForOffline) on a
+ * site whose worker does not precache a course's large files.
+ */
+export function offlineList(root: string, globs: string[], name = OFFLINE_LIST): Plugin {
+  return {
+    name: 'offline-list',
+    apply: 'build',
+    closeBundle() {
+      const out = resolve(root, 'dist');
+      const tests = globs.map(globRegExp);
+      const files = filesUnder(out).filter((f) => tests.some((t) => t.test(f))).sort();
+      writeFileSync(resolve(out, name), JSON.stringify(files));
+    },
+  };
+}
+
+/**
  * Inlines public/icons/icon.svg, the favicon, as a data URI in the built page,
  * so the one-file copy keeps its tab icon when opened from file://.
  */
@@ -248,6 +269,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
       inlineFavicon(o.root),
       oneFileCopy(o.root, o.oneFile),
       o.offlineFile ? offlineCopy(o.root, o.offlineFile, o.precache ?? []) : null,
+      o.precache?.length ? offlineList(o.root, o.precache) : null,
       VitePWA({
         ...(o.inSite ? { buildBase: '../', scope: '../' } : {}),
         registerType: 'prompt',

@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.21.0 (2026-11-03)
+
+Less for a course to carry: the shared parts of every course's kit, styles,
+photos and offline saving move here, and two old pieces retire. Saves are
+read as before; nothing a reader has done is lost.
+
+- `kit` (new): `courseKit(COL)` gives a course its `slider` (colour by
+  palette key, positional or options form), `prose` and `tint`, in place of
+  the kit.ts every course copied. `didactics-course new` writes it that way.
+- `photos`: `photoFigure(photo, src, options)`, the picture over its credit,
+  and `stillPhoto({ find, src })`, the figure a lesson's JSON names a photo
+  in by id, in place of each course's copy.
+- `styles/kit.css` now has a course's own home page (`.hero`, `.hero-text`,
+  `.letter`, `.lesson-board`, `.lesson-n`, `.ref-card` with `--stripe`),
+  photos with their credit (`.photo`, `.credit`, `--photo-aspect`) and the
+  figure extras courses shared (`.fig-hint`, `.chip-label`, `.detective`);
+  new `styles/plain-type.css`, the skin for a course set in a text face.
+- `offline`: on a site of several courses the worker precaches the pages
+  only; a course's large files are saved on request. `saveForOffline` fetches
+  the build's `offline.json` (`vite` `offlineList`, written for any
+  `precache`) into the `course-files` cache, `forgetOffline` empties it, and
+  `savedCount` counts both caches. Settings' Offline section has the Save
+  and Remove buttons with a progress bar.
+- `app`: `save: { key }` and `text: { key }` keep a course on the storage
+  keys it has always used when they differ from its id, so the old courses
+  can drop their store and course modules without anyone losing progress;
+  `figureModules` makes the per-lesson text pieces.
+- `course`: `lessonPieces({ lessons, figures, modules })`.
+- `figure`: every figure is `role="img"` named by its caption; `animate` and
+  `player` run at two frames a second under `prefers-reduced-motion`
+  (`reducedMotion`, `nextFrame`).
+- Retired: the lesson `journal` (the field is dropped from saves on load;
+  `finishLesson` takes no journal) and the Leitner quiz (`quiz-view` is gone;
+  `quiz` keeps `Card` and `conceptCard`; a save's old `quiz` places still
+  seed the review deck through `fromLeitner`).
+- Tests for `store`, `router`, `settings`, `offline` and `photos`.
+
 ## 0.20.0 (2026-11-03)
 
 An encyclopedia for a site of courses.

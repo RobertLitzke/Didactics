@@ -4,7 +4,7 @@
 
 import { fromDisk, selfContained } from './asset';
 import { el, type Child } from './dom';
-import { savedCount } from './offline';
+import { forgetOffline, saveForOffline, savedCount } from './offline';
 import type { Progress, Units } from './progress';
 import type { View } from './router';
 import type { Store } from './store';
@@ -142,25 +142,57 @@ export function settingsView<S extends Progress>(o: SettingsOptions<S>): View {
   };
 }
 
-/** How many of the photos are saved on this device, counting up while the service worker downloads them. */
+/**
+ * How many of the photos are saved on this device, with a button to save the
+ * rest (offline.ts saveForOffline) and, once they are, one to let them go.
+ * A course on its own precaches them all, and the count fills by itself.
+ */
 function offlineSection({ folder, total, noun }: NonNullable<SettingsOptions<Progress>['offline']>): Child {
   if (!('serviceWorker' in navigator) || typeof caches === 'undefined') {
     return [el('h2', {}, 'Offline'), el('p.muted', {}, `This browser cannot keep the ${noun} for use with no connection.`)];
   }
   const line = el('p.muted', {}, `Checking which ${noun} are saved…`);
   const bar = el('progress.offline-bar', { max: total, value: 0 }) as HTMLProgressElement;
-  const look = async () => {
-    const n = Math.min(await savedCount(folder), total);
-    bar.value = n;
+  let stop: AbortController | null = null;
+  const save = el('button.btn', { type: 'button' }, `Save the ${noun} for offline`) as HTMLButtonElement;
+  const forget = el('button.btn.btn-ghost', { type: 'button' }, 'Remove them from this device') as HTMLButtonElement;
+  const row = el('div.row', {}, save, forget);
+  const show = (n: number, busy = false) => {
+    bar.value = Math.min(n, total);
     line.textContent =
-      n >= total
-        ? `All ${total} ${noun} are saved on this device. The app works with no connection.`
-        : `${n} of ${total} ${noun} saved on this device so far. ${navigator.onLine ? 'The rest are downloading; keep the app open.' : 'The rest download next time you are online.'}`;
-    if (n < total && line.isConnected) setTimeout(look, 1500);
+      n >= total ? `All ${total} ${noun} are saved on this device. The app works with no connection.`
+      : busy ? `Saving: ${n} of ${total} ${noun} so far. Keep the app open.`
+      : n ? `${n} of ${total} ${noun} are saved on this device.`
+      : `The ${noun} are fetched as you read. Save them all to read with no connection.`;
+    save.hidden = n >= total || busy;
+    save.disabled = !navigator.onLine;
+    forget.hidden = n === 0 || busy;
   };
-  // Look once the section is on the page, so the first isConnected is true.
+  const look = async () => show(await savedCount(folder));
+  save.addEventListener('click', async () => {
+    stop = new AbortController();
+    show(await savedCount(folder), true);
+    try {
+      await saveForOffline((p) => show(p.saved, p.saved < p.total), stop.signal);
+      toast(`The ${noun} are saved on this device.`);
+    } catch {
+      toast(`Not every file could be saved. Try again when you are online.`);
+    }
+    await look();
+  });
+  forget.addEventListener('click', async () => {
+    await forgetOffline(folder);
+    toast(`The ${noun} were removed from this device.`);
+    await look();
+  });
+  // Look once the section is on the page; stop a save in progress when the page is left.
   setTimeout(look, 0);
-  return [el('h2', {}, 'Offline'), bar, line];
+  new MutationObserver((_, ob) => {
+    if (line.isConnected) return;
+    stop?.abort();
+    ob.disconnect();
+  }).observe(document.body, { childList: true, subtree: true });
+  return [el('h2', {}, 'Offline'), bar, line, row];
 }
 
 function oneFileSection(f: NonNullable<SettingsOptions<Progress>['oneFile']>, noun?: string): Child {

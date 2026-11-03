@@ -1,6 +1,6 @@
 // The part of the save file every lesson app shares: lessons finished and how
-// they went, unlocked journal entries, units, the quiz and the review cards, and, for an app with a
-// radio (radio.ts), the radio's setting and what was heard. An app
+// they went, units, the review cards, and, for an app with a radio (radio.ts),
+// the radio's setting and what was heard. An app
 // adds its own fields alongside these (Clouds' core/save.ts is an example) and repairs them
 // after migrateProgress has done these.
 
@@ -30,12 +30,14 @@ export interface Progress {
   /** The player's name, as signed on the log. Empty until given. */
   name: string;
   lessons: Record<string, LessonRecord>;
-  /** Journal entries unlocked, by id. */
-  journal: string[];
   units: Units;
   /** The course has one unit system: `units` is always the one emptyProgress set, whatever was stored. */
   fixedUnits?: true;
-  /** Quiz cards seen, by card id: their spaced-repetition box and when each is next due (quiz.ts). */
+  /**
+   * The Leitner quiz of versions before 0.12, by card id: box and due date.
+   * Read only to carry those cards into `review` (review.ts fromLeitner);
+   * nothing writes it any more.
+   */
   quiz: Record<string, { box: number; due: number }>;
   /** Lessons left part way, by id, to pick up again where the reader was (resume.ts); for a finished lesson, only how its figures were left. */
   resume: Record<string, LessonResume>;
@@ -75,7 +77,7 @@ export interface EmptyOptions {
 export function emptyProgress(units?: Units, o?: EmptyOptions & { radio?: true }): RadioProgress;
 export function emptyProgress(units: Units, o: EmptyOptions & { radio: false }): Progress;
 export function emptyProgress(units: Units = 'metric', o: EmptyOptions = {}): Progress {
-  const base: Progress = { v: 1, name: '', lessons: {}, journal: [], units, quiz: {}, resume: {}, ...(o.fixedUnits ? { fixedUnits: true as const } : {}) };
+  const base: Progress = { v: 1, name: '', lessons: {}, units, quiz: {}, resume: {}, ...(o.fixedUnits ? { fixedUnits: true as const } : {}) };
   return o.radio === false ? base : { ...base, talk: true, introSeen: false, heard: {} };
 }
 
@@ -89,10 +91,12 @@ export const stringSet = (x: unknown): string[] => (Array.isArray(x) ? [...new S
  * kept, onto `empty`. The radio's fields are read only if `empty` has them,
  * and `units` only if `empty` does not have `fixedUnits`.
  * Lesson records are read from `lessons`, or from `shifts`, the name Clouds
- * stored them under first.
+ * stored them under first. A `journal` list from before 0.21 is dropped: the
+ * journal is gone, and its entries were only ever unlocked by finished lessons.
  */
 export function migrateProgress<P extends Progress = RadioProgress>(raw: unknown, empty: P = emptyProgress() as P): P {
-  const out: P = { ...empty, lessons: {}, journal: [], quiz: {}, resume: {} };
+  const out: P = { ...empty, lessons: {}, quiz: {}, resume: {} };
+  delete (out as Partial<Record<'journal', unknown>>).journal;
   const radio = typeof empty.talk === 'boolean';
   if (radio) out.heard = {};
   if (!isObj(raw)) return out;
@@ -116,7 +120,6 @@ export function migrateProgress<P extends Progress = RadioProgress>(raw: unknown
     }
   }
   if (isObj(raw.review)) out.review = migrateCollection(raw.review);
-  out.journal = stringSet(raw.journal);
   out.resume = migrateResume(raw.resume);
   const lessons = isObj(raw.lessons) ? raw.lessons : raw.shifts;
   if (isObj(lessons)) {
@@ -159,7 +162,7 @@ export function moveLesson(p: Progress, from: string, to: string): void {
  * Where it was left part way is dropped, all but what its figures kept and
  * how their sliders were set, so that it opens again as the reader left it.
  */
-export function finishLesson<S extends Progress>(save: S, id: string, right: number, of: number, journal: readonly string[], now: Date): S {
+export function finishLesson<S extends Progress>(save: S, id: string, right: number, of: number, now: Date): S {
   const prev = save.lessons[id];
   const better = !prev || prev.of === 0 || right / Math.max(1, of) > prev.best / Math.max(1, prev.of);
   const { [id]: left, ...resume } = save.resume ?? {};
@@ -176,6 +179,5 @@ export function finishLesson<S extends Progress>(save: S, id: string, right: num
         finishedAt: prev?.finishedAt ?? now.toISOString().slice(0, 10),
       },
     },
-    journal: [...new Set([...save.journal, ...journal])],
   };
 }
