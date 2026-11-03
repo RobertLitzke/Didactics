@@ -51,7 +51,7 @@ describe('settingsView', () => {
     const cache = {
       keys: async () => [...held.keys()].map((u) => new Request(u)),
       put: async (req: URL, res: Response) => void held.set(req.href, res),
-      delete: async (req: Request) => held.delete(req.url),
+      delete: async (req: Request | string) => held.delete(typeof req === 'string' ? req : req.url),
     };
     vi.stubGlobal('caches', { keys: async () => [COURSE_FILES_CACHE], open: async () => cache });
     Object.defineProperty(navigator, 'serviceWorker', { value: {}, configurable: true });
@@ -59,7 +59,7 @@ describe('settingsView', () => {
       const url = String(input instanceof URL ? input.href : input);
       return url.endsWith('offline.json') ? new Response(JSON.stringify(['photos/a.jpg', 'photos/b.jpg'])) : new Response('pic');
     });
-    render({ offline: { folder: 'photos/', total: 2, noun: 'photos' } });
+    render({ offline: { noun: 'photos' } });
     await settle();
     expect(text('h2')).toEqual(['Progress', 'Offline']);
     const line = document.querySelector('.settings progress + p')!;

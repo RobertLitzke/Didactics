@@ -34,13 +34,29 @@ export async function savedPaths(folder: string): Promise<Set<string>> {
   return seen;
 }
 
+/** The build's list of the course's large files (OFFLINE_LIST next to the page), as paths relative to it. */
+export async function offlineFiles(list = OFFLINE_LIST): Promise<string[]> {
+  const res = await fetch(new URL(list, location.href));
+  if (!res.ok) throw new Error(`${list}: ${res.status}`);
+  return (await res.json()) as string[];
+}
+
+/** The pathnames of every file held in either cache. */
+async function heldPaths(): Promise<Set<string>> {
+  const have = new Set<string>();
+  for (const c of await holding()) for (const req of await c.keys()) have.add(new URL(req.url).pathname);
+  return have;
+}
+
 /**
- * How many of the files under `folder` (such as "photos/", next to the page)
- * are saved. Next to the page, so that on a site of several courses, which
- * share one service worker, each counts only its own.
+ * How many of `files` (paths relative to the page, as offlineFiles gives
+ * them) are saved in either cache. Each course counts its own list, so on a
+ * site of several courses sharing one service worker the counts stay apart.
  */
-export async function savedCount(folder: string): Promise<number> {
-  return (await savedPaths(folder)).size;
+export async function savedCount(files: readonly string[]): Promise<number> {
+  if (typeof caches === 'undefined') return 0;
+  const have = await heldPaths();
+  return files.filter((f) => have.has(new URL(f, location.href).pathname)).length;
 }
 
 export interface SaveProgress {
@@ -56,12 +72,9 @@ export interface SaveProgress {
  */
 export async function saveForOffline(onProgress: (p: SaveProgress) => void, signal?: AbortSignal, list = OFFLINE_LIST): Promise<number> {
   if (typeof caches === 'undefined') return 0;
-  const res = await fetch(new URL(list, location.href), { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`${list}: ${res.status}`);
-  const files = (await res.json()) as string[];
+  const files = await offlineFiles(list);
   const cache = await caches.open(COURSE_FILES_CACHE);
-  const have = new Set<string>();
-  for (const c of await holding()) for (const req of await c.keys()) have.add(new URL(req.url).pathname);
+  const have = await heldPaths();
   let saved = 0;
   const total = files.length;
   for (const f of files) {
@@ -78,20 +91,19 @@ export async function saveForOffline(onProgress: (p: SaveProgress) => void, sign
   return saved;
 }
 
-/** Drop every file under `folder` from the course-files cache (the precache is the worker's own). */
-export async function forgetOffline(folder: string): Promise<void> {
+/** Drop `files` (paths relative to the page) from the course-files cache (the precache is the worker's own). */
+export async function forgetOffline(files: readonly string[]): Promise<void> {
   if (typeof caches === 'undefined') return;
-  const under = new URL(folder, location.href).pathname;
   const cache = await caches.open(COURSE_FILES_CACHE);
-  for (const req of await cache.keys()) if (new URL(req.url).pathname.startsWith(under)) await cache.delete(req);
+  for (const f of files) await cache.delete(new URL(f, location.href).href);
 }
 
 /**
  * Deletes caches an older version kept, such as one that held each photo once
- * seen, but only once all `total` files are in the precache, so nothing that
- * worked offline stops working.
+ * seen, but only once every one of `files` is saved, so nothing that worked
+ * offline stops working.
  */
-export async function retireWhenSaved(folder: string, total: number, names: string[]): Promise<void> {
-  if (typeof caches === 'undefined' || (await savedCount(folder)) < total) return;
+export async function retireWhenSaved(files: readonly string[], names: string[]): Promise<void> {
+  if (typeof caches === 'undefined' || (await savedCount(files)) < files.length) return;
   for (const name of names) await caches.delete(name);
 }

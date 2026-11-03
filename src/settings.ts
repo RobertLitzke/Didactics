@@ -4,7 +4,7 @@
 
 import { fromDisk, selfContained } from './asset';
 import { el, type Child } from './dom';
-import { forgetOffline, saveForOffline, savedCount } from './offline';
+import { forgetOffline, offlineFiles, saveForOffline, savedCount } from './offline';
 import type { Progress, Units } from './progress';
 import type { View } from './router';
 import type { Store } from './store';
@@ -29,10 +29,10 @@ export interface SettingsOptions<S extends Progress> {
    */
   oneFile?: { href: string; name: string; offline?: { href: string; name: string }; text?: string };
   /**
-   * The folder of large files the service worker saves (such as "photos/"),
-   * how many there are, and what to call them, for the Offline section.
+   * The Offline section: what to call the course's large files (the build's
+   * `offline.json` lists them), such as "photos" or "photos and maps".
    */
-  offline?: { folder: string; total: number; noun: string };
+  offline?: { noun: string };
   /** More sections, after Progress and before About, such as course-view.ts courseSection. */
   sections?: Child;
   /** More, under About, before the erase button. */
@@ -147,17 +147,20 @@ export function settingsView<S extends Progress>(o: SettingsOptions<S>): View {
  * rest (offline.ts saveForOffline) and, once they are, one to let them go.
  * A course on its own precaches them all, and the count fills by itself.
  */
-function offlineSection({ folder, total, noun }: NonNullable<SettingsOptions<Progress>['offline']>): Child {
+function offlineSection({ noun }: NonNullable<SettingsOptions<Progress>['offline']>): Child {
   if (!('serviceWorker' in navigator) || typeof caches === 'undefined') {
     return [el('h2', {}, 'Offline'), el('p.muted', {}, `This browser cannot keep the ${noun} for use with no connection.`)];
   }
   const line = el('p.muted', {}, `Checking which ${noun} are saved…`);
-  const bar = el('progress.offline-bar', { max: total, value: 0 }) as HTMLProgressElement;
+  const bar = el('progress.offline-bar', { max: 1, value: 0 }) as HTMLProgressElement;
   let stop: AbortController | null = null;
-  const save = el('button.btn', { type: 'button' }, `Save the ${noun} for offline`) as HTMLButtonElement;
-  const forget = el('button.btn.btn-ghost', { type: 'button' }, 'Remove them from this device') as HTMLButtonElement;
+  let files: string[] = [];
+  const save = el('button.btn', { type: 'button', hidden: true }, `Save the ${noun} for offline`) as HTMLButtonElement;
+  const forget = el('button.btn.btn-ghost', { type: 'button', hidden: true }, 'Remove them from this device') as HTMLButtonElement;
   const row = el('div.row', {}, save, forget);
   const show = (n: number, busy = false) => {
+    const total = files.length;
+    bar.max = Math.max(total, 1);
     bar.value = Math.min(n, total);
     line.textContent =
       n >= total ? `All ${total} ${noun} are saved on this device. The app works with no connection.`
@@ -168,10 +171,17 @@ function offlineSection({ folder, total, noun }: NonNullable<SettingsOptions<Pro
     save.disabled = !navigator.onLine;
     forget.hidden = n === 0 || busy;
   };
-  const look = async () => show(await savedCount(folder));
+  const look = async () => {
+    try {
+      files = await offlineFiles();
+      show(await savedCount(files));
+    } catch {
+      line.textContent = `Which ${noun} are saved could not be checked. Try again when you are online.`;
+    }
+  };
   save.addEventListener('click', async () => {
     stop = new AbortController();
-    show(await savedCount(folder), true);
+    show(await savedCount(files), true);
     try {
       await saveForOffline((p) => show(p.saved, p.saved < p.total), stop.signal);
       toast(`The ${noun} are saved on this device.`);
@@ -181,7 +191,7 @@ function offlineSection({ folder, total, noun }: NonNullable<SettingsOptions<Pro
     await look();
   });
   forget.addEventListener('click', async () => {
-    await forgetOffline(folder);
+    await forgetOffline(files);
     toast(`The ${noun} were removed from this device.`);
     await look();
   });

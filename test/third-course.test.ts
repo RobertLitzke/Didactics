@@ -148,7 +148,7 @@ describe('Settings in a course with no photos', () => {
     };
     const base = { store: s, empty: () => emptyProgress('metric', { radio: false }), appName: 'Circuitry', saveFile: 'c.json' };
     expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' } })).not.toMatch(/photo/);
-    expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' }, offline: { folder: 'photos/', total: 3, noun: 'photos' } })).toContain('Everything but the photos');
+    expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html' }, offline: { noun: 'photos' } })).toContain('Everything but the photos');
     expect(words({ ...base, oneFile: { href: 'c.html', name: 'c.html', text: 'Our words.' } })).toBe('Our words.');
   });
 });

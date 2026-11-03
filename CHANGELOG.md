@@ -18,11 +18,14 @@ read as before; nothing a reader has done is lost.
   figure extras courses shared (`.fig-hint`, `.chip-label`, `.detective`);
   new `styles/plain-type.css`, the skin for a course set in a text face.
 - `offline`: on a site of several courses the worker precaches the pages
-  only; a course's large files are saved on request. `saveForOffline` fetches
-  the build's `offline.json` (`vite` `offlineList`, written for any
-  `precache`) into the `course-files` cache, `forgetOffline` empties it, and
-  `savedCount` counts both caches. Settings' Offline section has the Save
-  and Remove buttons with a progress bar.
+  only (`vite` `courseFilesRoute` caches a course's photos, maps and data as
+  they are fetched); a course's large files are saved all at once on
+  request. `offlineFiles` reads the build's `offline.json` (`vite`
+  `offlineList`, written and precached for any `precache`), `saveForOffline`
+  fetches the list into the `course-files` cache, `forgetOffline` empties it,
+  and `savedCount` counts both caches. Settings' Offline section has the
+  Save and Remove buttons with a progress bar; a course asks for it with
+  `offline: { noun }`, nothing more to plumb.
 - `app`: `save: { key }` and `text: { key }` keep a course on the storage
   keys it has always used when they differ from its id, so the old courses
   can drop their store and course modules without anyone losing progress;

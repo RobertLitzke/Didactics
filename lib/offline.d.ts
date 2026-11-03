@@ -4,12 +4,14 @@ export declare const COURSE_FILES_CACHE = "course-files";
 export declare const OFFLINE_LIST = "offline.json";
 /** The paths of every file under `folder` (next to the page) held in either cache. */
 export declare function savedPaths(folder: string): Promise<Set<string>>;
+/** The build's list of the course's large files (OFFLINE_LIST next to the page), as paths relative to it. */
+export declare function offlineFiles(list?: string): Promise<string[]>;
 /**
- * How many of the files under `folder` (such as "photos/", next to the page)
- * are saved. Next to the page, so that on a site of several courses, which
- * share one service worker, each counts only its own.
+ * How many of `files` (paths relative to the page, as offlineFiles gives
+ * them) are saved in either cache. Each course counts its own list, so on a
+ * site of several courses sharing one service worker the counts stay apart.
  */
-export declare function savedCount(folder: string): Promise<number>;
+export declare function savedCount(files: readonly string[]): Promise<number>;
 export interface SaveProgress {
     /** Files saved so far, counting those that were there already. */
     saved: number;
@@ -21,11 +23,11 @@ export interface SaveProgress {
  * after each. Stops when `signal` aborts. Resolves to how many are saved.
  */
 export declare function saveForOffline(onProgress: (p: SaveProgress) => void, signal?: AbortSignal, list?: string): Promise<number>;
-/** Drop every file under `folder` from the course-files cache (the precache is the worker's own). */
-export declare function forgetOffline(folder: string): Promise<void>;
+/** Drop `files` (paths relative to the page) from the course-files cache (the precache is the worker's own). */
+export declare function forgetOffline(files: readonly string[]): Promise<void>;
 /**
  * Deletes caches an older version kept, such as one that held each photo once
- * seen, but only once all `total` files are in the precache, so nothing that
- * worked offline stops working.
+ * seen, but only once every one of `files` is saved, so nothing that worked
+ * offline stops working.
  */
-export declare function retireWhenSaved(folder: string, total: number, names: string[]): Promise<void>;
+export declare function retireWhenSaved(files: readonly string[], names: string[]): Promise<void>;

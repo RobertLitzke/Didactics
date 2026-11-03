@@ -17,7 +17,7 @@ import type { FootnoteSet } from './footnote';
 import type { FigureFactory } from './figure';
 import { glossaryFromLessons, glossaryView, mergeGlossary, type GlossaryEntry } from './glossary';
 import { lessonView, type Lesson, type LessonViewOptions } from './lesson';
-import { retireWhenSaved } from './offline';
+import { offlineFiles, retireWhenSaved } from './offline';
 import { creditsView, type CreditsViewOptions, type Photo } from './photos';
 import { emptyProgress, migrateProgress, skipLesson, type EmptyOptions, type Progress, type Units } from './progress';
 import type { Card } from './quiz';
@@ -163,11 +163,12 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   /** The new-version banner's words. Default "New version", "A fresh version of <title> is ready." */
   update?: UpdateBannerText;
   /**
-   * Large files the service worker keeps for offline (lessonApp's
-   * `precache`), for Settings' Offline section; `retire` lists caches of an
-   * older scheme to delete once every file is saved.
+   * The course has large files (lessonApp's `precache`, listed in the build's
+   * `offline.json`) that Settings' Offline section saves on request: what to
+   * call them, such as "photos" or "photos and maps"; `retire` lists caches of
+   * an older scheme to delete once every file is saved.
    */
-  offline?: { folder: string; total: number; noun: string; retire?: string[] };
+  offline?: { noun: string; retire?: string[] };
   /** The page the app opens on. Default /home. */
   start?: string;
   /**
@@ -369,7 +370,8 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   if (import.meta.env?.PROD && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     // Loaded only here: the service worker's register module exists only in the app's build.
     void import('./update').then((m) => m.watchForUpdates(o.update ?? { title: 'New version', text: `A fresh version of ${o.title} is ready.` }));
-    if (o.offline?.retire) void retireWhenSaved(o.offline.folder, o.offline.total, o.offline.retire);
+    const retire = o.offline?.retire;
+    if (retire) void offlineFiles().then((files) => retireWhenSaved(files, retire), () => undefined);
   }
   return { store, empty, router, shell, text, asset };
 }

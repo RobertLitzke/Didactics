@@ -135,13 +135,13 @@ pin back before committing.
 | `scaffold` | Node only: `scaffold(options)`, the files of a new course, which `didactics-course new` writes; `courseId`, `squarePng` |
 | `shell` | `appShell({ mount, title, subtitle?, mark?, nav, fullScreen? })`: the top bar with the wordmark and the dropdown page menu; also `topBar`, `pageMenu` |
 | `ui` | `page()`, `toast()`, `segmented()`, `sheet()` (a card over the page), `freshSeed()` |
-| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline` shows how many of the course's files are saved on the device, with a button to save the rest (and one to let them go), `oneFile.offline` offers the copy with photos inside |
+| `settings` | `settingsView({ store, empty, appName, saveFile, units?, radio?, offline?, oneFile?, sections?, about? })`; `offline: { noun }` shows how many of the course's large files (the build's `offline.json`) are saved on the device, with a button to save the rest (and one to let them go), `oneFile.offline` offers the copy with photos inside |
 | `update` | `watchForUpdates({ title, text, icon?, beforeReload? })`, gets a new deploy into the installed app, with a "new version" banner |
 | `splash` | `showSplash({ src, alt })`, a poster as the loading screen |
 | `asset` | `assetFrom(siteUrl)`, `fromDisk` (lets the one-file copy fetch photos from the live site), `selfContained` (the offline copy, photos inlined) |
-| `offline` | What a course keeps for use with no connection: `savedCount(folder)`, `savedPaths`, `saveForOffline(onProgress, signal?)` (fetches the build's `offline.json` into the `course-files` cache), `forgetOffline(folder)`, `retireWhenSaved(folder, total, oldCaches)`; `COURSE_FILES_CACHE`, `OFFLINE_LIST` |
+| `offline` | What a course keeps for use with no connection: `offlineFiles()` (the build's `offline.json`), `savedCount(files)`, `savedPaths(folder)`, `saveForOffline(onProgress, signal?)` (fetches the list into the `course-files` cache), `forgetOffline(files)`, `retireWhenSaved(files, oldCaches)`; `COURSE_FILES_CACHE`, `OFFLINE_LIST` |
 | `overflow` | Dev only: flags anything wider than the screen |
-| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`; `inSite` for a course in a folder of a site with one service worker, which then writes `offline.json`, the list of the course's large files, instead of precaching them); also its parts `oneFileCopy`, `offlineCopy`, `offlineList`, `inlineFavicon`, `codeTextModule`, `globRegExp` |
+| `vite` | `lessonApp({...})`, the whole Vite config (single-file build, one-file copy, offline copy, PWA, the code's words as `virtual:didactics/code-text`; `precache` lists the course's large files, precached by a course on its own and written to `offline.json` for Settings' Save button; `inSite` for a course in a folder of a site with one service worker, which leaves them to that button); also its parts `oneFileCopy`, `offlineCopy`, `offlineList`, `courseFilesRoute` (the site worker's cache-as-fetched route for `photos/`, `maps/` and `data/`), `inlineFavicon`, `codeTextModule`, `globRegExp` |
 | `styles/kit.css` | All the styles, themed through CSS custom properties: the shell, lessons, figures, review, the course's own home page (hero, letter, lesson board, reference card) and photos with their credit |
 | `styles/plain-type.css` | The plain skin, for a course whose display face is a text face: headings keep their case, labels in the body face. Import after kit.css |
 | `kit` | `courseKit(COL)`: a course's `slider` and `prose` coloured by its palette's keys, and `tint(hex, alpha)` |
@@ -408,7 +408,7 @@ A relief is made once, ahead of time, by a script that writes
 `public/maps/<name>.png` (heights in the Terrarium encoding) and
 `<name>.json` (where it lies, its credit and licence, and the command that
 made it). Nothing is fetched from a map service while reading, so maps work
-offline once those files are cached (add `'maps/*'` to `precache`).
+offline once those files are saved (add `'maps/*'` to `precache`).
 
 ```ts
 import { loadRelief, mapView, mapLabels, outcrops } from 'didactics/maps';
@@ -773,10 +773,9 @@ router, shell, text, asset }`. More, each optional:
   figures' code (`files` and `alongside` add to a piece; or give the
   pieces themselves).
 - `site` (the live URL, for the one-file copy opened from disk), `oneFile`,
-  `offline: { folder, total, noun, retire? }` (Settings' Offline section: how
-  many of the course's large files are on the device; on a site whose worker
-  precaches only the pages, a button saves them all from the build's
-  `offline.json`), `splash`, `update`, and `settings` for anything else on
+  `offline: { noun, retire? }` (Settings' Offline section: how many of the
+  course's large files, the build's `offline.json`, are on the device; on a
+  site whose worker precaches only the pages, a button saves them all), `splash`, `update`, and `settings` for anything else on
   that page (units label, radio blurb, more sections).
 
 Clouds' `src/main.ts` uses nearly all of them. A course that wants a
