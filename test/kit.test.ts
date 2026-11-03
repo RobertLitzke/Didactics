@@ -336,5 +336,10 @@ describe('Didactics', () => {
       expect(migrateResume({ a: { v: 2, sig: 'x' }, b: 'junk', c: { v: 1, sig: 's', part: '2', done: ['0.1', 'x', 3], scores: { '1.0': [1, 2], bad: [1, 1] }, sliders: { '0.1': [1, 'n'] }, kept: { '0.1': { g: 1 } } } }))
         .toEqual({ c: { v: 1, sig: 's', part: 2, done: ['0.1'], scores: { '1.0': [1, 2] }, sliders: { '0.1': [1] }, kept: { '0.1': { g: 1 } } } });
     });
+
+    it('keeps when a lesson was last open, and drops a time that is not one', () => {
+      expect(migrateResume({ a: { v: 1, sig: 's', seen: 1762200000000 }, b: { v: 1, sig: 's', seen: 'yesterday' } }))
+        .toEqual({ a: { v: 1, sig: 's', part: 0, done: [], scores: {}, sliders: {}, kept: {}, seen: 1762200000000 }, b: { v: 1, sig: 's', part: 0, done: [], scores: {}, sliders: {}, kept: {} } });
+    });
   });
 });

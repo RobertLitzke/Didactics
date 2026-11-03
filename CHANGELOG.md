@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.25.0 (2026-11-03)
+
+- A lesson's resume keeps `seen`, when the reader was last in it (ms), set
+  each time the place is saved. The site catalog reads it to offer the
+  latest lesson to continue. Older saves have none and are read as before.
+
 ## 0.24.0 (2026-11-03)
 
 - `globe` (new): a sphere to draw on, for the Earth, the Moon or a planet.

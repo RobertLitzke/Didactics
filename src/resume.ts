@@ -4,6 +4,7 @@
 //
 // - how far the reader got: the part open now, and the block they were reading;
 // - which figures' tasks are done, and what each check scored;
+// - when the reader was last in it (`seen`), for a catalog's Continue;
 // - each figure's sliders, and whatever a figure chose to keep (Task.keep in
 //   figure.ts), such as a guess it was given or the answers to a quiz.
 //
@@ -35,6 +36,8 @@ export interface LessonResume {
   sliders: Record<string, number[]>;
   /** What each figure kept with Task.keep. Any JSON. */
   kept: Record<string, unknown>;
+  /** When the reader was last in it, in ms since 1970, so a catalog can offer the latest to continue. Absent in saves before 0.25.0. */
+  seen?: number;
 }
 
 /** What the resume needs to know of a lesson: its figures, in order. */
@@ -94,6 +97,7 @@ export function migrateResume(raw: unknown): Record<string, LessonResume> {
         if (KEY.test(k) && Array.isArray(s)) one.sliders[k] = s.map(Number).filter(Number.isFinite);
       }
     }
+    if (typeof r.seen === 'number' && Number.isFinite(r.seen) && r.seen > 0) one.seen = r.seen;
     if (isObj(r.kept)) for (const [k, s] of Object.entries(r.kept)) if (KEY.test(k) && s !== undefined) one.kept[k] = s;
     out[id] = one;
   }

@@ -222,6 +222,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       clearTimeout(timer);
       timer = undefined;
       if (finished) return;
+      here.seen = Date.now();
       o.store.update((s) => ({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }));
     };
     /** Save soon: sliders and scrolling change many times a second. */
