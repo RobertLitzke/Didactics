@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.1 (2026-11-03)
+
+- `styles/plain-type.css` follows the 0.21.0 retheme: buttons and the
+  wordmark keep kit.css's Fraunces, as in every course; only headings, labels
+  and tags are set in the course's own faces.
+
 ## 0.22.0 (2026-11-03)
 
 Less for a course to carry: the shared parts of every course's kit, styles,

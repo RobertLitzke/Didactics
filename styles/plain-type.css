@@ -1,8 +1,10 @@
 /* The plain skin: a course whose display face is a text face (a serif or a
    grotesque) rather than the poster lettering kit.css sets. Headings keep
-   their case and lose the stroke and shadow; the small labels, buttons and
-   tags switch to the body face in heavy weight. Import after kit.css and
-   before the course's tokens. Colours stay with the course. */
+   their case and lose the stroke and shadow; the small labels and tags
+   switch to the body face in heavy weight. Buttons and the wordmark keep
+   kit.css's own face (Fraunces) and the colour band, like every course.
+   Import after kit.css and before the course's tokens. Colours stay with the
+   course. */
 
 h1, .poster-type { font-weight: 600; letter-spacing: 0; text-transform: none; }
 h2 { font-weight: 600; letter-spacing: 0.02em; text-transform: none; font-size: 1.35rem; }
@@ -13,16 +15,13 @@ h2 { font-weight: 600; letter-spacing: 0.02em; text-transform: none; font-size: 
   text-shadow: none;
   transform: none;
 }
-.btn, .tag, .eyebrow, .seg button, .fig-slider span, .navmenu summary, .navmenu nav a, .count, .field > span,
+.tag, .eyebrow, .seg button, .fig-slider span, .navmenu summary, .navmenu nav a, .count, .field > span,
 .key-ideas .key-title, .update-text strong, .part-n {
   font-family: var(--font);
   font-weight: 800;
 }
-.btn { letter-spacing: 0.06em; }
 .btn-ghost:hover:not(.right):not(.wrong):not(:disabled) { background: rgba(0, 0, 0, 0.08); }
-.wordmark { font-family: var(--display); text-transform: none; letter-spacing: 0.01em; font-size: 1.5rem; font-weight: 700; flex-shrink: 0; }
-.wordmark.with-mark > .mark { display: block; width: 34px; height: 34px; }
-.wordmark .mark svg { display: block; width: 100%; height: 100%; }
+.wordmark { font-size: 1.5rem; flex-shrink: 0; }
 .wordmark-words { line-height: 1.05; }
 .wordmark span { font-family: var(--font); font-weight: 800; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap; }
 
