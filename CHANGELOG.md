@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.21.0 (2026-11-03)
+## 0.22.0 (2026-11-03)
 
 Less for a course to carry: the shared parts of every course's kit, styles,
 photos and offline saving move here, and two old pieces retire. Saves are
@@ -45,6 +45,23 @@ read as before; nothing a reader has done is lost.
   file leaves no layout churn.
 - Retired `encyclopedia.activeEncyclopedia`, which nothing read.
 - Tests for `store`, `router`, `settings`, `offline` and `photos`.
+
+## 0.21.1 (2026-11-03)
+
+- The wordmark's title sits a little higher and its subtitle a little lower (line-height 0.9, a 5 px gap).
+
+## 0.21.0 (2026-11-03)
+
+A light retheme to match the painted course icons.
+
+- Headings, the wordmark and buttons are set in Fraunces (bundled, Latin
+  only, soft axis up), a chunky soft serif, in sentence case: new tokens
+  `--head` and `--head-settings`. `--display` still sets the wordmark's
+  subtitle, the menu, labels, tags and the poster lettering.
+- A four-colour band (`--stripe-1` … `--stripe-4`: orange, mustard, teal,
+  ink) runs under the top bar.
+- Buttons have 10 px corners, a hard offset shadow and bigger type
+  (`.btn-big` 1.3rem).
 
 ## 0.20.0 (2026-11-03)
 
