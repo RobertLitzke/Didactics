@@ -150,10 +150,18 @@ export declare function upgradeReference<T>(raw: T, typeOf?: (id: string) => Dia
  * (`close`); `flat` when it is all on one line.
  */
 export interface JsonLayout {
+    /** A line break after the opening bracket. */
     open: boolean;
+    /** Line breaks between the entries. */
     between: boolean;
+    /** A line break before the closing bracket. */
     close: boolean;
+    /** The whole value on one line; the two below say how it is spaced then. */
     flat: boolean;
+    /** A space inside an object's braces: `{ "a": 1 }` rather than `{"a": 1}`. */
+    pad: boolean;
+    /** A space after each colon and comma: `"a": 1, "b": 2` rather than `"a":1,"b":2`. */
+    gap: boolean;
 }
 /**
  * JSON text for a course file, laid out like the file it replaces (`like`,

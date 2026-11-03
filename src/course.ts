@@ -395,10 +395,18 @@ export function upgradeReference<T>(raw: T, typeOf?: (id: string) => DiagramType
  * (`close`); `flat` when it is all on one line.
  */
 export interface JsonLayout {
+  /** A line break after the opening bracket. */
   open: boolean;
+  /** Line breaks between the entries. */
   between: boolean;
+  /** A line break before the closing bracket. */
   close: boolean;
+  /** The whole value on one line; the two below say how it is spaced then. */
   flat: boolean;
+  /** A space inside an object's braces: `{ "a": 1 }` rather than `{"a": 1}`. */
+  pad: boolean;
+  /** A space after each colon and comma: `"a": 1, "b": 2` rather than `"a":1,"b":2`. */
+  gap: boolean;
 }
 
 /**
@@ -420,30 +428,31 @@ export interface JsonLayout {
  */
 export function formatJson(value: unknown, like?: string): string {
   const layouts = like ? jsonLayouts(like) : new Map<string, JsonLayout>();
-  const EXPANDED: JsonLayout = { open: true, between: true, close: true, flat: false };
-  const FLAT: JsonLayout = { open: false, between: false, close: false, flat: true };
-  /** `indent` is the indent of the line the value starts on. */
-  const write = (v: unknown, path: (string | number)[], indent: string, inFlat: boolean): string => {
+  const EXPANDED: JsonLayout = { open: true, between: true, close: true, flat: false, pad: true, gap: true };
+  /** `indent` is the indent of the line the value starts on; `within` lays out the container this sits in. */
+  const write = (v: unknown, path: (string | number)[], indent: string, within: JsonLayout): string => {
     if (!Array.isArray(v) && !isPlainObject(v)) return JSON.stringify(v) ?? 'null';
     const entries: [string | number, unknown][] = Array.isArray(v) ? v.map((x, i) => [i, x]) : Object.entries(v).filter(([, x]) => x !== undefined);
     const [l, r] = Array.isArray(v) ? ['[', ']'] : ['{', '}'];
     if (!entries.length) return l + r;
-    const layout = layouts.get(JSON.stringify(path)) ?? (inFlat ? FLAT : EXPANDED);
-    const pad = Array.isArray(v) ? '' : ' ';
+    // A value the file did not have is laid out flat inside a flat one, spaced as that one is.
+    const layout = layouts.get(JSON.stringify(path)) ?? (within.flat ? { ...within, open: false, between: false, close: false } : EXPANDED);
+    const pad = !Array.isArray(v) && layout.pad ? ' ' : '';
+    const gap = layout.gap ? ' ' : '';
     const inner = `${indent}  `;
     let out = l;
     let broken = false;
     entries.forEach(([k, x], i) => {
       const brk = i === 0 ? layout.open : layout.between;
       if (i) out += ',';
-      out += brk ? `\n${inner}` : i === 0 ? pad : ' ';
+      out += brk ? `\n${inner}` : i === 0 ? pad : gap;
       broken ||= brk;
-      if (typeof k === 'string') out += `${JSON.stringify(k)}: `;
-      out += write(x, [...path, k], broken ? inner : indent, layout.flat);
+      if (typeof k === 'string') out += `${JSON.stringify(k)}:${gap}`;
+      out += write(x, [...path, k], broken ? inner : indent, layout);
     });
     return out + (layout.close ? `\n${indent}` : pad) + r;
   };
-  return `${write(value, [], '', false)}\n`;
+  return `${write(value, [], '', EXPANDED)}\n`;
 }
 
 const STRING = /"(?:[^"\\]|\\.)*"/y;
@@ -477,19 +486,29 @@ export function jsonLayouts(text: string): Map<string, JsonLayout> {
     const c = text[at];
     if (c === '{' || c === '[') {
       at++;
-      const layout: JsonLayout = { open: space(), between: false, close: false, flat: false };
+      const layout: JsonLayout = { open: false, between: false, close: false, flat: false, pad: text[at] === ' ', gap: true };
+      layout.open = space();
       const close = c === '{' ? '}' : ']';
       let n = 0;
+      let gapSeen = false;
       while (text[at] !== close) {
         if (n) {
           if (text[at] !== ',') throw new Error('bad list');
           at++;
+          if (!gapSeen) {
+            layout.gap = text[at] !== undefined && ' \t\r\n'.includes(text[at]);
+            gapSeen = true;
+          }
           if (space()) layout.between = true;
         }
         if (c === '{') {
           const key = string();
           space();
           if (text[at++] !== ':') throw new Error('bad object');
+          if (!gapSeen) {
+            layout.gap = ' \t\r\n'.includes(text[at]);
+            gapSeen = true;
+          }
           value([...path, key]);
         } else value([...path, n]);
         n++;

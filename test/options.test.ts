@@ -125,10 +125,10 @@ describe('lesson file layout', () => {
 
   it('reads where a file breaks its lines', () => {
     const l = jsonLayouts(compact);
-    expect(l.get('["journal"]')).toEqual({ open: false, between: false, close: false, flat: true });
-    expect(l.get('["parts",0]')).toEqual({ open: false, between: false, close: false, flat: false });
-    expect(l.get('["parts",0,"blocks",0,"points"]')).toEqual({ open: true, between: true, close: true, flat: false });
-    expect(l.get('["parts",0,"blocks",4]')).toEqual({ open: true, between: true, close: true, flat: false });
+    expect(l.get('["journal"]')).toEqual({ open: false, between: false, close: false, flat: true, pad: false, gap: true });
+    expect(l.get('["parts",0]')).toEqual({ open: false, between: false, close: false, flat: false, pad: true, gap: true });
+    expect(l.get('["parts",0,"blocks",0,"points"]')).toEqual({ open: true, between: true, close: true, flat: false, pad: false, gap: true });
+    expect(l.get('["parts",0,"blocks",4]')).toEqual({ open: true, between: true, close: true, flat: false, pad: false, gap: true });
     expect(jsonLayouts('{ not json').size).toBe(0);
   });
 
@@ -144,6 +144,18 @@ describe('lesson file layout', () => {
     expect(out).toContain('"Two.",\n        "Three."\n      ] },');
     expect(out).toContain('"options": { "n": 3, "m": [1, 2] } },');
     expect(JSON.parse(out)).toEqual(more);
+  });
+
+  it('keeps a flat value spaced as the file spaced it, and spaces a new one like its container', () => {
+    const bare = '{\n  "blocks": [\n    {"type": "text", "text": "A", "options": {"n": 1}},\n    {"type":"text","text":"B","list":[1,2]}\n  ]\n}\n';
+    const v = JSON.parse(bare);
+    expect(formatJson(v, bare)).toBe(bare);
+    v.blocks[0].options.more = { m: [1, 2] };
+    v.blocks[1].list.push(3);
+    v.blocks[1].extra = { x: 'y' };
+    const out = formatJson(v, bare);
+    expect(out).toContain('{"type": "text", "text": "A", "options": {"n": 1, "more": {"m": [1, 2]}}},');
+    expect(out).toContain('{"type":"text","text":"B","list":[1,2,3],"extra":{"x":"y"}}');
   });
 
   it('is JSON.stringify layout with nothing to match', () => {
