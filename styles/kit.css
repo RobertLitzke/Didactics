@@ -132,10 +132,11 @@ p { margin: 0 0 0.75em; }
   font-weight: 900;
   display: flex;
   flex-direction: column;
-  line-height: 1.05;
+  /* Tight: Fraunces carries air above its capitals, so the title sits up and the subtitle gets its own gap below. */
+  line-height: 0.9;
 }
 /* The subtitle keeps the course's own display face. */
-.wordmark span { font: 700 0.62rem/1.2 var(--display); font-variation-settings: normal; text-transform: uppercase; letter-spacing: 0.14em; color: var(--sun); white-space: nowrap; }
+.wordmark span { font: 700 0.62rem/1.2 var(--display); font-variation-settings: normal; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--sun); white-space: nowrap; }
 /* A logo before the words (topBar's `mark`). */
 .wordmark.with-mark { flex-direction: row; align-items: center; gap: 10px; }
 .wordmark.with-mark > :first-child { flex: none; height: 2.2em; width: auto; }

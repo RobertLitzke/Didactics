@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.1 (2026-11-03)
+
+- The wordmark's title sits a little higher and its subtitle a little lower (line-height 0.9, a 5 px gap).
+
 ## 0.21.0 (2026-11-03)
 
 A light retheme to match the painted course icons.
