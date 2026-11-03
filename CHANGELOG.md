@@ -40,6 +40,10 @@ read as before; nothing a reader has done is lost.
   `finishLesson` takes no journal) and the Leitner quiz (`quiz-view` is gone;
   `quiz` keeps `Card` and `conceptCard`; a save's old `quiz` places still
   seed the review deck through `fromLeitner`).
+- `course`: `formatJson` keeps a flat value's spacing (`{"type": "text"}` or
+  `{"type":"text"}` come back as written), so a tool that rewrites a lesson
+  file leaves no layout churn.
+- Retired `encyclopedia.activeEncyclopedia`, which nothing read.
 - Tests for `store`, `router`, `settings`, `offline` and `photos`.
 
 ## 0.20.0 (2026-11-03)
