@@ -886,7 +886,9 @@ is a full example.
 | `--good`, `--bad` | Right and wrong answers |
 | `--fn-technical`, `--fn-digression` | The two kinds of footnote |
 | `--font` | Body text |
-| `--display` | Headings, buttons, the menu, labels |
+| `--display` | The wordmark's subtitle, the menu, labels, tags |
+| `--head`, `--head-settings` | Headings, the wordmark and buttons: Fraunces (bundled, soft axis up) unless a course says otherwise |
+| `--stripe-1` … `--stripe-4` | The four-colour band under the top bar |
 | `--type` | The typewritten radio slip |
 | `--radius` | Card corners |
 | `--page-width` | How wide ordinary pages run (720px) |
