@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.24.0 (2026-11-03)
+
+- `globe` (new): a sphere to draw on, for the Earth, the Moon or a planet.
+  An orthographic view from any side, shapes clipped at the limb and closed
+  along it, night drawn from a sun direction in flat twilight bands, a relief
+  or picture wrapped on by `raster`, arrows along great circles, and
+  `cutOpen`, which takes an octant out to show the shells inside. `dragGlobe`
+  turns it by hand and moves handles on it (the ends of a section line).
+- `cutaway` (new): a cross-section of the Earth under a line, built the way a
+  geologist sketches one from a map: real heights along the line, crust by
+  height (with an Airy root under high ground), sea-floor age from depth
+  (GDH1) and plate thickness from age, slabs going down under the higher side
+  at each trench at a dip the course gives (shallower where the cut crosses
+  at a slant), volcanoes where the slab is 100 km down. `drawSection` draws
+  it true to scale across and down, or as the whole face of a cut through
+  the centre.
+
 ## 0.23.0 (2026-11-03)
 
 - `defineCourse` takes `hero`, a picture across the top of the default home
