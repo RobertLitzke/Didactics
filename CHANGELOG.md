@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.20.0 (2026-11-03)
+
+An encyclopedia for a site of courses.
+
+- `encyclopedia`: entries on ideas, people, places and things, kept once for
+  the whole site in a JSON file per course, and a page per course that is
+  its one-page glossary (key people, ideas, things and reference tables).
+  `encyclopediaView` lists them (search; People, Ideas, Places and things,
+  Courses; this course or all) beside the open entry from 960px, one or the
+  other on a phone, with a trail of the entries just visited. An entry shows
+  its line, text, why it matters, connected entries (its own list and every
+  entry that links to it), lessons in any course, and its Wikipedia article
+  in a new tab. `encyclopediaProblems`, `entryLinkProblems` for tests.
+- `lesson`: `prose` turns `[[words]]` and `[[words|@id]]` into a link to an
+  entry, which opens a card beside the words; links also work inside bold and
+  italic. Colour markup (`[[words|key]]`) is unchanged.
+- `app`: `defineCourse({ encyclopedia: { data, course } })` adds the pages
+  and menu item and puts the course's file into Settings' course download.
+- `glossary`, `footnote`: a glossary term or technical note whose term has an
+  entry links to it (`glossaryMore`, `footnoteMore`); `openPopover` is the
+  popup notes use, for any small card beside a word.
+- `vite`: `lessonApp({ encyclopedia: { dir, courses } })` serves
+  `virtual:didactics/encyclopedia` (`encyclopediaModule`, `readEncyclopedia`).
+- `didactics-course import --map <prefix>=<folder>/` writes files kept
+  outside the course (the encyclopedia) back where they live.
+
 ## 0.19.0 (2026-11-03)
 
 The lesson list keeps its place, and says at a glance what is done.

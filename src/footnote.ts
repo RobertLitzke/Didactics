@@ -103,14 +103,31 @@ export function closeFootnote(refocus = false): void {
  * else, or another note opening.
  */
 export function openFootnote(anchor: HTMLElement, note: Footnote, render: (text: string) => Child = (t) => el('p', {}, t)): HTMLElement {
-  closeFootnote();
   const close = el('button.fn-close', { type: 'button', 'aria-label': 'Close note' }, '×');
   const node = el(`div.fn-pop.fn-${note.kind}`, { role: 'dialog', 'aria-label': note.title, tabindex: '-1' },
     el('i.fn-arrow'),
     el('div.fn-head', {}, el('p.fn-kind', {}, FOOTNOTE_KINDS[note.kind].label), close),
     el('h4.fn-title', {}, note.title),
     el('div.fn-body', {}, render(note.text)),
+    footnoteMore.more?.(note) ?? null,
   );
+  return openPopover(anchor, node, close);
+}
+
+/**
+ * What a note's popup and margin card add under the note: set by a module
+ * that has more to say about some notes (encyclopedia.ts links a technical
+ * note to the entry for its term).
+ */
+export const footnoteMore: { more?: (note: Footnote) => Child } = {};
+
+/**
+ * Show `node` in a popup beside `anchor`, the way a note shows: it closes with
+ * `close` (a button inside it), Escape, a tap anywhere else, a change of page,
+ * or another popup opening.
+ */
+export function openPopover(anchor: HTMLElement, node: HTMLElement, close?: HTMLElement): HTMLElement {
+  closeFootnote();
   document.body.append(node);
   place(node, anchor);
 
@@ -118,10 +135,10 @@ export function openFootnote(anchor: HTMLElement, note: Footnote, render: (text:
   open = { anchor, node, off };
   anchor.setAttribute('aria-expanded', 'true');
   anchor.classList.add('on');
-  close.addEventListener('click', () => closeFootnote(true));
+  close?.addEventListener('click', () => closeFootnote(true));
   const signal = off.signal;
   document.addEventListener('pointerdown', (e) => {
-    if (!node.contains(e.target as Node) && e.target !== anchor) closeFootnote();
+    if (!node.contains(e.target as Node) && e.target !== anchor && !anchor.contains(e.target as Node)) closeFootnote();
   }, { signal, capture: true });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeFootnote(true);
@@ -227,6 +244,7 @@ export function sideNotes(scope: HTMLElement, signal: AbortSignal, o: { from?: n
     c = el(`aside.fn-note.fn-${note.kind}`, {},
       el('p.fn-note-head', {}, el('span.fn.fn-sample', { 'aria-hidden': 'true' }, String(n || '•')), el('b', {}, note.title)),
       el('div.fn-note-body', {}, render(note.text)),
+      footnoteMore.more?.(note) ?? null,
     );
     cards.set(id, c);
     return c;

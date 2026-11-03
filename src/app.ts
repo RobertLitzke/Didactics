@@ -12,6 +12,7 @@ import { assetFrom } from './asset';
 import { courseEdits, type CourseEdits, type CourseEditsOptions, type CoursePiece } from './course';
 import { courseSection } from './course-view';
 import { el, type Child } from './dom';
+import { encyclopediaView, useEncyclopedia, type EncyclopediaData } from './encyclopedia';
 import type { FootnoteSet } from './footnote';
 import type { FigureFactory } from './figure';
 import { glossaryFromLessons, glossaryView, mergeGlossary, type GlossaryEntry } from './glossary';
@@ -112,6 +113,14 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   review?: false | (Pick<ReviewViewOptions<C, S>, 'blurb' | 'sitting' | 'html' | 'fileName'> & { label?: string });
   /** A glossary page at /glossary: the lessons' technical footnotes, and `entries` before them. */
   glossary?: { entries?: GlossaryEntry[]; label?: string };
+  /**
+   * The site's encyclopedia (encyclopedia.ts), at /encyclopedia: `data` is
+   * what the build serves as `virtual:didactics/encyclopedia`, `course` this
+   * course's folder name. Its pages join the menu before Review, [[links]]
+   * in the lessons open its cards, and this course's file goes into
+   * Settings' download of the course's words.
+   */
+  encyclopedia?: { data: EncyclopediaData; course: string; label?: string };
   /** A Credits page at /credits, linked from Settings. */
   photos?: CreditsViewOptions<P>;
 
@@ -230,7 +239,11 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
 export function defineCourse<L extends Lesson, S extends Progress = Progress, C extends Card = Card, P extends Photo = Photo>(o: CourseOptions<L, S, C, P>): Course<S> {
   const asset = o.site ? assetFrom(o.site) : (p: string) => p;
   const { store, empty } = courseStore<S>(o.id, o.save, !!o.lesson?.radio);
-  const text = o.text && (isEdits(o.text) ? o.text : courseEdits({ key: `${o.id}.course`, title: o.title, ...o.text }));
+  const encFile = o.encyclopedia && `encyclopedia/${o.encyclopedia.course}.json`;
+  const textOptions = o.text && !isEdits(o.text) && encFile && o.encyclopedia!.data.files[encFile]
+    ? { ...o.text, files: { ...o.text.files, [encFile]: o.encyclopedia!.data.files[encFile] } }
+    : o.text;
+  const text = textOptions && (isEdits(textOptions) ? textOptions : courseEdits({ key: `${o.id}.course`, title: o.title, ...textOptions }));
   const lessonPath = o.lessonPath ?? '/lesson';
   const naming = { title: o.title, noun: o.lesson?.noun };
   if (o.splash) showSplash(o.splash);
@@ -270,6 +283,12 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
     };
     pages.push({ path: '/glossary', label: o.glossary.label ?? 'Glossary', view: (root) => { root.append(el('div.page', {}, el('h1', {}, 'Glossary'), glossaryView({ entries, prose: o.prose, lesson }))); } });
   }
+  if (o.encyclopedia) {
+    const enc = useEncyclopedia({ data: o.encyclopedia.data, course: o.encyclopedia.course, prose: (t) => o.prose(t), lessonHref: (id) => `#${lessonPath}/${id}` });
+    const view = encyclopediaView({ enc, asset });
+    pages.push({ path: '/encyclopedia', label: o.encyclopedia.label ?? 'Encyclopedia', view });
+    pages.push({ path: '/encyclopedia/:id', view });
+  }
   if (o.photos) pages.push({ path: '/credits', view: creditsView(o.photos) });
   const oneFile = o.oneFile ?? `${o.id}.html`;
   pages.push({
@@ -294,6 +313,11 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
   if (menu && o.review !== false && !menu.includes('/review')) {
     const at = menu.indexOf('/settings');
     menu = at < 0 ? [...menu, '/review'] : [...menu.slice(0, at), '/review', ...menu.slice(at)];
+  }
+  // The encyclopedia goes before Review, or before Settings.
+  if (menu && o.encyclopedia && !menu.includes('/encyclopedia')) {
+    const at = [menu.indexOf('/review'), menu.indexOf('/settings')].find((i) => i >= 0) ?? -1;
+    menu = at < 0 ? [...menu, '/encyclopedia'] : [...menu.slice(0, at), '/encyclopedia', ...menu.slice(at)];
   }
   const nav: NavLink[] = (menu ? menu.map((path) => labelled.find((p) => p.path === path)).filter((p) => !!p) : labelled)
     .map((p) => ({ path: p.path, label: p.label }));

@@ -31,6 +31,7 @@ import { isDiagram, type Block, type DiagramBlock, type DiagramType } from './bl
 import { el, type Child } from './dom';
 import { placeCaption, type AnsweredQuestion, type FigureContext, type FigureFactory } from './figure';
 import { closeFootnote, footnoteLegend, footnoteMarker, footnoteProblems, footnoteSet, sideNotes, type FootnoteSet, type Footnotes } from './footnote';
+import { entryLink } from './encyclopedia';
 import { finishLesson, type Progress } from './progress';
 import type { Cue, Talk } from './radio';
 import { blockKey, emptyResume, lessonSignature, resumeFor, type LessonResume } from './resume';
@@ -82,19 +83,34 @@ export function lessonTexts(lesson: Lesson): string[] {
 /**
  * A paragraph of lesson text. **bold**, *italic*, [[words|key]] in the
  * colour `palette[key]` (the ink colour, `palette.ink`, for a key it lacks),
+ * [[words]] or [[words|@id]], a link to an encyclopedia entry (encyclopedia.ts),
  * and [^id], the marker for footnote `id` in `notes` (dropped without them).
  */
+/** Words with any [[entry]] links in them made links: inside bold or italic, the one markup that nests. */
+function linked(text: string): (string | Node)[] {
+  const out: (string | Node)[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/\[\[([^\]|]+?)(?:\|@([\w-]+))?\]\]/g)) {
+    if (m.index! > at) out.push(text.slice(at, m.index));
+    out.push(entryLink(m[1], m[2]));
+    at = m.index! + m[0].length;
+  }
+  if (at < text.length) out.push(text.slice(at));
+  return out;
+}
+
 export function prose(text: string, palette: Readonly<Record<string, string>>, notes?: FootnoteSet): HTMLElement {
   const p = el('p');
-  const re = /\*\*(.+?)\*\*|\*(.+?)\*|\[\[(.+?)\|(\w+)\]\]|\[\^([\w-]+)\]/g;
+  const re = /\*\*(.+?)\*\*|\*(.+?)\*|\[\[([^\]|]+?)\|(\w+)\]\]|\[\[([^\]|]+?)(?:\|@([\w-]+))?\]\]|\[\^([\w-]+)\]/g;
   let at = 0;
   for (const m of text.matchAll(re)) {
     if (m.index! > at) p.append(text.slice(at, m.index));
-    if (m[1]) p.append(el('b', {}, m[1]));
-    else if (m[2]) p.append(el('i', {}, m[2]));
+    if (m[1]) p.append(el('b', {}, linked(m[1])));
+    else if (m[2]) p.append(el('i', {}, linked(m[2])));
     else if (m[3]) p.append(el('b.tint', { style: `color: ${palette[m[4]] ?? palette.ink}` }, m[3]));
+    else if (m[5]) p.append(entryLink(m[5], m[6]));
     else {
-      const mark = notes && footnoteMarker(m[5], notes);
+      const mark = notes && footnoteMarker(m[7], notes);
       // A word joiner keeps the number on the line of the word it follows.
       if (mark) p.append('\u2060', mark);
     }

@@ -1014,3 +1014,84 @@ body.sheet-up { overflow: hidden; }
 .review-anki { margin: 20px 0; }
 .review .check-picture { margin-bottom: 8px; }
 .review .check-picture img, .review .check-picture svg { max-width: 100%; height: auto; }
+
+/* ---- Encyclopedia (encyclopedia.ts) ------------------------------------ */
+/* A link in text: a dotted underline, quieter than a link, apart from the
+   footnotes' raised numbers. --ency-color sets its colour. */
+.ency-link { color: inherit; text-decoration: underline dotted; text-decoration-color: var(--ency-color, var(--teal)); text-decoration-thickness: 2px; text-underline-offset: 3px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ency-link:hover, .ency-link.on { color: var(--ency-color, var(--teal)); text-decoration-style: solid; }
+.ency-pop { --fn-color: var(--ency-color, var(--teal)); }
+.ency-pop .ency-line { font-style: italic; color: var(--ink-soft); }
+.fn-more { margin: 2px 0 8px; font: 600 0.9rem var(--font); }
+.fn-more a { color: var(--fn-color, var(--teal)); text-decoration: none; }
+.fn-more a:hover { text-decoration: underline; }
+.fn-note .fn-more { font-size: 0.82rem; margin: 4px 0 0; }
+
+.page.ency { max-width: 1180px; display: grid; gap: 16px; align-items: start; }
+.ency-heading { margin: 0 0 10px; }
+.ency-heading a { color: inherit; text-decoration: none; }
+.ency-tools { display: grid; gap: 10px; margin-bottom: 8px; }
+.ency-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.ency-filter { appearance: none; border: 0; padding: 6px 12px; border-radius: 999px; background: none; box-shadow: inset 0 0 0 1px rgba(182, 166, 204, 0.4); color: var(--muted); font: 600 0.82rem var(--font); cursor: pointer; }
+.ency-filter[aria-pressed='true'] { background: var(--sun); color: var(--ink); box-shadow: none; }
+.ency-scope { font-size: 0.86rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ency-list-rows { list-style: none; margin: 0; padding: 0; }
+.ency-list-rows li[hidden] { display: none; }
+.ency-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 9px 10px; margin: 0 -10px; border-radius: 10px; color: var(--text); text-decoration: none; }
+.ency-row:hover { background: rgba(207, 200, 236, 0.08); }
+.ency-row.on { background: rgba(246, 185, 142, 0.16); }
+.ency-row-title { font-weight: 700; grid-column: 1; }
+.ency-row-line { grid-column: 1; font-size: 0.86rem; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ency-row .ency-marks { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.ency-tag { margin-left: 8px; font: 600 0.62rem/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--sun); vertical-align: 2px; }
+.ency-marks { display: inline-flex; gap: 4px; }
+.ency-mark { width: 16px; height: 16px; border-radius: 4px; }
+
+.ency-entry { background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 18px 20px 14px; font-size: 1.02rem; line-height: 1.6; }
+.ency-entry p { margin: 0 0 12px; }
+.ency-entry a { color: var(--teal); }
+.ency-back { display: inline-block; margin-bottom: 8px; font: 600 0.86rem var(--font); text-decoration: none; }
+.ency-trail { font-size: 0.82rem; color: var(--ink-soft); }
+.ency-trail a { color: var(--ink-soft); }
+.ency-kind { margin: 0 0 2px !important; font: 600 0.72rem/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); }
+.ency-title { margin: 0 0 4px; font: 700 1.7rem/1.15 var(--display); color: var(--ink); }
+.ency-entry > .ency-line { font-style: italic; color: var(--ink-soft); font-size: 1.05rem; }
+.ency-matters { border-left: 4px solid var(--sun-deep); background: color-mix(in srgb, var(--sun) 16%, transparent); padding: 10px 14px 2px; border-radius: 0 10px 10px 0; margin: 4px 0 16px; }
+.ency-label, .ency-entry h3 { margin: 0 0 6px !important; font: 600 0.74rem/1.2 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+.ency-entry section { margin: 16px 0 10px; }
+.ency-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ency-chip { padding: 5px 11px; border-radius: 999px; background: rgba(42, 37, 71, 0.07); color: var(--ink) !important; text-decoration: none; font-size: 0.9rem; }
+.ency-chip:hover { background: rgba(42, 37, 71, 0.14); }
+.ency-chip.ency-person { box-shadow: inset 0 0 0 1px var(--sun-deep); }
+.ency-learn-course { margin-bottom: 8px; }
+.ency-learn-head { display: flex; align-items: center; gap: 8px; font-weight: 700; margin: 0 0 4px !important; }
+.ency-learn ul { margin: 0; padding-left: 20px; }
+.ency-learn li { margin-bottom: 4px; }
+.ency-for { color: var(--ink-soft); font-size: 0.92rem; }
+.ency-wiki { margin-top: 14px !important; padding-top: 10px; border-top: 1px solid rgba(42, 37, 71, 0.12); font-size: 0.9rem; }
+.ency-missing { color: var(--sun); }
+.ency-gloss dl { margin: 0; }
+.ency-gloss dt { font-weight: 700; margin-top: 8px; }
+.ency-gloss dt a { color: var(--ink); }
+.ency-dates { font-weight: 400; color: var(--ink-soft); font-size: 0.9rem; }
+.ency-gloss dd { margin: 0 0 4px; color: var(--ink-soft); font-size: 0.95rem; }
+.ency-table-wrap { overflow-x: auto; }
+.ency-table { border-collapse: collapse; font-size: 0.9rem; width: 100%; }
+.ency-table th, .ency-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid rgba(42, 37, 71, 0.12); }
+.ency-table thead th { font: 600 0.72rem var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.ency-table p { margin: 0; }
+.ency-table-note { font-size: 0.86rem; color: var(--ink-soft); margin-top: 6px !important; }
+
+/* Phone: the list, or one entry. */
+@media (max-width: 959px) {
+  .ency.ency-open .ency-list { display: none; }
+  .ency:not(.ency-open) .ency-main { display: none; }
+}
+@media (min-width: 960px) {
+  .page.ency { grid-template-columns: 320px 1fr; gap: 28px; }
+  .ency-list { position: sticky; top: 64px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; }
+  .ency-scroll { overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; }
+  .ency-back { display: none; }
+  .ency-entry { padding: 26px 34px 18px; }
+}
+.ency-course-link { display: block; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: var(--panel); color: var(--ink); text-decoration: none; font-size: 0.92rem; }

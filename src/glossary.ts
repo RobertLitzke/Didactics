@@ -80,14 +80,23 @@ export interface GlossaryViewOptions {
   ahead?: (lessonId: string) => boolean;
 }
 
+/**
+ * Where a term has more to read: set by a module with longer entries
+ * (encyclopedia.ts), so a term with an entry links to it.
+ */
+export const glossaryMore: { href?: (term: string) => string | undefined } = {};
+
 /** The glossary: a search box, a row of letters to jump by, and the terms A to Z. */
 export function glossaryView(o: GlossaryViewOptions): HTMLElement {
   const norm = (s: string) => sortKey(s);
   const rows = o.entries.map((e) => {
     const where = e.lesson ? o.lesson?.(e.lesson) : undefined;
+    const more = e.open ? undefined : glossaryMore.href?.(e.term);
     const term: Child = e.open
       ? el('button.gl-term.gl-open', { type: 'button', onclick: e.open }, e.term, el('span.gl-more', { 'aria-hidden': 'true' }, '›'))
-      : el('span.gl-term', {}, e.term);
+      : more
+        ? el('a.gl-term.gl-open', { href: more, title: 'Read the encyclopedia entry' }, e.term, el('span.gl-more', { 'aria-hidden': 'true' }, '›'))
+        : el('span.gl-term', {}, e.term);
     const node = el('div.gl-entry', { id: `gl-${e.id.replace(/[^\w-]/g, '-')}` },
       el('dt', {}, e.note ? el(`span.gl-dot.fn-${e.note}`, { title: 'Also a note in the lesson' }) : null, term,
         where ? el('a.gl-lesson', { href: where.href }, where.label) : null),

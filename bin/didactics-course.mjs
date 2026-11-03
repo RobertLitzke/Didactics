@@ -2,7 +2,7 @@
 // The course as one JSON file, from the repository (src/course.ts has the format).
 //
 //   didactics-course export src/data [more folders or files] [--title "Clouds"] [--out course.json] [--skip src/data/photos.json] [--code src]
-//   didactics-course import course.json [--dry-run]
+//   didactics-course import course.json [--dry-run] [--map encyclopedia/=../../encyclopedia/]
 //
 // --code adds the words written in the source files under each folder it
 // names (src/code-text.ts), and import writes edited ones back into them.
@@ -84,7 +84,14 @@ if (command === 'export') {
   }
   if (problems.length) fail(['Nothing was written. The course file has these problems:', ...problems.map((p) => `  ${p}`)]);
   let changed = 0;
-  for (const [path, json] of Object.entries(files)) {
+  // --map encyclopedia/=../../encyclopedia/ puts files kept outside the course where they live.
+  const maps = (flags.map ?? []).map((m) => m.split('='));
+  const where = (path) => {
+    const m = maps.find(([from]) => path.startsWith(from));
+    return m ? m[1] + path.slice(m[0].length) : path;
+  };
+  for (const [key, json] of Object.entries(files)) {
+    const path = where(key);
     const now = existsSync(path) ? readFileSync(path, 'utf8') : null;
     const next = layout(path, json);
     if (now === next) continue;
@@ -137,7 +144,7 @@ if (command === 'export') {
 } else {
   fail([
     'didactics-course export <folders or files> [--title T] [--out course.json] [--skip path] [--code src]',
-    'didactics-course import <course.json> [--dry-run]',
+    'didactics-course import <course.json> [--dry-run] [--map <path prefix>=<folder>/]',
     'didactics-course upgrade <folders or files>',
     'didactics-course new <folder> [--title T] [--subtitle S] [--port 5430] [--didactics <npm spec>]',
   ]);

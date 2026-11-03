@@ -53,6 +53,53 @@ export function codeTextModule(root: string, dirs: string[]): Plugin {
   };
 }
 
+/** The module a course imports for the site's encyclopedia: import it as the default export of ENCYCLOPEDIA_MODULE. */
+export const ENCYCLOPEDIA_MODULE = 'virtual:didactics/encyclopedia';
+
+/**
+ * The encyclopedia's data (encyclopedia.ts EncyclopediaData): every JSON file
+ * in `dir`, by path "encyclopedia/<name>.json", and every course in a folder
+ * of `courses` that has a course.json: its title, icon and lessons' titles.
+ */
+export function readEncyclopedia(dir: string, courses: string): { files: Record<string, unknown>; courses: Record<string, { title: string; icon?: string; lessonPath?: string; lessons: Record<string, string> }> } {
+  const files: Record<string, unknown> = {};
+  if (existsSync(dir)) {
+    for (const f of readdirSync(dir).filter((n) => n.endsWith('.json')).sort()) files[`encyclopedia/${f}`] = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+  }
+  const out: Record<string, { title: string; icon?: string; lessonPath?: string; lessons: Record<string, string> }> = {};
+  for (const folder of readdirSync(courses).sort()) {
+    const meta = join(courses, folder, 'course.json');
+    if (!existsSync(meta)) continue;
+    const c = JSON.parse(readFileSync(meta, 'utf8')) as { title: string; icon?: string; lessons?: string; lessonPath?: string };
+    const lessons: Record<string, string> = {};
+    const ldir = c.lessons ? join(courses, folder, c.lessons) : '';
+    if (ldir && existsSync(ldir)) {
+      for (const f of readdirSync(ldir).filter((n) => n.endsWith('.json')).sort()) {
+        const l = JSON.parse(readFileSync(join(ldir, f), 'utf8')) as { id?: string; title?: string };
+        if (l.id && l.title) lessons[l.id] = l.title;
+      }
+    }
+    out[folder] = { title: c.title, icon: c.icon?.replace(/^public\//, ''), ...(c.lessonPath ? { lessonPath: c.lessonPath } : {}), lessons };
+  }
+  return { files, courses: out };
+}
+
+/** Serves ENCYCLOPEDIA_MODULE from readEncyclopedia(`dir`, `courses`), both relative to `root`. */
+export function encyclopediaModule(root: string, dir: string, courses: string): Plugin {
+  const id = `\0${ENCYCLOPEDIA_MODULE}`;
+  return {
+    name: 'didactics-encyclopedia',
+    resolveId: (source) => (source === ENCYCLOPEDIA_MODULE ? id : null),
+    load(source) {
+      if (source !== id) return null;
+      const d = resolve(root, dir);
+      const data = readEncyclopedia(d, resolve(root, courses));
+      for (const f of Object.keys(data.files)) this.addWatchFile(join(d, f.slice('encyclopedia/'.length)));
+      return `export default ${JSON.stringify(data)};`;
+    },
+  };
+}
+
 /** Media types for the files an offline copy may inline. */
 const TYPES: Record<string, string> = {
   '.webp': 'image/webp',
@@ -165,6 +212,12 @@ export interface LessonAppOptions {
    * and manifest this build still writes for itself.
    */
   inSite?: boolean;
+  /**
+   * The site's encyclopedia, served as ENCYCLOPEDIA_MODULE: `dir`, the folder
+   * of its files, and `courses`, the folder holding every course's folder,
+   * both relative to `root` (in a site of courses, "../../encyclopedia" and "..").
+   */
+  encyclopedia?: { dir: string; courses: string };
 }
 
 /** An icon in the web app manifest, with `src` relative to the built page. */
@@ -191,6 +244,7 @@ export function lessonApp(o: LessonAppOptions): UserConfig {
     plugins: [
       viteSingleFile(),
       o.codeText === false ? null : codeTextModule(o.root, o.codeText ?? ['src']),
+      o.encyclopedia ? encyclopediaModule(o.root, o.encyclopedia.dir, o.encyclopedia.courses) : null,
       inlineFavicon(o.root),
       oneFileCopy(o.root, o.oneFile),
       o.offlineFile ? offlineCopy(o.root, o.offlineFile, o.precache ?? []) : null,

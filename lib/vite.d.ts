@@ -14,6 +14,24 @@ export declare const CODE_TEXT_MODULE = "virtual:didactics/code-text";
  * only when someone downloads the course.
  */
 export declare function codeTextModule(root: string, dirs: string[]): Plugin;
+/** The module a course imports for the site's encyclopedia: import it as the default export of ENCYCLOPEDIA_MODULE. */
+export declare const ENCYCLOPEDIA_MODULE = "virtual:didactics/encyclopedia";
+/**
+ * The encyclopedia's data (encyclopedia.ts EncyclopediaData): every JSON file
+ * in `dir`, by path "encyclopedia/<name>.json", and every course in a folder
+ * of `courses` that has a course.json: its title, icon and lessons' titles.
+ */
+export declare function readEncyclopedia(dir: string, courses: string): {
+    files: Record<string, unknown>;
+    courses: Record<string, {
+        title: string;
+        icon?: string;
+        lessonPath?: string;
+        lessons: Record<string, string>;
+    }>;
+};
+/** Serves ENCYCLOPEDIA_MODULE from readEncyclopedia(`dir`, `courses`), both relative to `root`. */
+export declare function encyclopediaModule(root: string, dir: string, courses: string): Plugin;
 /** A glob as workbox reads it (`*` within a folder, `{a,b}`) as a RegExp. */
 export declare function globRegExp(glob: string): RegExp;
 /**
@@ -79,6 +97,15 @@ export interface LessonAppOptions {
      * and manifest this build still writes for itself.
      */
     inSite?: boolean;
+    /**
+     * The site's encyclopedia, served as ENCYCLOPEDIA_MODULE: `dir`, the folder
+     * of its files, and `courses`, the folder holding every course's folder,
+     * both relative to `root` (in a site of courses, "../../encyclopedia" and "..").
+     */
+    encyclopedia?: {
+        dir: string;
+        courses: string;
+    };
 }
 /** An icon in the web app manifest, with `src` relative to the built page. */
 export interface ManifestIcon {

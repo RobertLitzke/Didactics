@@ -55,7 +55,7 @@ const HOW_TO =
   'so its labels, notes, numbers and colours are all there to edit, and a new chart is only a new block. ' +
   'A lesson\'s "summary" is its main points, five to ten, shown in a box after the check and at the top when the lesson is opened again. ' +
   'Blocks can be added, removed and moved. A callout with an id the course has no code for yet shows as a box saying that the diagram goes there, ' +
-  '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]] and [^footnote]. ' +
+  '"aspect_ratio" (width / height) wide. Text markup: **bold**, *italic*, [[words|colour]], [^footnote], and [[words]] or [[words|@entry-id]] for a link to an encyclopedia entry. ' +
   '"code", when there is one, has the words written in the course\'s code (labels, commentary, buttons), one table per source file: ' +
   'edit the words on the right of each line and keep the ones on the left, which find the string in the code. ' +
   'Keep every ${...} in a line: it is filled in by the code, and may move within the line.';

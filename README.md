@@ -158,6 +158,7 @@ pin back before committing.
 | `check` | `check((ctx, options, rng) => steps)`, the figure that ends a lesson: one run of questions (each a picture, a question, choices, an answer and a why) under one count and one score, framed by the radio when it is on |
 | `resume` | Lessons left part way: `LessonResume`, `lessonSignature`, `resumeFor`, `migrateResume`. `lessonView` uses it by itself |
 | `footnote` | Footnotes that open in a popup, or sit in the margin on a wide screen: `footnoteSet`, `footnoteMarker`, `openFootnote`, `closeFootnote`, `sideNotes`, `footnoteLegend`, `footnoteProblems` |
+| `encyclopedia` | A site-wide encyclopedia of ideas, people, places and things, with a page per course (its one-page glossary): `useEncyclopedia`, `encyclopediaView`, `entryLink` (the `[[words]]` link in lesson text), `readEntries`, `entryIndex`, `encyclopediaProblems`, `entryLinkProblems`; the build serves the data (`vite` `encyclopediaModule`, `readEncyclopedia`) |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
 | `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
 | `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
@@ -646,6 +647,52 @@ a marker then points out its note, and the popup is for narrower screens.
 marker with no note and a note with no marker. Use them sparingly: a note
 for what would trip up a casual reader, or what is interesting but off the
 line, not for every term. Clouds keeps it to about four per lesson.
+
+### Encyclopedia (optional, for a site of courses)
+
+One encyclopedia for every course on a site: short entries on the ideas,
+people, places and things the lessons rest on, each with what it is, why it
+matters, links to other entries, the lessons in any course that teach it,
+and its Wikipedia article (opened in a new tab). Each course is an entry
+too, whose page is its one-page glossary: its key people, ideas and things,
+a line each, and its reference tables.
+
+The entries live once, in a folder beside the courses, one JSON file per
+course (`encyclopedia/geology.json`):
+
+```jsonc
+{
+  "course": { "line": "…", "text": ["…"], "people": ["james-hutton"], "ideas": ["deep-time"], "things": [],
+              "tables": [{ "title": "…", "columns": ["Era", "Began"], "rows": [["Cenozoic", "66 million years ago"]], "note": "…" }] },
+  "entries": {
+    "james-hutton": {
+      "kind": "person",            // idea | person | place | thing
+      "title": "James Hutton", "also": ["Hutton"], "dates": "1726–1797",
+      "line": "One sentence: who, or what it is.",
+      "text": ["One to three short paragraphs, with [[deep time]] links."],
+      "matters": "Why it matters.",
+      "see": ["deep-time"],
+      "learn": [{ "course": "geology", "lesson": "siccar", "for": "Read the gap" }],
+      "wikipedia": "James_Hutton"
+    }
+  }
+}
+```
+
+The build reads the folder and every course's course.json and lesson
+titles (`lessonApp({ …, encyclopedia: { dir: '../../encyclopedia', courses: '..' } })`),
+and serves them as `virtual:didactics/encyclopedia`. Hand that to
+`defineCourse({ …, encyclopedia: { data, course: 'geology' } })`: the
+Encyclopedia page joins the menu (`/encyclopedia`, `/encyclopedia/:id`), the
+course's own file goes into Settings' download of its words, glossary terms
+and technical footnotes with an entry link to it, and lesson text links in
+with `[[words]]` (an entry by title or other name) or `[[words|@id]]`, also
+inside `**bold**`. A tap opens a small card; its link opens the entry. A
+lesson in another course opens that course in its folder (`../<course>/`,
+at its course.json `lessonPath`, default `/lesson`). `encyclopediaProblems`
+and `entryLinkProblems` are for a content test. To write the course's file
+back from a downloaded course file: `didactics-course import course.json
+--map encyclopedia/=../../encyclopedia/`.
 
 ### Glossary (optional)
 
