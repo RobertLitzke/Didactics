@@ -11,6 +11,7 @@
 
 import { el, type Child } from './dom';
 import { passed, type Progress } from './progress';
+import { lessonStatus, type StatusLesson } from './status';
 
 export interface TreeLesson {
   id: string;
@@ -115,6 +116,11 @@ export interface TreeOptions<L extends TreeLesson> {
   card: (node: TreeNode<L>) => Child;
   /** A localStorage key to remember which pills were left open on this device. */
   remember?: string;
+  /**
+   * Whether a lesson was started and left part way, to mark its dot. Default:
+   * it has a place kept in the save (status.ts), for lessons that have parts.
+   */
+  started?: (lesson: L) => boolean;
 }
 
 const MARK: Partial<Record<TreeState, string>> = { done: '✓' };
@@ -140,15 +146,18 @@ function writeOpen(key: string | undefined, open: Set<string>): void {
 
 /**
  * The tree: an ordered list of the trunk's lessons, with each branch's pill
- * after the lesson it forks from. The pill holding Next starts open, as do any
+ * after the lesson it forks from. The pill holding Next or a lesson left part
+ * way starts open, as do any
  * left open before; the rest start shut.
  */
 export function treeView<L extends TreeLesson>(o: TreeOptions<L>): HTMLElement {
   const states = treeStates(o.lessons, o.save);
   const open = readOpen(o.remember);
+  const started = o.started ?? ((l: L) => lessonStatus(o.save, l as StatusLesson) === 'started');
   const nodeEl = (l: L) => {
     const node = states.get(l.id)!;
-    return el('li.tree-node', { className: `tree-node is-${node.state}` },
+    const part = node.state !== 'done' && node.state !== 'coming' && started(l) ? ' is-started' : '';
+    return el('li.tree-node', { className: `tree-node is-${node.state}${part}`, dataset: { lesson: l.id } },
       el('span.tree-dot', { 'aria-hidden': 'true' }, MARK[node.state] ?? l.code ?? String(l.n)),
       el('div.tree-card', {}, o.card(node)),
     );
@@ -158,7 +167,7 @@ export function treeView<L extends TreeLesson>(o: TreeOptions<L>): HTMLElement {
   const pill = (b: TreeBranch) => {
     const lessons = inBranch(b);
     const done = lessons.filter((l) => o.save.lessons[l.id]?.done).length;
-    const holdsNext = lessons.some((l) => states.get(l.id)!.state === 'next');
+    const holdsNext = lessons.some((l) => states.get(l.id)!.state === 'next' || started(l));
     const rail = el('ol.tree-rail', {}, lessons.map(nodeEl));
     rail.hidden = !(holdsNext || open.has(b.id));
     const button = el('button.tree-pill', {

@@ -23,12 +23,13 @@ import type { QuizViewOptions } from './quiz-view';
 import type { Card } from './quiz';
 import { recordAnswer } from './review';
 import { reviewView, type ReviewViewOptions } from './review-view';
-import { resumeFor } from './resume';
 import { Router, type View } from './router';
 import { settingsView, type SettingsOptions } from './settings';
 import { appShell, type AppShell, type NavLink } from './shell';
 import { showSplash, type SplashOptions } from './splash';
 import { createStore, type Store } from './store';
+import { keepPlace } from './place';
+import { lessonGo, lessonStatus, progressLine } from './status';
 import { nextLesson, treeView, type TreeBranch, type TreeNode } from './tree';
 import type { UpdateBannerText } from './update';
 
@@ -192,7 +193,7 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
   const noun = o.noun ?? 'Lesson';
   return (root, nav) => {
     const save = o.store.get();
-    const started = (l: L) => !l.coming && !save.lessons[l.id]?.done && resumeFor(save.resume, l.id, l) !== undefined;
+    const started = (l: L) => !l.coming && lessonStatus(save, l) === 'started';
     const next = nextLesson(o.lessons, save);
     const name = (l: L) => `${noun} ${l.code ?? l.n}`;
     const card = ({ lesson: l, state, missing }: TreeNode<L>) => {
@@ -201,23 +202,27 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
         : state === 'skipped' ? 'Skipped'
         : state === 'coming' ? 'Coming'
         : state === 'locked' && missing.length ? `After ${missing.map(name).join(' and ')}`
+        : started(l) ? progressLine(save, l)
         : null;
       const open = state !== 'locked' && state !== 'coming';
-      return el('div.lesson-card', { className: state === 'next' ? 'lesson-card next' : undefined },
+      const standing = l.coming ? 'new' : lessonStatus(save, l);
+      return el('div.lesson-card', { className: `lesson-card stand-${standing}${state === 'next' ? ' next' : ''}` },
         el('div', {}, el('h3', {}, l.title), el('p', {}, l.teaches), status ? el('p.score', {}, status) : null),
         open ? el('div.lesson-actions', {},
-          el('a.btn', { href: `#${path}/${l.id}` }, rec?.done ? 'Again' : started(l) ? 'Continue' : 'Start'),
+          lessonGo(`#${path}/${l.id}`, standing),
           state === 'next'
             ? el('button.btn.btn-ghost.btn-small', { type: 'button', onclick: () => { o.store.update((s) => skipLesson(s, l.id)); nav.replace('/home'); } }, 'Skip')
             : null) : null);
     };
-    root.append(el('div.page.course-home', {},
+    const page = el('div.page.course-home', {},
       el('h1', {}, o.title),
       o.subtitle ? el('p.subtitle', {}, o.subtitle) : null,
       o.welcome ?? null,
       next ? el('a.btn.btn-big', { href: `#${path}/${next.id}` }, `${started(next) ? 'Continue' : 'Start'} ${name(next).toLowerCase()}: ${next.title}`) : null,
       el('h2', {}, `${noun}s`),
-      treeView({ lessons: o.lessons, branches: o.branches ?? [], save, card, remember: o.remember })));
+      treeView({ lessons: o.lessons, branches: o.branches ?? [], save, card, remember: o.remember }));
+    root.append(page);
+    return keepPlace(page, `${o.remember ?? 'course'}.place`);
   };
 }
 

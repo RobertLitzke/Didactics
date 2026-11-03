@@ -164,6 +164,8 @@ pin back before committing.
 | `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
+| `status` | Where the reader stands with a lesson: `lessonStatus` (`'new'`, `'started'`, `'done'`), `placeKept`, `progressLine` ("In progress: part 2 of 5"), `lessonGo(href, status)`, the Start / Continue / Again button in its own colour and mark |
+| `place` | `keepPlace(root, key)`: a page of lessons comes back scrolled where it was left, after a lesson, Back or a reload; `restorePlace` |
 | **Practice** | |
 | `srs` | Spaced repetition in Anki's shape, pure functions over plain data: a `Collection` of `Deck`s, `Note`s (basic or multiple choice), `Card`s (new, learning, review, relearning; due, interval, ease, reps, lapses, FSRS stability and difficulty) and a `ReviewLog`. Schedulers `fsrs()` (via ts-fsrs, the default) and `sm2()` (Anki's classic); `answer`, `preview`, `studyQueue` (due first, new ones woven through, daily limits), `nextCard`, `reviewAhead`, `dayCounts`, `totals`, `suspend`, `bury`, `forget`, `addNote`, `removeNote`, `migrateCollection`, `fromLeitner`, `formatGap` |
 | `anki` | `toApkg(collection, { media?, html?, sourceLabel? })`: the collection as an Anki package, schedules and review log included, notes matched again on a later import by guid |
@@ -794,9 +796,29 @@ const branches: TreeBranch[] = [
 root.append(treeView({ lessons, branches, save, card: ({ lesson, state }) => myCard(lesson, state), remember: 'myapp.tree' }));
 ```
 
-A pill shows how many of its lessons are done. The pill holding Next starts open;
-`remember` keeps the others as they were left on this device. Test the shape
-with `treeProblems(lessons, branches)`. Its styles are in kit.css.
+A pill shows how many of its lessons are done. The pill holding Next, or a
+lesson left part way, starts open; `remember` keeps the others as they were
+left on this device. Test the shape with `treeProblems(lessons, branches)`.
+Its styles are in kit.css.
+
+Each lesson's node carries `data-lesson="<id>"`, and the dot of a lesson
+left part way is filled rose (`is-started`; pass `started` to decide it
+yourself). On the card, `lessonGo(href, lessonStatus(save, lesson))` gives
+the button: filled peach ▸ Start, filled rose ◐ Continue, or an outline ✓
+Again, so the three differ by more than colour; a card with the class
+`stand-<status>` gets the same colour down its left edge. A course can set
+`--go-started` and `--go-done`. Then keep the reader's place:
+
+```ts
+const page = el('div', {}, /* …, */ treeView({ … }));
+root.append(page);
+return keepPlace(page, 'myapp.home-place'); // the view's teardown
+```
+
+`keepPlace` notes which lesson's link was followed and where it sat on the
+screen, and on the way back (the back arrow, finishing, the browser's Back,
+a reload) puts that lesson at the same height, or scrolls it into view if
+the list has moved too far. `courseHome` does all of this by itself.
 
 ### Layout and theme
 

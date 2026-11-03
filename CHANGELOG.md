@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.19.0 (2026-11-03)
+
+The lesson list keeps its place, and says at a glance what is done.
+
+- `place` (new): `keepPlace(root, key)` brings a home page back scrolled
+  where it was left, after leaving or finishing a lesson, the browser's Back
+  or a reload (sessionStorage): the lesson whose link was followed comes back
+  at the same height on the screen, or else the old scroll offset.
+  `courseHome` uses it.
+- `status` (new): `lessonStatus` (new, started, done), `progressLine` and
+  `lessonGo`, the lesson's button: peach ▸ Start, rose ◐ Continue, outlined
+  ✓ Again. Cards with `stand-<status>` get a matching left edge.
+- `tree`: nodes carry `data-lesson`; a lesson left part way gets `is-started`
+  (a rose dot) and its branch's pill starts open. Option `started`.
+- `app`: `courseHome` cards use `lessonGo` and say how far a started lesson
+  got.
+- `router`: sets `history.scrollRestoration` to manual, so the browser no
+  longer fights the views over where the page is scrolled.
+
 ## 0.18.0 (2026-11-02)
 
 Desktop layout: the room either side of a lesson on a wide screen is used.

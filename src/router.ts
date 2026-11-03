@@ -42,6 +42,9 @@ export class Router {
 
   start(fallback: string): void {
     this.fallback = fallback;
+    // Views say where the page is scrolled (lesson.ts, place.ts); the browser
+    // putting back its own idea of it on Back would fight them.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     const onChange = () => this.resolve(location.hash.replace(/^#/, '') || fallback);
     window.addEventListener('hashchange', onChange);
     if (!location.hash) location.hash = fallback;

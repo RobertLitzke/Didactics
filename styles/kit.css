@@ -973,6 +973,28 @@ body.sheet-up { overflow: hidden; }
 .lesson-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .lesson-actions .btn-ghost { color: var(--text); box-shadow: inset 0 0 0 2px var(--muted); }
 
+/* Where the reader stands with a lesson (status.ts). Its button is filled
+   peach (▸ Start) before it is begun, filled rose (◐ Continue) when left part
+   way, and an outline with a tick (✓ Again) once done, so the three differ in
+   shape and mark as well as colour. A card with `stand-started` or
+   `stand-done` carries the colour down its left edge; the tree's dot matches.
+   A course can set --go-started and --go-done. */
+.lesson-go, .btn.go-new, .btn.go-started, .btn.go-done { --go-done-line: var(--go-done, color-mix(in srgb, var(--teal) 55%, #fff)); }
+/* The marks are drawn rather than typed, so no font can lose them. */
+.btn.go-new::before, .btn.go-started::before { content: ""; flex: none; width: 0.75em; height: 0.75em; background: currentColor; }
+.btn.go-new::before { width: 0.6em; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.btn.go-started::before { border-radius: 50%; box-sizing: border-box; border: 2px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.btn.go-done::before { content: "✓"; font-size: 1em; line-height: 1; letter-spacing: 0; color: var(--go-done-line); }
+.btn.go-started { background: var(--go-started, var(--rose)); color: #fff; }
+.btn.go-started:hover { background: var(--go-started, var(--rose)); filter: brightness(1.12); }
+.btn.go-done { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--go-done-line); }
+.btn.go-done:hover { background: rgba(255, 255, 255, 0.08); }
+.stand-started { box-shadow: inset 4px 0 0 var(--go-started, var(--rose)); }
+.stand-done { box-shadow: inset 4px 0 0 var(--go-done, color-mix(in srgb, var(--teal) 55%, #fff)); }
+.stand-started.next { box-shadow: inset 4px 0 0 var(--go-started, var(--rose)), inset 0 0 0 2px var(--sun); }
+.is-started > .tree-dot { background: var(--go-started, var(--rose)); color: #fff; box-shadow: none; border: 0; }
+.is-next.is-started > .tree-dot { box-shadow: 0 0 0 4px rgba(246, 185, 142, 0.25); }
+
 /* ---- Review: spaced repetition in Anki's shape (review-view.ts) ------------ */
 .review .count-new strong, .review-counts .count-new { color: var(--count-new, #2f6fd6); }
 .review .count-learning strong, .review-counts .count-learning { color: var(--count-learning, #c9473f); }
