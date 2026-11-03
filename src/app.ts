@@ -98,6 +98,8 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   home?: View;
   /** Words at the top of the default home page, under the title. */
   welcome?: Child;
+  /** A picture across the top of the default home page, with the title and subtitle over it (kit.css `.course-hero`). */
+  hero?: () => Child;
   /** Branches of the default home page's lesson tree (tree.ts). */
   branches?: readonly TreeBranch[];
 
@@ -217,6 +219,7 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
   title: string;
   subtitle?: string;
   welcome?: Child;
+  hero?: () => Child;
   lessons: readonly L[];
   branches?: readonly TreeBranch[];
   store: Store<S>;
@@ -249,13 +252,16 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
             ? el('button.btn.btn-ghost.btn-small', { type: 'button', onclick: () => { o.store.update((s) => skipLesson(s, l.id)); nav.replace('/home'); } }, 'Skip')
             : null) : null);
     };
-    const page = el('div.page.course-home', {},
-      el('h1', {}, o.title),
-      o.subtitle ? el('p.subtitle', {}, o.subtitle) : null,
-      o.welcome ?? null,
+    const title = [el('h1', {}, o.title), o.subtitle ? el('p.subtitle', {}, o.subtitle) : null];
+    // With a hero, the title sits over the picture and the welcome is a card over its foot.
+    const hero = o.hero ? el('section.course-hero', {}, o.hero(), el('div.course-hero-text', {}, ...title)) : null;
+    const page = el('div.page.course-home', { className: hero ? 'page course-home has-hero' : 'page course-home' },
+      ...(hero ? [] : title),
+      o.welcome ? (hero ? el('div.welcome', {}, o.welcome) : o.welcome) : null,
       next ? el('a.btn.btn-big', { href: `#${path}/${next.id}` }, `${started(next) ? 'Continue' : 'Start'} ${name(next).toLowerCase()}: ${next.title}`) : null,
       el('h2', {}, `${noun}s`),
       treeView({ lessons: o.lessons, branches: o.branches ?? [], save, card, remember: o.remember }));
+    if (hero) root.append(hero);
     root.append(page);
     return keepPlace(page, `${o.remember ?? 'course'}.place`);
   };

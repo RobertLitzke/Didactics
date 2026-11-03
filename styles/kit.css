@@ -1017,6 +1017,31 @@ body.sheet-up { overflow: hidden; }
 
 /* app.ts courseHome: the default home page, a card per lesson in the tree. */
 .course-home .subtitle { color: var(--muted); margin-top: -8px; }
+/* With `hero`: the picture across the top (a `.scene` SVG), the title over its
+   upper half in the heading face with a hard shadow, and the welcome as a
+   card over its foot. A course sets `--hero-text` and `--hero-shadow`. */
+.course-hero { position: relative; overflow: hidden; }
+.course-hero .scene { display: block; width: 100%; height: min(60vh, 500px); }
+.course-hero-text {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 0 20px 24%; pointer-events: none;
+}
+.course-hero-text h1 {
+  margin: 0; font-size: clamp(3.4rem, 10vw, 7rem); line-height: 0.95;
+  color: var(--hero-text, var(--text)); text-shadow: 4px 4px 0 var(--hero-shadow, rgba(0, 0, 0, 0.6));
+}
+.course-hero-text .subtitle {
+  margin: 12px 0 0; font: italic 500 clamp(1.1rem, 2.6vw, 1.7rem)/1.25 var(--head); font-variation-settings: var(--head-settings);
+  color: var(--hero-text, var(--text)); text-shadow: 2px 2px 0 var(--hero-shadow, rgba(0, 0, 0, 0.6)); max-width: 24em;
+}
+@media (min-width: 700px) { .course-hero-text { padding-bottom: 150px; } }
+.course-home.has-hero { position: relative; margin-top: -70px; }
+.course-home.has-hero .welcome {
+  background: var(--panel); color: var(--ink); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.course-home.has-hero .welcome > :first-child { margin-top: 0; }
+.course-home.has-hero .welcome > :last-child { margin-bottom: 0; }
 .lesson-card { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; background: var(--bg-2); border-radius: var(--radius); padding: 12px 14px; }
 .lesson-card.next { box-shadow: inset 0 0 0 2px var(--sun); }
 .lesson-card h3 { margin: 0 0 2px; }

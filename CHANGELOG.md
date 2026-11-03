@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.0 (2026-11-03)
+
+- `defineCourse` takes `hero`, a picture across the top of the default home
+  page: the title and subtitle sit over its upper half in the heading face
+  with a hard shadow, and the welcome becomes a card over its foot
+  (kit.css `.course-hero`; a course sets `--hero-text` and `--hero-shadow`).
+
 ## 0.22.1 (2026-11-03)
 
 - `styles/plain-type.css` follows the 0.21.0 retheme: buttons and the

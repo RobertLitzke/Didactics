@@ -745,7 +745,8 @@ defineCourse({
 `defineCourse` makes the save (progress only, metric; `save: { units,
 fixedUnits, radio }` to change that, or `save: { store, empty }` to hand in
 your own), the top bar with its page menu, a home page with the lessons as a
-tree (`branches` for forks, `welcome` for words under the title), the lesson
+tree (`branches` for forks, `welcome` for words under the title, `hero` for a
+picture across the top with the title over it), the lesson
 player at `/lesson/:id` (`lessonPath` to change it; `lesson: { hero, intro,
 radio, noun, countComing }` for its other options), Settings, the update
 banner in a build, and the overflow strip in dev. It returns `{ store, empty,
