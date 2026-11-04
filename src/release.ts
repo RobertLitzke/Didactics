@@ -37,7 +37,7 @@ export interface CourseRelease extends ReleaseNote {
 export const BETA_TEXT = 'This course is still being written and checked. Lessons may be added, reworded or reordered, and some facts and pictures have not been checked yet. Your progress is kept through every change.';
 
 /** What released means, for Settings. */
-export const RELEASED_TEXT = 'Every lesson has been read through, copy-edited and checked for facts and pictures.';
+export const RELEASED_TEXT = 'Every lesson is written, read through and checked. New lessons may still be added, and your progress is kept when they are.';
 
 const VERSION = /^\d+\.\d+$/;
 
