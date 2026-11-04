@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, spaced-repetition review with an Anki export, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -66,6 +66,7 @@
     "./srs": "./src/srs.ts",
     "./status": "./src/status.ts",
     "./store": "./src/store.ts",
+    "./release": "./src/release.ts",
     "./tree": "./src/tree.ts",
     "./ui": "./src/ui.ts",
     "./units": "./src/units.ts",

@@ -168,6 +168,7 @@ pin back before committing.
 | `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `photoFigure(photo, src, { alt?, mirrored?, aspect?, position? })` (the picture over its credit, styled by kit.css), `stillPhoto({ find, src })` (the figure a lesson names a photo in by id), `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
 | `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
+| `release` | A course's version and stage (beta or released): `releaseSlip` for a course home (nothing once released), `releaseAbout` for Settings, `releaseProblems` to check a course.json's `release`, `BETA_TEXT`, `CourseRelease`; `defineCourse({ release })` uses both |
 | `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
 | `status` | Where the reader stands with a lesson: `lessonStatus` (`'new'`, `'started'`, `'done'`), `placeKept`, `progressLine` ("In progress: part 2 of 5"), `lessonGo(href, status)`, the Start / Continue / Again button in its own colour and mark |
 | `place` | `keepPlace(root, key)`: a page of lessons comes back scrolled where it was left, after a lesson, Back or a reload; `restorePlace` |
@@ -754,6 +755,13 @@ radio, noun, countComing }` for its other options), Settings, the update
 banner in a build, and the overflow strip in dev. It returns `{ store, empty,
 router, shell, text, asset }`. More, each optional:
 
+- `release: { version, stage, date, note?, history? }`: the course's version
+  and whether it is in beta (`'beta'`, version 0.x) or released (1.0 and
+  up). A beta gets a slip under the welcome on the default home page saying
+  what beta means (`releaseSlip(release)` puts it in a home of the course's
+  own); Settings' About gives the version and the latest notes. The version
+  goes up when the author says so, not with every change, and progress is
+  kept by lesson id, so neither touches a reader's save.
 - `pages: [{ path, view, label?, fullScreen? }]`: the course's own pages; a
   label puts one in the menu. `menu: ['/home', '/lab', '/quiz', '/settings']`
   orders the menu.

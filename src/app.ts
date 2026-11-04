@@ -22,6 +22,7 @@ import { creditsView, type CreditsViewOptions, type Photo } from './photos';
 import { emptyProgress, migrateProgress, skipLesson, type EmptyOptions, type Progress, type Units } from './progress';
 import type { Card } from './quiz';
 import { recordAnswer } from './review';
+import { releaseAbout, releaseSlip, type CourseRelease } from './release';
 import { reviewView, type ReviewViewOptions } from './review-view';
 import { Router, type View } from './router';
 import { settingsView, type SettingsOptions } from './settings';
@@ -102,6 +103,13 @@ export interface CourseOptions<L extends Lesson, S extends Progress, C extends C
   hero?: () => Child;
   /** Branches of the default home page's lesson tree (tree.ts). */
   branches?: readonly TreeBranch[];
+  /**
+   * The course's version and stage (release.ts), usually its course.json's
+   * `release`. A beta gets a slip on the default home page under the
+   * welcome (a home of the course's own puts releaseSlip() in itself), and
+   * Settings' About says the version either way.
+   */
+  release?: CourseRelease;
 
   /** The course's own pages. */
   pages?: readonly CoursePage[];
@@ -214,12 +222,19 @@ export function courseStore<S extends Progress>(id: string, save: CourseSave<S> 
   return { store: createStore({ key: save.key ?? `${id}.save`, empty, migrate: (raw) => migrateProgress(raw, empty()) }), empty };
 }
 
+/** Settings' About: the release first, then the course's own words. */
+function aboutWith(release: CourseRelease | undefined, about: Child | undefined): Child | undefined {
+  if (!release) return about;
+  return about ? [releaseAbout(release), about] : releaseAbout(release);
+}
+
 /** The default home page: the welcome, a button for the lesson that is next, and the lessons as a tree. */
 export function courseHome<L extends Lesson, S extends Progress>(o: {
   title: string;
   subtitle?: string;
   welcome?: Child;
   hero?: () => Child;
+  release?: CourseRelease;
   lessons: readonly L[];
   branches?: readonly TreeBranch[];
   store: Store<S>;
@@ -258,6 +273,7 @@ export function courseHome<L extends Lesson, S extends Progress>(o: {
     const page = el('div.page.course-home', { className: hero ? 'page course-home has-hero' : 'page course-home' },
       ...(hero ? [] : title),
       o.welcome ? (hero ? el('div.welcome', {}, o.welcome) : o.welcome) : null,
+      releaseSlip(o.release),
       next ? el('a.btn.btn-big', { href: `#${path}/${next.id}` }, `${started(next) ? 'Continue' : 'Start'} ${name(next).toLowerCase()}: ${next.title}`) : null,
       el('h2', {}, `${noun}s`),
       treeView({ lessons: o.lessons, branches: o.branches ?? [], save, card, remember: o.remember }));
@@ -336,8 +352,8 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
       oneFile: oneFile ? { href: asset(oneFile), name: oneFile } : undefined,
       offline: o.offline,
       sections: text ? courseSection({ edits: text, fileName: `${o.id}-course.json`, pieces }) : undefined,
-      about: o.photos ? el('p', {}, el('a', { href: '#/credits' }, 'Credits'), ': who made the photos, and under what licence.') : undefined,
       ...o.settings,
+      about: aboutWith(o.release, o.settings?.about ?? (o.photos ? el('p', {}, el('a', { href: '#/credits' }, 'Credits'), ': who made the photos, and under what licence.') : undefined)),
       store,
       empty,
     }),

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.0 (2026-11-04)
+
+- `release` (new): a course's version and stage, beta or released.
+  `defineCourse({ release })` shows a beta slip under the welcome on the
+  default home page (what beta means, and the version) and puts the version
+  and the latest notes at the top of Settings' About. `releaseSlip` is the
+  slip for a home of a course's own; `releaseProblems` checks a release.
+  Nothing in a save changes.
+
 ## 0.25.0 (2026-11-03)
 
 - A lesson's resume keeps `seen`, when the reader was last in it (ms), set

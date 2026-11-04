@@ -1197,3 +1197,24 @@ body.sheet-up { overflow: hidden; }
   .ency-entry { padding: 26px 34px 18px; }
 }
 .ency-course-link { display: block; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: var(--panel); color: var(--ink); text-decoration: none; font-size: 0.92rem; }
+
+/* ---- A course's release (release.ts) ----------------------------------- */
+/* The beta slip on a course home, and the version in Settings' About. The
+   tag takes --sun; a course can set --release-tag and --release-tag-ink. */
+.release-slip {
+  display: flex; gap: 12px; align-items: flex-start; margin: 16px 0;
+  padding: 12px 14px; border-radius: var(--radius);
+  border: 1px dashed color-mix(in srgb, currentColor 40%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+.release-slip p { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.release-v { opacity: 0.75; white-space: nowrap; }
+.release-tag {
+  display: inline-block; flex: none; padding: 3px 9px 2px; border-radius: 999px;
+  font: 700 0.72rem/1.2 var(--display); letter-spacing: 0.12em; text-transform: uppercase;
+  background: var(--release-tag, var(--sun)); color: var(--release-tag-ink, var(--ink));
+}
+.release-tag.release-released { background: var(--good); color: #fff; }
+.release-about p { margin: 0 0 8px; }
+.release-history { margin: 0 0 12px; padding-left: 20px; font-size: 0.9rem; opacity: 0.85; }
+.course-hero ~ .page .release-slip { margin-top: 20px; }
