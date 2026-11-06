@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.29.0 (2026-11-06)
+
+Three more live charts from JSON, and a second kind of key (README "Live
+charts from JSON"):
+
+- `clue-board`: a mystery's ideas as cards and the clues under them; each
+  clue, turned on in any order, crosses out the ideas it rules out and says
+  which clue did it. `guess` asks for the survivor first.
+- `loop`: stages round a cycle with the way each becomes the next beside its
+  arrow. Tap or Next to go round (`round`), or build the loop arrow by arrow
+  (`next`), each pick marked right or wrong.
+- `regroup`: the same things as two or more trees, switched with buttons
+  (`switched`), each leaf in one colour throughout; `follow` keeps one leaf
+  and its closest kin bold, and `guess` asks first.
+- `id-key` takes `features` and `taxa` in place of `root`: a key entered
+  anywhere, ticking features in any order until one candidate is left, with
+  or without `specimens` to key out.
+
 ## 0.28.3 (2026-11-06)
 
 - Live charts credit every picture they show: both pictures of a `compare`

@@ -22,8 +22,11 @@ Ask what the reader should see change. In order of preference:
    `hotspots` (tap or find the parts of a picture), `compare` (wipe or step
    between pictures of one view), `timeline-live` (play through, or put in
    order), `scale-guess` (guess a hidden bar), `groups` (sort into groups),
-   `id-key` (walk a key to a name), `id-drill` (a quiz naming pictures, which
-   feeds review), and `map-live` (tap places, raise the water, play stages).
+   `id-key` (walk a key to a name, or tick features in any order),
+   `id-drill` (a quiz naming pictures, which feeds review), `clue-board`
+   (clues crossing out a mystery's ideas), `loop` (step round a cycle, or
+   build it), `regroup` (the same things grouped two ways), and `map-live`
+   (tap places, raise the water, play stages).
    Reach for these first in natural-history lessons; write code only for a
    cause the reader controls (a simulation).
 2. **A still** (`diagram` block): the text describes something the reader

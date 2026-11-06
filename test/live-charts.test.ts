@@ -35,9 +35,31 @@ const OPTIONS = {
     specimens: [{ name: 'Maple', photo: 'maple-leaf' }, { name: 'Alder' }],
   },
   'id-drill': { items: [{ name: 'Oak', photo: 'oak-leaf' }, { name: 'Maple', photo: 'maple-leaf', why: 'Pointed lobes.' }, { name: 'Alder', photo: 'alder-leaf', more: [{ image: 'alder-2.jpg', width: 3, height: 2 }] }] },
+  'clue-board': {
+    ideas: [{ name: 'A tree' }, { name: 'A seaweed' }, { name: 'A fungus', text: 'Tubes, no wood.' }],
+    clues: [{ name: 'No wood', text: 'Tubes, not wood cells.', rules: ['A tree'] }, { name: 'On land', rules: [1] }],
+  },
+  loop: { title: 'Rock cycle', stages: [{ name: 'Sediment', how: 'buried' }, { name: 'Rock', note: 'lesson 2', how: 'melted', text: 'Hard.' }, { name: 'Magma', how: 'cooled and worn away', color: 'leaf' }] },
+  regroup: {
+    follow: 'Fungi',
+    views: [
+      { label: 'By looks', root: { label: '', children: [{ label: 'Plants', children: [{ label: 'Moss' }, { label: 'Fungi' }] }, { label: 'Animals', children: [{ label: 'Horse' }] }] }, text: 'Fungi stand still.' },
+      { label: 'By genes', root: { label: '', children: [{ label: 'Moss', color: 'leaf' }, { label: '', children: [{ label: 'Fungi' }, { label: 'Horse' }] }] }, text: 'Fungi sit with animals.' },
+    ],
+  },
 } as const;
 
-const GOALS: Record<string, string> = { hotspots: 'explore', compare: 'seen', 'timeline-live': 'end', 'scale-guess': 'guess', groups: 'sorted', 'id-key': 'keyed' };
+const MULTI = {
+  features: [{ name: 'Leaves', values: ['lobed', 'toothed'] }, { name: 'Seeds', values: ['acorn', 'wing', 'cone'] }],
+  taxa: [
+    { name: 'Oak', traits: { Leaves: 'lobed', Seeds: 'acorn' }, about: 'Acorns.' },
+    { name: 'Maple', traits: { Leaves: 'lobed', Seeds: 'wing' }, photo: 'maple-leaf' },
+    { name: 'Alder', traits: { Leaves: 'toothed', Seeds: 'cone' } },
+    { name: 'Birch', traits: { Leaves: 'toothed', Seeds: ['cone', 'wing'] } },
+  ],
+};
+
+const GOALS: Record<string, string> = { hotspots: 'explore', compare: 'seen', 'timeline-live': 'end', 'scale-guess': 'guess', groups: 'sorted', 'id-key': 'keyed', 'clue-board': 'clues', loop: 'round', regroup: 'switched' };
 
 const lesson = (blocks: Lesson['parts'][number]['blocks']): Lesson => ({ id: 'l', n: 1, title: 'L', teaches: '', summary: [], parts: [{ title: 'One', blocks }] });
 const build = (id: keyof typeof LIVE, goal?: string, options: object = OPTIONS[id as keyof typeof OPTIONS], ctx: FigureContext = testContext(save)) => LIVE[id](ctx, goal, options as Record<string, unknown>);
@@ -295,5 +317,109 @@ describe('map-live', () => {
     expect(stages.node.querySelector('.fig-readout')!.textContent).toBe('Lake. Meltwater.');
     expect([...stages.node.querySelectorAll('text')].map((t) => t.textContent)).not.toContain('Ice edge');
     expect(await settled(stages.done)).toBe(true);
+  });
+});
+
+describe('live charts that reason', () => {
+  it('clue board: each clue crosses out its ideas, done once all are on', async () => {
+    const h = build('clue-board', 'clues');
+    const readout = h.node.querySelector('.fig-readout')!;
+    const chips = [...h.node.querySelectorAll('button.chip')] as HTMLButtonElement[];
+    expect(chips.map((b) => b.textContent)).toEqual(['1. No wood', '2. On land']);
+    expect(readout.textContent).toMatch(/3 ideas/);
+    click(chips[0]);
+    expect(chips[0].getAttribute('aria-pressed')).toBe('true');
+    expect(h.node.textContent).toMatch(/ruled out by clue 1/);
+    expect(readout.textContent).toBe('2 ideas still fit the clues that are on.');
+    expect(await settled(h.done)).toBe(false);
+    click(chips[1]);
+    expect(readout.textContent).toBe('Only A fungus fits every clue.');
+    expect(await settled(h.done)).toBe(true);
+  });
+
+  it('clue board: a guess comes first, and the clues must leave one idea for it', () => {
+    const h = build('clue-board', 'clues', { ...OPTIONS['clue-board'], guess: 'Which is it?' });
+    const clue = [...h.node.querySelectorAll('button.chip')].find((b) => b.textContent === '1. No wood') as HTMLButtonElement;
+    expect(clue.disabled).toBe(true);
+    expect(h.node.querySelector('.fig-readout')!.textContent).toBe('Which is it?');
+    expect(LIVE['clue-board'].options!({ ...OPTIONS['clue-board'], clues: [OPTIONS['clue-board'].clues[0]], guess: 'Which?' })[0]).toMatch(/leave one idea standing; they leave 2/);
+    expect(LIVE['clue-board'].options!({ ...OPTIONS['clue-board'], clues: [{ name: 'X', rules: ['A whale'] }] })[0]).toMatch(/not one of the ideas/);
+  });
+
+  it('loop: tapping or Next goes round, done once every stage is seen', async () => {
+    const h = build('loop', 'round');
+    const readout = h.node.querySelector('.fig-readout')!;
+    const next = [...h.node.querySelectorAll('button')].find((b) => b.textContent === 'Next')!;
+    click(h.node.querySelectorAll('.fig-tap')[1]);
+    expect(readout.textContent).toBe('2. Rock. Hard. Then melted, it becomes magma.');
+    click(next);
+    expect(readout.textContent).toMatch(/^3\. Magma\..*becomes sediment/);
+    expect(await settled(h.done)).toBe(false);
+    click(next);
+    expect(await settled(h.done)).toBe(true);
+    expect(LIVE.loop.options!({ stages: [{ name: 'A' }, { name: 'B' }] })[0]).toMatch(/three or more/);
+  });
+
+  it('loop: "next" builds the loop arrow by arrow, marking a wrong pick', async () => {
+    const h = build('loop', 'next');
+    const readout = h.node.querySelector('.fig-readout')!;
+    const pick = (name: string) => click([...h.node.querySelectorAll('button.chip')].find((b) => b.textContent === name)!);
+    expect(h.node.querySelector('.fig-ask')!.textContent).toBe('What does sediment become?');
+    pick('Magma');
+    expect(readout.textContent).toMatch(/Not magma/);
+    pick('Rock');
+    expect(readout.textContent).toMatch(/Buried, sediment becomes rock/);
+    pick('Magma');
+    pick('Sediment');
+    expect(readout.textContent).toMatch(/loop is closed, with 1 wrong pick/);
+    expect(await settled(h.done)).toBe(true);
+  });
+
+  it('regroup: switches trees, keeps a followed leaf bold with its kin, done at the last view', async () => {
+    const h = build('regroup', 'switched');
+    const readout = h.node.querySelector('.fig-readout')!;
+    const bold = () => [...h.node.querySelectorAll('text')].filter((t) => t.classList.contains('bold')).map((t) => t.textContent);
+    expect(readout.textContent).toBe('By looks. Fungi stand still.');
+    expect(bold()).toEqual(expect.arrayContaining(['Moss', 'Fungi']));
+    expect(bold()).not.toContain('Horse');
+    click([...h.node.querySelectorAll('button.chip')][1]);
+    expect(readout.textContent).toBe('By genes. Fungi sit with animals.');
+    expect(bold()).toEqual(expect.arrayContaining(['Fungi', 'Horse']));
+    expect(bold()).not.toContain('Moss');
+    expect(await settled(h.done)).toBe(true);
+    expect(LIVE.regroup.options!({ views: [OPTIONS.regroup.views[0], { label: 'X', root: { label: '', children: [{ label: 'Moss' }, { label: 'Oak' }] } }] })[0]).toMatch(/same leaves/);
+  });
+
+  it('id-key entered anywhere: ticks narrow the candidates in any order', async () => {
+    const h = build('id-key', 'keyed', MULTI);
+    const readout = h.node.querySelector('.fig-readout')!;
+    const tickOn = (v: string) => click([...h.node.querySelectorAll('button.chip')].find((b) => b.textContent === v)!);
+    expect(readout.textContent).toMatch(/4 of 4 fit/);
+    tickOn('wing');
+    expect(readout.textContent).toMatch(/2 of 4 fit/);
+    tickOn('toothed');
+    expect(readout.textContent).toBe('Only Birch fits.');
+    expect(await settled(h.done)).toBe(true);
+    tickOn('lobed');
+    expect(readout.textContent).toBe('Only Maple fits.');
+    expect(LIVE['id-key'].options!({ ...MULTI, taxa: [{ name: 'X', traits: { Bark: 'grey' } }, MULTI.taxa[0]] })[0]).toMatch(/"Bark" is not one of the features/);
+    expect(LIVE['id-key'].options!({ ...MULTI, root: OPTIONS['id-key'].root })[0]).toMatch(/both "root" and "features"/);
+  });
+
+  it('id-key entered anywhere: with specimens, each must narrow to its own name', async () => {
+    const h = build('id-key', 'keyed', { ...MULTI, specimens: [{ name: 'Oak' }, { name: 'Alder', hint: 'by the creek' }] });
+    const readout = h.node.querySelector('.fig-readout')!;
+    const tickOn = (v: string) => click([...h.node.querySelectorAll('button.chip')].find((b) => b.textContent === v)!);
+    tickOn('toothed');
+    expect(readout.textContent).toMatch(/rules out the right one/);
+    tickOn('lobed');
+    tickOn('acorn');
+    expect(readout.textContent).toBe('✓Keyed out: Oak. Acorns.');
+    click([...h.node.querySelectorAll('button')].find((b) => b.textContent === 'Next one')!);
+    expect(readout.textContent).toMatch(/2 of 2: by the creek/);
+    tickOn('cone');
+    tickOn('toothed');
+    expect(readout.textContent).toMatch(/2 still fit/);
+    expect(await settled(h.done)).toBe(false);
   });
 });

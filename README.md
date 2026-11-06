@@ -156,7 +156,7 @@ pin back before committing.
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `player` (a Play button for a time slider), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
-| `live-charts` | Live figures from a lesson's JSON alone: `liveCharts({ palette?, asset?, photos? })` gives `hotspots`, `compare`, `timeline-live`, `scale-guess`, `groups`, `id-key` and the quiz `id-drill`; `LIVE_CHART_IDS` |
+| `live-charts` | Live figures from a lesson's JSON alone: `liveCharts({ palette?, asset?, photos? })` gives `hotspots`, `compare`, `timeline-live`, `scale-guess`, `groups`, `id-key` (either-or, or entered anywhere), `clue-board`, `loop`, `regroup` and the quiz `id-drill`; `LIVE_CHART_IDS` |
 | `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `mapAreas`, `scaleBar`, `mapKey`; `maps({ palette, asset })` gives the `map` chart and the live `map-live` (`liveMapOptionsProblems`) |
 | `globe` | Any round body seen from any side: places as unit vectors (`xyz`, `lonLat`, `slerp`, `arc`, `circle`, Euler-pole rotations), an orthographic view (`globeView`, `viewFrom`, `project`, `unproject`), shapes cut at the limb (`clipRing`, `capPolygon`, `clipLine`), `GlobePainter` (disc, rings, caps, lines, graticule, `night` from a sun direction, `raster` to wrap a relief or a picture on it, dots, labels, arrows, `cutOpen` an octant to show the shells inside), and `dragGlobe` to turn it by hand and move handles on it |
 | `cutaway` | The Earth cut along a line, from what is known at the surface: `section(a, b, { relief, boundaries, dipAt })` reads heights along the great circle, continental or ocean crust, sea-floor age from depth and plate thickness from age, and sends a slab down under the higher side at each trench, with the volcanoes over 100 km of slab; `drawSection` draws it true to scale at plate scale or as a slice down to the centre |
@@ -421,8 +421,11 @@ keep its own figure code for the simulations that need it:
 | `timeline-live` | `interactive_diagram` | `end`, `order` | plays through time, each event told as it is passed; or, with `order`, taps the events from earliest to latest and each goes on the line |
 | `scale-guess` | `interactive_diagram` | `guess` | picks the size of a hidden bar before it is drawn, marked right or wrong |
 | `groups` | `interactive_diagram` | `sorted` | sorts things into two to four groups, one at a time, each ticked or crossed with why |
-| `id-key` | `interactive_diagram` | `keyed`, `every` | walks a key of paired choices to a name; with `specimens`, keys out each in turn |
+| `id-key` | `interactive_diagram` | `keyed`, `every` | walks a key of paired choices to a name; with `specimens`, keys out each in turn. With `features` and `taxa` in place of `root`, a key entered anywhere: ticks features in any order until one candidate is left |
 | `id-drill` | `quiz` | | names what each picture shows from a few names; every answer joins the review deck, like the end check's |
+| `clue-board` | `interactive_diagram` | `clues` | turns on a mystery's clues in any order, each crossing out the ideas it rules out; with `guess`, picks the survivor first |
+| `loop` | `interactive_diagram` | `round`, `next` | steps round a cycle of stages (tap or Next), each told with how it becomes the next; or, with `next`, builds the loop arrow by arrow, picking what each stage becomes |
+| `regroup` | `interactive_diagram` | `switched` | switches between two or more trees of the same things (by looks, by genes); `follow` keeps one leaf and its closest kin bold; with `guess`, answers first |
 
 Add them beside the charts, with the course's photo library so a picture can
 be named by its id and credited from its record:
@@ -480,6 +483,30 @@ drawing without holding up the lesson.
   "options": { "ask": "Which tree?", "count": 5, "choices": 4, "items": [
     { "name": "Garry oak", "photo": "oak-leaf", "more": [{ "photo": "oak-bark" }], "why": "Rounded lobes, no bristles." } ] } }
 // Wrong names come from the other items; "more" gives other pictures of the same thing. Each picture is its own review card.
+
+{ "type": "interactive_diagram", "id": "id-key", "caption": "…", "goal": "keyed", "task": "Narrow it to one.",
+  "options": { "features": [{ "name": "Leaves", "values": ["lobed", "toothed"] }, { "name": "Seeds", "values": ["acorn", "wing", "cone"] }],
+    "taxa": [{ "name": "Oak", "traits": { "Leaves": "lobed", "Seeds": "acorn" } }, { "name": "Birch", "traits": { "Leaves": "toothed", "Seeds": ["cone", "wing"] }, "photo": "birch" }] } }
+// A key entered anywhere. A trait may be a list where it varies; a feature left out fits any value. Up to 12 taxa; "specimens" as above.
+
+{ "type": "interactive_diagram", "id": "clue-board", "caption": "…", "goal": "clues", "task": "Turn on every clue.",
+  "options": { "ideas": [{ "name": "A rotted conifer" }, { "name": "A fungus", "text": "…" }, { "name": "A lost lineage" }],
+    "clues": [{ "name": "Tubes, not wood", "text": "Built of tangled tubes, no wood cells", "rules": ["A rotted conifer"] }],
+    "end": "Said once every clue is on.", "guess": "Which idea survives?" } }
+// "rules" names the ideas a clue rules out (or their indexes). Two to six ideas and up to six clues; "guess" needs the clues to leave one.
+
+{ "type": "interactive_diagram", "id": "loop", "caption": "…", "goal": "next", "task": "Build the loop.",
+  "options": { "title": "The rock cycle", "stages": [
+    { "name": "Sediment", "note": "lesson 2", "color": "sand", "how": "buried and cemented", "text": "Said at this stage." },
+    { "name": "Sedimentary rock", "how": "heated, squeezed" }, { "name": "Magma", "how": "cooled" } ] } }
+// Three to eight stages; the last leads back to the first. "how" sits beside the arrow to the next stage; "middle" puts words in the middle of a small loop.
+
+{ "type": "interactive_diagram", "id": "regroup", "caption": "…", "goal": "switched", "task": "Guess, then switch.",
+  "options": { "follow": "Fungi", "guess": { "ask": "…", "options": ["The oak", "The horse"], "answer": 1 },
+    "views": [
+      { "label": "By looks", "text": "…", "root": { "label": "", "children": [{ "label": "Plants", "children": [{ "label": "Moss", "color": "leaf" }, { "label": "Fungi" }] }, { "label": "Horse" }] } },
+      { "label": "By genes", "text": "…", "root": { "label": "", "children": [{ "label": "Moss" }, { "label": "", "children": [{ "label": "Fungi" }, { "label": "Horse" }] }] } } ] } }
+// Each view is a tree (the tree chart's nodes: label, note, color, children) holding the same leaves. A leaf keeps the colour it is first given in every view.
 ```
 
 A live map is in `maps` (next): `map-live`.
