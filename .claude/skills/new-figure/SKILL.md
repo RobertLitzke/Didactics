@@ -8,16 +8,24 @@ description: Add a figure to a course lesson on Rob's courses site: a live figur
 A lesson block names a figure by `id`; the course maps the id to code. Read
 the "Figures" section of the lesson guide
 (https://claude.ai/artifact/9Y8iYVPYjPyk315cFAR8CP) and Didactics' README
-("A palette and the figure kit", "A figure", "Charts from JSON", "Maps of
-real places", "Tests") before writing one.
+("A palette and the figure kit", "A figure", "Charts from JSON", "Live
+charts from JSON", "Maps of real places", "Tests") before writing one.
 
 ## 1. Choose the kind
 
 Ask what the reader should see change. In order of preference:
 
-1. **No code at all**: a chart from the block's JSON (`didactics/charts`:
-   timeline, tree, scale, plate) or a relief map (`didactics/maps`), or a
-   photo (`"id": "photo"`, see `pick-images`).
+1. **No code at all**: a chart from the block's JSON. Stills
+   (`didactics/charts`: timeline, tree, scale, plate; `map` from
+   `didactics/maps`), a photo (`"id": "photo"`, see `pick-images`), or a live
+   chart (`didactics/live-charts`, README "Live charts from JSON"):
+   `hotspots` (tap or find the parts of a picture), `compare` (wipe or step
+   between pictures of one view), `timeline-live` (play through, or put in
+   order), `scale-guess` (guess a hidden bar), `groups` (sort into groups),
+   `id-key` (walk a key to a name), `id-drill` (a quiz naming pictures, which
+   feeds review), and `map-live` (tap places, raise the water, play stages).
+   Reach for these first in natural-history lessons; write code only for a
+   cause the reader controls (a simulation).
 2. **A still** (`diagram` block): the text describes something the reader
    can't see. A plain factory returning `{ node }`, built with `still(w, h)`
    and the pieces in `didactics/draw` (label, line, arrow, curve, redraw…).

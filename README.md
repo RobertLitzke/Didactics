@@ -156,7 +156,8 @@ pin back before committing.
 | `code-scan` | Node only, with the course's `typescript`: `scanCode`, `codeTable`, `readSources`, `rewriteCode` (writes edited strings back into a source file) |
 | `figure` | What a figure is: `figure(goals, build, { options? })`, `quiz(build)`, `frame` (around an SVG, or `frame({ drawing })` around a canvas, video or photo), `canvasFrame`, `slider` (linear, `steps`, or `scale: 'log'`), `player` (a Play button for a time slider), `animate`, `standaloneFigure` (a figure outside a lesson, for a reference page, a gallery or a test), `testContext`, `figureReady`, guess-first helpers (`guessFirst`, `lock`, `choices` with `mark`, `lockIn`, `placeable`, `verdict`, `showVerdict`, `tellCard`), `startRng` for a flash card's readings |
 | `charts` | Figures drawn from a lesson's JSON alone, no course code: `charts({ palette?, asset? })` gives `timeline`, `tree`, `scale` (a scale comparison, linear or log, in the reader's units) and `plate` (an image with labels in its margins); `CHART_IDS`, `wrap` |
-| `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `mapAreas`, `scaleBar`, `mapKey`; `maps({ palette, asset })` gives the `map` chart |
+| `live-charts` | Live figures from a lesson's JSON alone: `liveCharts({ palette?, asset?, photos? })` gives `hotspots`, `compare`, `timeline-live`, `scale-guess`, `groups`, `id-key` and the quiz `id-drill`; `LIVE_CHART_IDS` |
+| `maps` | Real places under a figure: `loadRelief` (a grid of heights from a Terrarium PNG and its JSON), `mapView` (canvas plus an SVG for labels), `paintRelief` (sun, exaggeration, water level, a colour per cell), `hillshade`, `profile`, `outcrops` (tilted layers meeting the ground), `mapLabels`, `mapLines`, `mapAreas`, `scaleBar`, `mapKey`; `maps({ palette, asset })` gives the `map` chart and the live `map-live` (`liveMapOptionsProblems`) |
 | `globe` | Any round body seen from any side: places as unit vectors (`xyz`, `lonLat`, `slerp`, `arc`, `circle`, Euler-pole rotations), an orthographic view (`globeView`, `viewFrom`, `project`, `unproject`), shapes cut at the limb (`clipRing`, `capPolygon`, `clipLine`), `GlobePainter` (disc, rings, caps, lines, graticule, `night` from a sun direction, `raster` to wrap a relief or a picture on it, dots, labels, arrows, `cutOpen` an octant to show the shells inside), and `dragGlobe` to turn it by hand and move handles on it |
 | `cutaway` | The Earth cut along a line, from what is known at the surface: `section(a, b, { relief, boundaries, dipAt })` reads heights along the great circle, continental or ocean crust, sea-floor age from depth and plate thickness from age, and sends a slab down under the higher side at each trench, with the volcanoes over 100 km of slab; `drawSection` draws it true to scale at plate scale or as a slice down to the centre |
 | `draw` | SVG pieces: `still`, `label`/`small`/`note`/`heading`, `line`, `polyline`, `arrow`, `wavy`, `curve`, `hexagon`, `redraw` |
@@ -405,7 +406,83 @@ that uses a chart.
 
 Every chart also takes a `"title"` (bold, over it) and a `"note"` (muted,
 under it); the caption is still the one text box under the figure. They are
-stills: a chart that should respond to the reader is a figure of the course's own.
+stills; for one the reader works with, see the live charts next.
+
+### Live charts from JSON
+
+`live-charts` gives the figures a natural-history lesson reaches for most
+often, set up from the block's options with no course code, so a course can
+keep its own figure code for the simulations that need it:
+
+| id | block type | goals | what the reader does |
+| --- | --- | --- | --- |
+| `hotspots` | `interactive_diagram` | `explore`, `find` | taps numbered spots on a picture to learn each part; or, with `find`, finds each part by name (a wrong tap flashes red and says what it was) |
+| `compare` | `interactive_diagram` | `seen` | wipes between two pictures of one view, by slider or drag; or steps through three or more, with Play |
+| `timeline-live` | `interactive_diagram` | `end`, `order` | plays through time, each event told as it is passed; or, with `order`, taps the events from earliest to latest and each goes on the line |
+| `scale-guess` | `interactive_diagram` | `guess` | picks the size of a hidden bar before it is drawn, marked right or wrong |
+| `groups` | `interactive_diagram` | `sorted` | sorts things into two to four groups, one at a time, each ticked or crossed with why |
+| `id-key` | `interactive_diagram` | `keyed`, `every` | walks a key of paired choices to a name; with `specimens`, keys out each in turn |
+| `id-drill` | `quiz` | | names what each picture shows from a few names; every answer joins the review deck, like the end check's |
+
+Add them beside the charts, with the course's photo library so a picture can
+be named by its id and credited from its record:
+
+```ts
+import { charts } from 'didactics/charts';
+import { liveCharts } from 'didactics/live-charts';
+export const FIGURES = { ...charts({ palette: COL, asset }), ...liveCharts({ palette: COL, asset, photos: { find: photoById, src } }), ...courseFigures };
+```
+
+A picture in any of them is `"photo": "<id>"` (from the library), or
+`"image": "<path>"` with its `"width"` and `"height"` in pixels and an
+optional `"alt"` and `"credit"`. Each takes `"textLines"`, the lines its text
+box holds (default 3), so the controls stay put while the words change. The
+goal is the block's `"goal"`; without one the figure is there to explore.
+`lessonProblems` checks the options, and a problem shows in place of the
+drawing without holding up the lesson.
+
+```jsonc
+{ "type": "interactive_diagram", "id": "hotspots", "caption": "Parts of a flower", "goal": "find", "task": "Find each part.",
+  "options": { "photo": "lily-01", "spots": [
+    { "x": 0.52, "y": 0.31, "name": "stigma", "text": "Where pollen lands." },
+    { "x": 0.40, "y": 0.45, "name": "anther", "text": "Where pollen is made." } ] } }
+// x and y are fractions of the picture. "intro": the words before any tap.
+
+{ "type": "interactive_diagram", "id": "compare", "caption": "Muir Glacier", "goal": "seen", "task": "Wipe across.",
+  "options": { "frames": [
+    { "photo": "muir-1941", "label": "1941", "text": "Ice fills the inlet." },
+    { "photo": "muir-2004", "label": "2004", "text": "Open water and trees." } ],
+    "guess": { "ask": "How far has the ice gone back?", "options": ["Hardly", "A few km", "Out of sight"], "answer": 2 } } }
+// Two frames wipe; three or more step, with Play ("seconds"). "guess" locks the slider until the reader picks.
+
+{ "type": "interactive_diagram", "id": "timeline-live", "caption": "…", "goal": "order", "task": "Put them in order.",
+  "options": { "events": [{ "at": 1859, "label": "Origin of Species", "text": "…" }, { "at": 1953, "label": "DNA's shape" }] } }
+// The timeline's options (unit, spacing, when, color, to) plus "text" said in the text box. No goal or "end" plays through.
+
+{ "type": "interactive_diagram", "id": "scale-guess", "caption": "…", "goal": "guess", "task": "Guess first.",
+  "options": { "quantity": "height", "items": [{ "label": "Person", "value": 1.8 }, { "label": "Coast redwood", "value": 115 }],
+    "guess": { "item": 1, "ask": "How tall is the tallest coast redwood?", "options": [40, 115, 300] } } }
+// The scale's options; "options" are values in the items' units, the item's own among them.
+
+{ "type": "interactive_diagram", "id": "groups", "caption": "…", "goal": "sorted", "task": "Sort all six.",
+  "options": { "ask": "Sac or club?", "groups": [{ "name": "Sac fungi" }, { "name": "Club fungi", "color": "spore" }],
+    "items": [{ "name": "Morel", "group": "Sac fungi", "photo": "morel", "why": "Spores in sacs in its pits." }] } }
+// "group" is a group's name or its index. Two to four groups.
+
+{ "type": "interactive_diagram", "id": "id-key", "caption": "…", "goal": "keyed", "task": "Key out both.",
+  "options": { "root": { "ask": "Needles or scales?", "choices": [
+      { "text": "Needles in bundles", "name": "Pine", "about": "…" },
+      { "text": "Needles single", "then": { "choices": [{ "text": "Flat, white-striped below", "name": "Fir" }, { "text": "Square, sharp", "name": "Spruce" }] } } ] },
+    "specimens": [{ "name": "Spruce", "photo": "spruce-twig" }, { "name": "Pine", "hint": "the long-needled one" }] } }
+// A choice has "then" (the next step) or "name" (where it ends). Without "specimens", "every" means reach every name.
+
+{ "type": "quiz", "id": "id-drill", "caption": "Name the leaf", "task": "Name all five.",
+  "options": { "ask": "Which tree?", "count": 5, "choices": 4, "items": [
+    { "name": "Garry oak", "photo": "oak-leaf", "more": [{ "photo": "oak-bark" }], "why": "Rounded lobes, no bristles." } ] } }
+// Wrong names come from the other items; "more" gives other pictures of the same thing. Each picture is its own review card.
+```
+
+A live map is in `maps` (next): `map-live`.
 
 ### Maps of real places
 
@@ -436,6 +513,17 @@ charts and use the `map` id.
 // "water": metres (sea level is 0), "ground": "height" for a ramp by height, "exaggeration", "title", "note".
 // "areas": [{ "points": [[lon, lat], …], "color": "heat", "opacity": 0.45 }] fills zones under the lines,
 // clipped to the map; "key": [{ "color": "heat", "text": "Garnet" }] puts swatches under it.
+```
+
+`maps(...)` also gives `map-live` (`interactive_diagram`, goals `explore`
+and `end`): a map's options plus places to tap, a water level to raise, or
+steps to play through, one slider a map.
+
+```jsonc
+{ "type": "interactive_diagram", "id": "map-live", "caption": "…", "goal": "end", "task": "Raise the sea.",
+  "options": { "relief": "maps/puget", "flood": { "from": 0, "to": 120, "label": "Sea level", "text": "Ice-age sea levels were 120 m lower." } } }
+// "spots": [{ "lon", "lat", "name", "text" }] to tap ("explore": every one tapped);
+// "stages": [{ "label", "text", "lines", "areas", "labels" }] drawn over the base map, with Play ("end": the last stage).
 ```
 
 ### Leaving a lesson part way

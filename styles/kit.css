@@ -717,6 +717,16 @@ body.radio-up main { padding-bottom: 50vh; }
 @keyframes verdict-in { from { transform: scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .fig-order { margin: 0; font-size: 0.85rem; color: var(--ink-soft); }
 
+/* Live charts from a lesson's JSON (live-charts.ts, maps.ts map-live): spots to tap, rows of controls. */
+.fig-tap { cursor: pointer; outline: none; }
+.fig-tap:focus-visible circle:nth-of-type(2) { stroke-width: 4; }
+.fig-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.fig-row > .fig-slider { flex: 1 1 220px; }
+.fig-row > .btn { margin: 4px 0; }
+.fig-ask { margin: 4px 0 0; font-size: 0.9rem; font-weight: 700; }
+.fig-sequence .chip { white-space: normal; text-align: left; line-height: 1.25; }
+.fig-readout > .fig-verdict { margin-top: 0; }
+
 /* A figure asked as a flash card on the review page: the figure keeps its own ink on the page's colours. */
 .review-figure-card .fig { color: var(--ink); margin: 6px 0 10px; }
 .review-figure-card .fig .fig-readout { color: var(--ink); }

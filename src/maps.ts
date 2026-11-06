@@ -24,8 +24,8 @@
 
 import { el, svg } from './dom';
 import { label } from './draw';
-import type { FigureFactory, FigureHandle, Options } from './figure';
-import { length as sayLength, type Units } from './units';
+import { figure, frame, player, slider, type FigureFactory, type FigureHandle, type Options, type Slider } from './figure';
+import { height as sayHeight, length as sayLength, type Units } from './units';
 
 // ---- The grid -------------------------------------------------------------------
 
@@ -653,7 +653,7 @@ function drawMap(r: Relief, o: MapOptions, units: Units, pal: Record<string, str
  *     "options": { "relief": "maps/auvergne", "sun": { "azimuth": 300, "altitude": 30 },
  *       "labels": [{ "lon": 2.964, "lat": 45.772, "text": "Puy de Dôme" }] } }
  */
-export function maps(o: MapsOptions = {}): { map: FigureFactory } {
+export function maps(o: MapsOptions = {}): { map: FigureFactory; 'map-live': FigureFactory } {
   const pal = { ...(o.palette ?? {}) } as Record<string, string>;
   const asset = o.asset ?? ((p: string) => p);
   const load = o.load ?? ((p: string) => loadRelief(asset(p)));
@@ -667,7 +667,7 @@ export function maps(o: MapsOptions = {}): { map: FigureFactory } {
       .catch(() => node.replaceChildren(el('p.map-note', {}, 'The map could not be loaded here.')));
     return { node, ready };
   };
-  return { map: Object.assign(make, { options: mapOptionsProblems, each: true as const }) };
+  return { map: Object.assign(make, { options: mapOptionsProblems, each: true as const }), 'map-live': mapLive(pal, load) };
 }
 
 const cache = new Map<string, Promise<Relief>>();
@@ -681,4 +681,201 @@ export function reliefFor(load: (path: string) => Promise<Relief>, path: string)
     p.catch(() => cache.delete(path));
   }
   return p;
+}
+
+// ---- The live map ---------------------------------------------------------------------
+
+/** A place on a live map to tap: its name and words in the text box. */
+export interface MapSpot {
+  lon: number;
+  lat: number;
+  name: string;
+  text?: string;
+}
+
+/** One step of a live map's stages: what is drawn over the base at that step. */
+export interface MapStage {
+  label: string;
+  text?: string;
+  lines?: MapLine[];
+  areas?: MapArea[];
+  labels?: MapLabel[];
+}
+
+/** A `map-live` block's options: a map's, and what the reader can change on it. */
+export interface LiveMapOptions extends MapOptions {
+  /** Places to tap. */
+  spots?: MapSpot[];
+  /** A slider for the water level, in metres: the sea rising over the land, or a lake filling. */
+  flood?: { from: number; to: number; start?: number; label?: string; text?: string };
+  /** Steps to move through with a slider and Play, each drawn over the base map. */
+  stages?: MapStage[];
+  /** Lines the text box holds; default 3. */
+  textLines?: number;
+  /** Seconds a Play takes; default 2 a stage. */
+  seconds?: number;
+}
+
+/** What is wrong with a `map-live` block's options. */
+export function liveMapOptionsProblems(o: Options | undefined): string[] {
+  const out = mapOptionsProblems(o);
+  if (!o || typeof o !== 'object') return out;
+  const place = (lon: unknown, lat: unknown) => isNum(lon) && isNum(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
+  if (o.spots !== undefined) {
+    if (!Array.isArray(o.spots) || !o.spots.length) out.push('"spots" should be a list of { "lon", "lat", "name" }');
+    else o.spots.forEach((p: Record<string, unknown>, i) => {
+      if (!place(p?.lon, p?.lat)) out.push(`spot ${i + 1}: "lon" and "lat" should be degrees`);
+      if (!isStr(p?.name)) out.push(`spot ${i + 1}: "name" should be text`);
+      if (p?.text !== undefined && !isStr(p.text)) out.push(`spot ${i + 1}: "text" should be text`);
+    });
+  }
+  if (o.flood !== undefined) {
+    const f = o.flood as Record<string, unknown>;
+    if (!isNum(f?.from) || !isNum(f?.to) || f.to <= f.from) out.push('"flood" should be { "from", "to" } in metres, "to" above "from"');
+    else if (f.start !== undefined && !(isNum(f.start) && f.start >= f.from && f.start <= f.to)) out.push('"flood": "start" should be between "from" and "to"');
+    for (const k of ['label', 'text'] as const) if (f?.[k] !== undefined && !isStr(f[k])) out.push(`"flood": "${k}" should be text`);
+  }
+  if (o.stages !== undefined) {
+    if (!Array.isArray(o.stages) || o.stages.length < 2) out.push('"stages" should be two or more { "label" }');
+    else o.stages.forEach((st: Record<string, unknown>, i) => {
+      if (!isStr(st?.label)) out.push(`stage ${i + 1}: "label" should be text`);
+      for (const k of ['lines', 'areas', 'labels'] as const) if (st?.[k] !== undefined && !Array.isArray(st[k])) out.push(`stage ${i + 1}: "${k}" should be a list`);
+      // The stage's own drawing is checked as a map's would be.
+      for (const p of mapOptionsProblems({ relief: 'x', lines: st?.lines, areas: st?.areas, labels: st?.labels })) out.push(`stage ${i + 1}: ${p}`);
+    });
+  }
+  if (o.flood !== undefined && o.stages !== undefined) out.push('use "flood" or "stages", not both: one slider a map');
+  if (o.spots === undefined && o.flood === undefined && o.stages === undefined) out.push('a live map needs "spots", "flood" or "stages"; a map with none of them is the still "map"');
+  if (o.textLines !== undefined && !(isNum(o.textLines) && o.textLines >= 1 && o.textLines <= 8)) out.push('"textLines" should be 1 to 8');
+  if (o.seconds !== undefined && !(isNum(o.seconds) && o.seconds > 0)) out.push('"seconds" should be a number above 0');
+  return out;
+}
+
+/**
+ * The `map-live` figure: a map from a block's options, with places to tap
+ * ("spots"), a water level to raise ("flood") or steps to play through
+ * ("stages"). Goals: "explore", every spot tapped; "end", the slider at its far
+ * end (the highest water, the last stage).
+ */
+function mapLive(pal: Record<string, string>, load: (path: string) => Promise<Relief>): FigureFactory {
+  const ink = pal.ink ?? '#2a2547';
+  const paper = pal.paper ?? '#fffaf0';
+  const color = (c?: string) => (c ? (pal[c] ?? c) : undefined);
+  const f = figure<Options>(['explore', 'end'], (ctx, t, raw) => {
+    const problems = liveMapOptionsProblems(raw);
+    if (problems.length) {
+      t.done();
+      return el('div.fig-body.fig-still', {}, el('p.fig-readout', {}, problems.join('; ')));
+    }
+    const o = raw as unknown as LiveMapOptions;
+    const holder = el('div.map-chart', {}, el('p.map-note', {}, 'Loading the map…'));
+    const fr = frame({ drawing: holder, lines: o.textLines ?? 3 });
+    if (o.title) fr.node.prepend(el('p.map-title', {}, o.title));
+    const readout = fr.readout;
+    const tell = (lead: string, rest?: string) => readout.replaceChildren(el('strong', {}, lead), rest ? ` ${rest}` : '');
+    const units = ctx.save.units;
+    t.waitFor(reliefFor(load, o.relief).then((r) => {
+      const v = mapView(r, { alt: o.alt });
+      const shade = hillshade(r, o.sun, o.exaggeration ?? 1);
+      const ground = o.ground === 'height' ? heightRamp(r) : undefined;
+      let pending: number | undefined;
+      let painted = false;
+      const paint = (water: number | undefined) => {
+        // One repaint a frame while a slider moves.
+        const first = !painted;
+        painted = true;
+        if (first || typeof requestAnimationFrame === 'undefined') return void v.paint({ sun: o.sun, shade, ground, water });
+        if (pending !== undefined) cancelAnimationFrame(pending);
+        pending = requestAnimationFrame(() => {
+          pending = undefined;
+          v.paint({ sun: o.sun, shade, ground, water });
+        });
+      };
+      paint(o.flood ? (o.flood.start ?? o.flood.from) : o.water);
+      const stageG = svg('g');
+      const spotG = svg('g');
+      v.svg.append(
+        ...mapAreas(v, (o.areas ?? []).map((a) => ({ ...a, color: color(a.color) })), ink),
+        ...mapLines(v, (o.lines ?? []).map((l) => ({ ...l, color: color(l.color) ?? ink })), ink),
+        stageG,
+        ...mapLabels(v, (o.labels ?? []).map((l) => ({ ...l, color: color(l.color) })), ink, paper),
+        spotG,
+        ...scaleBar(v, units, ink, paper, o.scale),
+      );
+      const parts: HTMLElement[] = [v.node];
+      if (o.key?.length) parts.push(mapKey(o.key.map((k) => ({ ...k, color: color(k.color) ?? k.color }))));
+      parts.push(el('p.map-credit', {}, `Heights: ${r.meta.credit}`));
+      if (o.note) parts.push(el('p.map-note', {}, o.note));
+      holder.replaceChildren(...parts);
+
+      // Spots.
+      const spots = o.spots ?? [];
+      const kept = (t.kept && typeof t.kept === 'object' ? t.kept : {}) as { seen?: number[] };
+      const seen = new Set<number>(t.restored && !kept.seen ? spots.map((_, i) => i) : (kept.seen ?? []).filter((i) => Number.isInteger(i) && i >= 0 && i < spots.length));
+      if (spots.length) v.svg.removeAttribute('aria-hidden');
+      const rings = spots.map((p, i) => {
+        const [x, y] = v.xy(p.lon, p.lat);
+        const ring = svg('circle', { cx: x, cy: y, r: 6.5, fill: paper, stroke: ink, 'stroke-width': 2 });
+        const g = svg('g', { tabindex: 0, role: 'button', 'aria-label': p.name, class: 'fig-tap' }, svg('circle', { cx: x, cy: y, r: 16, fill: 'transparent' }), ring);
+        const tap = () => {
+          seen.add(i);
+          t.keep({ seen: [...seen] });
+          ring.setAttribute('fill', ink);
+          const left = spots.length - seen.size;
+          tell(`${p.name}.`, `${p.text ?? ''}${t.goal === 'explore' && left ? ` (${left} more to tap.)` : ''}`.trim());
+          if (t.goal === 'explore' && !left) t.done();
+        };
+        g.addEventListener('click', tap);
+        g.addEventListener('keydown', (e) => {
+          const key = (e as KeyboardEvent).key;
+          if (key === 'Enter' || key === ' ') {
+            e.preventDefault();
+            tap();
+          }
+        });
+        if (seen.has(i)) ring.setAttribute('fill', ink);
+        return g;
+      });
+      spotG.append(...rings);
+
+      // The slider: water or stages.
+      let s: Slider | undefined;
+      if (o.flood) {
+        const fl = o.flood;
+        const step = (fl.to - fl.from) / 200;
+        s = slider(fl.label ?? 'Water level', { min: fl.from, max: fl.to, step, value: fl.start ?? fl.from, show: (h) => sayHeight(h, units), onInput: (h) => {
+          paint(h);
+          tell(`${fl.label ?? 'Water level'}: ${sayHeight(h, units)}.`, fl.text);
+          if (t.goal === 'end' && h >= fl.to - step / 2) t.done();
+        } });
+        fr.controls.append(s.node);
+      } else if (o.stages) {
+        const stages = o.stages;
+        const drawStage = (i: number) => {
+          const st = stages[i];
+          stageG.replaceChildren(
+            ...mapAreas(v, (st.areas ?? []).map((a) => ({ ...a, color: color(a.color) })), ink),
+            ...mapLines(v, (st.lines ?? []).map((l) => ({ ...l, color: color(l.color) ?? ink })), ink),
+            ...mapLabels(v, (st.labels ?? []).map((l) => ({ ...l, color: color(l.color) })), ink, paper),
+          );
+          tell(`${st.label}.`, st.text);
+          if (t.goal === 'end' && i === stages.length - 1) t.done();
+        };
+        s = slider('Step', { steps: stages.map((_, i) => i), value: 0, show: (i) => stages[i].label, onInput: drawStage });
+        const play = player(s, ctx, { seconds: o.seconds ?? 2 * stages.length });
+        fr.controls.append(el('div.fig-row', {}, s.node, play.node));
+        drawStage(0);
+      }
+      if (!o.stages) {
+        if (spots.length) readout.textContent = t.goal === 'explore' ? `Tap each ringed place (${spots.length - seen.size} to go).` : 'Tap a ringed place to see what it is.';
+        else if (o.flood) tell(`${o.flood.label ?? 'Water level'}: ${sayHeight(s!.value(), units)}.`, o.flood.text);
+      }
+      if (t.restored && t.goal === 'end' && s) s.set(o.flood ? o.flood.to : (o.stages!.length - 1));
+    }).catch(() => {
+      holder.replaceChildren(el('p.map-note', {}, 'The map could not be loaded here.'));
+      t.done();
+    }));
+    return fr.node;
+  }, { options: liveMapOptionsProblems });
+  return Object.assign(f, { each: true as const });
 }

@@ -53,7 +53,7 @@ const W = 400;
 // ---- Options as a lesson writes them ----------------------------------------
 
 /** Shared by every chart: a bold line over the drawing and a muted one under it. */
-interface Framing {
+export interface Framing {
   title?: string;
   note?: string;
 }
@@ -140,10 +140,10 @@ export interface PlateOptions extends Framing {
 // ---- Text --------------------------------------------------------------------
 
 const SIZE = { normal: 11, note: 10, small: 9 } as const;
-type Size = keyof typeof SIZE;
+export type Size = keyof typeof SIZE;
 
 /** About how wide a run of text is: system fonts average a little over half their size. */
-function textWidth(text: string, size: Size, bold = false): number {
+export function textWidth(text: string, size: Size, bold = false): number {
   return text.length * SIZE[size] * (bold ? 0.6 : 0.55);
 }
 
@@ -162,17 +162,17 @@ export function wrap(text: string, width: number, size: Size = 'normal', bold = 
   return lines.length ? lines : [''];
 }
 
-const lineHeight = (size: Size) => Math.round(SIZE[size] * 1.25);
+export const lineHeight = (size: Size) => Math.round(SIZE[size] * 1.25);
 
 /** Lines of text, the first baseline at y. */
-function block(x: number, y: number, lines: string[], size: Size, style: { bold?: boolean; soft?: boolean; anchor?: 'middle' | 'end'; fill?: string } = {}): SVGElement[] {
+export function block(x: number, y: number, lines: string[], size: Size, style: { bold?: boolean; soft?: boolean; anchor?: 'middle' | 'end'; fill?: string } = {}): SVGElement[] {
   const s = size === 'normal' ? undefined : size;
   return lines.map((t, i) => label(x, y + i * lineHeight(size), t, { size: s, ...style }));
 }
 
 // ---- Shared ------------------------------------------------------------------
 
-interface Kit {
+export interface Kit {
   color: (name: string | undefined, i: number) => string;
   ink: string;
   soft: string;
@@ -181,7 +181,7 @@ interface Kit {
   isColor: (name: string) => boolean;
 }
 
-function kit(palette: Readonly<Record<string, string>>): Kit {
+export function kit(palette: Readonly<Record<string, string>>): Kit {
   const all = { ...DEFAULT_PALETTE, ...palette };
   const cycle = CYCLE.filter((k) => k in all).concat(Object.keys(palette).filter((k) => !['ink', 'soft', 'paper', 'grid'].includes(k)));
   const isColor = (name: string) => name in all || /^(#[0-9a-f]{3,8}|(rgb|rgba|hsl|hsla|var)\(.+\))$/i.test(name.trim());
@@ -230,21 +230,21 @@ function made<O>(draw: (k: Kit, units: Units, o: O, asset: (p: string) => string
 
 // ---- Checks ------------------------------------------------------------------
 
-const isStr = (v: unknown): v is string => typeof v === 'string';
-const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+export const isStr = (v: unknown): v is string => typeof v === 'string';
+export const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
-function framing(o: Record<string, unknown>): string[] {
+export function framing(o: Record<string, unknown>): string[] {
   const out: string[] = [];
   for (const k of ['title', 'note'] as const) if (o[k] !== undefined && !isStr(o[k])) out.push(`"${k}" should be text`);
   return out;
 }
 
-function colorProblem(v: unknown, k: Kit, where: string): string[] {
+export function colorProblem(v: unknown, k: Kit, where: string): string[] {
   if (v === undefined) return [];
   return isStr(v) && k.isColor(v) ? [] : [`${where}: "color" should be a palette name or a CSS colour, not ${JSON.stringify(v)}`];
 }
 
-function list(o: Record<string, unknown>, key: string): unknown[] | null {
+export function list(o: Record<string, unknown>, key: string): unknown[] | null {
   return Array.isArray(o[key]) && (o[key] as unknown[]).length ? (o[key] as unknown[]) : null;
 }
 
@@ -259,13 +259,13 @@ function sayFine(m: number, units: Units): string {
   return m * 39.3701 >= 1 ? sayLength(m, units) : `${sig(m * 39.3701)} in`;
 }
 
-function sayValue(v: number, o: ScaleOptions, units: Units): string {
+export function sayValue(v: number, o: ScaleOptions, units: Units): string {
   if (o.quantity === 'length') return sayFine(v, units);
   if (o.quantity === 'height') return sayHeight(v, units);
   return `${v.toLocaleString('en-US')}${o.unit ? ` ${o.unit}` : ''}`;
 }
 
-function drawScale(k: Kit, units: Units, o: ScaleOptions): FigureHandle {
+export function drawScale(k: Kit, units: Units, o: ScaleOptions): FigureHandle {
   return chart(k, o, (s, top) => {
     const says = o.items.map((it) => it.says ?? sayValue(it.value, o, units));
     const labels = o.items.map((it) => wrap(it.label, 150, 'note', it.bold));
@@ -309,7 +309,7 @@ function drawScale(k: Kit, units: Units, o: ScaleOptions): FigureHandle {
   });
 }
 
-function checkScale(o: Record<string, unknown>, k: Kit): string[] {
+export function checkScale(o: Record<string, unknown>, k: Kit): string[] {
   const out = framing(o);
   const items = list(o, 'items');
   if (!items) return [...out, 'a scale needs "items", a list of { "label", "value" }'];
@@ -329,7 +329,7 @@ function checkScale(o: Record<string, unknown>, k: Kit): string[] {
 
 // ---- Timeline ------------------------------------------------------------------
 
-function sayWhen(e: TimelineEvent, o: TimelineOptions): string {
+export function sayWhen(e: TimelineEvent, o: TimelineOptions): string {
   if (e.when) return e.when;
   // Years read as years: 1931, not 1,931.
   const say = (t: number) => (Math.abs(t) >= 10000 ? t.toLocaleString('en-US') : String(t)).replace('-', '−');
@@ -377,7 +377,7 @@ function drawTimeline(k: Kit, _units: Units, o: TimelineOptions): FigureHandle {
   });
 }
 
-function checkTimeline(o: Record<string, unknown>, k: Kit): string[] {
+export function checkTimeline(o: Record<string, unknown>, k: Kit): string[] {
   const out = framing(o);
   const events = list(o, 'events');
   if (!events) return [...out, 'a timeline needs "events", a list of { "at", "label" }'];
@@ -544,7 +544,7 @@ function drawPlate(k: Kit, _units: Units, o: PlateOptions, asset: (p: string) =>
 }
 
 /** Settles once the image has loaded or failed, so a screenshot shows it; at once where nothing loads images. */
-function loaded(href: string): Promise<void> | undefined {
+export function loaded(href: string): Promise<void> | undefined {
   if (typeof Image === 'undefined' || typeof navigator === 'undefined' || /happy-?dom|jsdom/i.test(navigator.userAgent)) return undefined;
   return new Promise((done) => {
     const i = new Image();

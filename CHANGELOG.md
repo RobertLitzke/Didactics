@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.28.0 (2026-11-06)
+
+- `live-charts` (new): live figures set up from a block's options with no
+  course code. `liveCharts({ palette, asset, photos })` gives `hotspots`
+  (tap the parts of a picture, or find each by name), `compare` (wipe
+  between two pictures of one view, or step through several with Play, with
+  an optional guess first), `timeline-live` (play through time, or tap the
+  events into order), `scale-guess` (pick a hidden bar's size before it is
+  drawn), `groups` (sort things into groups, each ticked or crossed),
+  `id-key` (walk a key of paired choices to a name, keying out specimens)
+  and the quiz `id-drill` (name each picture; answers join the review deck
+  as the end check's do). A picture is a library `"photo"` id, credited
+  from its record, or an `"image"` path. Each checks its options for
+  `lessonProblems` and keeps its state for a reader who comes back.
+- `maps`: `maps()` also gives `map-live`: spots to tap, a water level to
+  raise (`flood`) or `stages` to play through, over a relief.
+- `charts` exports the helpers the live charts share (`kit`, `drawScale`,
+  `sayValue`, `sayWhen`, the option checks).
+- `didactics-course new` puts the live charts in a new course's figures.
+- Nothing in a save changes: the new figures keep their state under their
+  own block keys.
+
 ## 0.27.0 (2026-11-06)
 
 - `pictures` (new): the picture record with no DOM. A photo is one kind of
