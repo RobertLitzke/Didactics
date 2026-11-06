@@ -2,7 +2,8 @@
 
 Didactics is the shared library under every course on Rob's courses site.
 The courses themselves live in the Courses repository
-(RobertLitzke/CloudsWhatAreTheyUpTo, live at robertlitzke.github.io/Courses/,
+(RobertLitzke/Courses, formerly CloudsWhatAreTheyUpTo, live at
+robertlitzke.github.io/Courses/,
 one folder per course in `courses/<folder>/`), which
 has its own CLAUDE.md for lesson status, review queues and course versions.
 Work on a course's lessons, figures or photos happens there; this repo only
