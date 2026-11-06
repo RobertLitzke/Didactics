@@ -18,9 +18,11 @@ src/<module>.ts     one module each, imported by courses as didactics/<module>;
                     the exports map in package.json is the public interface
                     (test/package.test.ts fails for a module left out)
 lib/                compiled copies of the modules that run in Node (vite, offline,
-                    course, blocks, code-text, code-scan, scaffold; see
+                    course, blocks, code-text, code-scan, scaffold, pictures,
+                    picture-sources, picture-tools; see
                     tsconfig.lib.json), made by npm run build
-bin/                didactics-course: new, export, import, upgrade
+bin/                didactics-course: new, export, import, upgrade;
+                    didactics-pictures: find, fetch, check, paleoart, migrate
 styles/             kit.css and friends, themed by CSS custom properties
 test/               vitest + happy-dom, one file per module or feature
 docs/topics.md      ideas for future courses
@@ -36,7 +38,8 @@ in the README); keep it that way. Plain TypeScript, no framework: DOM from
 `el()`/`svg()` in `dom`, drawings in SVG.
 
 What stays in a course, not here: its figures and diagrams, simulations,
-subject drawing code, palette and fonts, photos and their pipeline, and all
+subject drawing code, palette and fonts, its pictures (the picture pipeline
+is here: pictures, picture-sources, picture-tools), and all
 content. When a piece of course code would help a second course, move it here
 as a small module that names neither course.
 
