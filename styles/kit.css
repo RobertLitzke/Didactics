@@ -726,6 +726,8 @@ body.radio-up main { padding-bottom: 50vh; }
 .fig-ask { margin: 4px 0 0; font-size: 0.9rem; font-weight: 700; }
 .fig-sequence .chip { white-space: normal; text-align: left; line-height: 1.25; }
 .fig-readout > .fig-verdict { margin-top: 0; }
+.fig-credits { min-height: 1.2em; }
+.fig-credits .credit { margin: 2px 0 0; }
 
 /* A figure asked as a flash card on the review page: the figure keeps its own ink on the page's colours. */
 .review-figure-card .fig { color: var(--ink); margin: 6px 0 10px; }

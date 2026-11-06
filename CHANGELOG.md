@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.28.3 (2026-11-06)
+
+- Live charts credit every picture they show: both pictures of a `compare`
+  wipe, the picture at the current step, and the picture on top in `groups`
+  and `id-key`, each with its credit line (`credit(p)`) under the drawing.
+
 ## 0.28.2 (2026-11-06)
 
 Picture sources, tried against the live services:

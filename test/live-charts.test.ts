@@ -191,12 +191,16 @@ describe('live charts', () => {
   it('groups: files each thing in its right group, ticked or crossed', async () => {
     const h = build('groups', 'sorted');
     const buttons = [...h.node.querySelectorAll('.fig-row .chip')];
+    // The photo on top is credited while it shows.
+    const first = h.node.querySelector('svg text')!.textContent;
+    expect(!!h.node.querySelector('.fig-credits .credit')).toBe(first === 'Garry oak');
     expect(buttons.map((b) => b.textContent)).toEqual(['Oaks', 'Maples']);
     for (let k = 0; k < 3; k++) click(buttons[0]);
     const words = [...h.node.querySelectorAll('text')].map((t) => t.textContent);
     expect(words).toContain('✓ Garry oak');
     expect(words).toContain('✗ Bigleaf maple');
     expect(words.some((w) => /All 3 sorted: 1 right/.test(w ?? ''))).toBe(true);
+    expect(h.node.querySelector('.fig-credits .credit')).toBeNull();
     expect(await settled(h.done)).toBe(true);
   });
 

@@ -134,6 +134,13 @@ function creditUnder(drawing: Element, p: Pic | null): void {
   if (c) drawing.after(c);
 }
 
+/** A place under the drawing for the credit of whichever pictures show now; `show` fills it. */
+function creditSlot(drawing: Element): { show: (pics: (Pic | null | undefined)[]) => void } {
+  const slot = el('div.fig-credits');
+  drawing.after(slot);
+  return { show: (pics) => slot.replaceChildren(...pics.map((p) => p?.credit()).filter((c): c is HTMLElement => !!c)) };
+}
+
 /** Words on a pale halo, to read on any picture. */
 function haloLabel(x: number, y: number, text: string, k: Kit, style: { anchor?: 'middle' | 'end'; fill?: string; size?: 'note' | 'small' } = {}): SVGElement[] {
   const size = style.size ?? 'note';
@@ -449,7 +456,15 @@ function compare(env: Env): FigureFactory {
       f.controls.append(el('div.fig-row', {}, s.node, play.node));
     }
     if (Array.isArray(t.kept)) ends = new Set(t.kept.filter((x): x is 'a' | 'b' => x === 'a' || x === 'b'));
-    creditUnder(f.svg, pics.find((p) => p.credit()) ?? null);
+    // Every picture showing is credited: both of a wipe, or the one at this step.
+    const credits = creditSlot(f.svg);
+    if (pics.length === 2) credits.show(pics);
+    else {
+      const step = f.controls.querySelector('input')!;
+      const each = () => credits.show([pics[Number(step.value)] ?? pics[0]]);
+      step.addEventListener('input', each);
+      each();
+    }
     if (o.guess && !t.restored) {
       guessFirst(t, f, { ask: o.guess.ask, options: o.guess.options, answer: o.guess.answer, sliders, buttons, reveal: t.goal ? 'done' : 'lock', after: () => update() });
       update();
@@ -763,6 +778,7 @@ function groups(env: Env): FigureFactory {
     const top = svg('g');
     const cols = svg('g');
     f.svg.append(top, cols);
+    const credits = creditSlot(f.svg);
     const color = (g: number) => k.color(o.groups[g].color, g);
 
     const kept = (isRecord(t.kept) ? t.kept : {}) as { order?: number[]; picks?: number[] };
@@ -789,6 +805,7 @@ function groups(env: Env): FigureFactory {
         parts.push(label(W / 2, picH / 2 + 5, `All ${order.length} sorted: ${picks.filter((g, j) => g === answers[order[j]]).length} right.`, { bold: true, anchor: 'middle' }));
       }
       top.replaceChildren(...parts);
+      credits.show([at < order.length ? pics[order[at]] : null]);
       const colParts: SVGElement[] = [];
       o.groups.forEach((g, gi) => {
         const x = 8 + gi * colW;
@@ -829,7 +846,6 @@ function groups(env: Env): FigureFactory {
     f.controls.append(el('p.fig-ask', {}, o.ask ?? 'Which group?'), el('div.chips.fig-row', {}, buttons));
     draw();
     if (picks.length < order.length) f.readout.textContent = `${order.length - picks.length} to sort. Pick the group for the one on top.`;
-    creditUnder(f.svg, null);
     return f.node;
   });
 }
@@ -922,6 +938,7 @@ function idKey(env: Env): FigureFactory {
     const picG = svg('g');
     const trailG = svg('g');
     f.svg.append(picG, trailG);
+    const credits = creditSlot(f.svg);
     const names = keyNames(o.root);
     const kept = (isRecord(t.kept) ? t.kept : {}) as { reached?: string[]; keyed?: number };
     const reached = new Set<string>(Array.isArray(kept.reached) ? kept.reached.filter(isStr) : []);
@@ -959,6 +976,7 @@ function idKey(env: Env): FigureFactory {
         else if (sp) pp.push(label(W / 2, y + picH / 2, 'Specimen', { bold: true, anchor: 'middle' }));
       }
       picG.replaceChildren(...pp);
+      credits.show([p]);
       // The trail: each step taken, the choice made, and where it ended.
       const tp: SVGElement[] = [];
       let y = top + 4;
