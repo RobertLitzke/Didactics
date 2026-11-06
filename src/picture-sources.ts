@@ -313,7 +313,13 @@ export const phylopic: Source = {
     return phylopicFound(image);
   },
   async search(name, ctx, limit) {
-    const q = new URLSearchParams({ filter_name: name.toLowerCase(), filter_license_nc: 'false', embed_items: 'true', page: '0' });
+    // A page (and embed_items, which needs one) is refused without ?build, so
+    // ask once without either: the answer carries the current build.
+    const q = new URLSearchParams({ filter_name: name.toLowerCase(), filter_license_nc: 'false' });
+    const { build } = await getJson(`${PHYLOPIC_API}/images?${q}`, ctx, 'PhyloPic');
+    q.set('build', String(build));
+    q.set('page', '0');
+    q.set('embed_items', 'true');
     const data = await getJson(`${PHYLOPIC_API}/images?${q}`, ctx, 'PhyloPic');
     return (data._embedded?.items ?? []).slice(0, limit).map(phylopicFound);
   },
@@ -439,6 +445,8 @@ export function smithsonianFound(row: any, mediaId?: string, width = 1024): Foun
   const idsId = media.idsId ?? /[?&]id=([^&]+)/.exec(media.content ?? '')?.[1];
   const names = (row.content?.freetext?.name ?? []).filter((n: any) => CREATOR.test(n.label ?? ''));
   const access = media.usage?.access ?? dnr.metadata_usage?.access ?? '';
+  // The delivery service's `max` bounds the longer side.
+  const scale = media.width && media.height ? Math.min(1, width / Math.max(media.width, media.height)) : 0;
   return {
     source: 'Smithsonian Open Access',
     ref: { smithsonian: String(row.id), media: String(idsId) },
@@ -449,8 +457,8 @@ export function smithsonianFound(row: any, mediaId?: string, width = 1024): Foun
     author: names.map((n: any) => plainText(n.content)).join('; ') || dnr.data_source || 'Smithsonian Institution',
     license: access === 'CC0' ? 'CC0' : null,
     licenseName: access || 'not open access',
-    width: 0,
-    height: 0,
+    width: Math.round((media.width ?? 0) * scale),
+    height: Math.round((media.height ?? 0) * scale),
     format: 'raster',
   };
 }
@@ -469,7 +477,11 @@ export const smithsonian: Source = {
     return data.response ? smithsonianFound(data.response, pick.media as string | undefined, ctx.width) : null;
   },
   async search(query, ctx, limit) {
-    const q = new URLSearchParams({ q: `${query} AND online_media_type:"Images"`, rows: String(Math.min(limit, 100)), api_key: siKey(ctx) });
+    // The index lists records as having images that come without them: NMNH
+    // withholds media that is not CC0, so of 1000 "trilobite" hits two had
+    // open images, at rows 195 and 196. Ask for the most the API gives (1000,
+    // about 3 MB) in one call, which also spares DEMO_KEY's hourly limit.
+    const q = new URLSearchParams({ q: `${query} AND online_media_type:"Images"`, rows: '1000', api_key: siKey(ctx) });
     const data = await getJson(`${SI_API}/search?${q}`, ctx, 'Smithsonian');
     return (data.response?.rows ?? []).map((r: any) => smithsonianFound(r, undefined, ctx.width)).filter((f: Found | null): f is Found => !!f?.license).slice(0, limit);
   },

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.2 (2026-11-06)
+
+Picture sources, tried against the live services:
+
+- PhyloPic search asks for the current build first: the API refuses `page`
+  and `embed_items` without `build` (it answered 400 to every search).
+- Smithsonian search asks for 1000 rows. The index marks many NMNH records
+  as having images that the API withholds, so a short page could hold none
+  that are open ("trilobite": 2 of 1000). A Smithsonian picture now carries
+  its width and height, read from the media and scaled to the width asked for.
+
 ## 0.28.1 (2026-11-06)
 
 - `groups`: an item may carry a `"clue"`, shown with its name while it waits

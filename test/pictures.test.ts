@@ -147,6 +147,17 @@ describe('sources', () => {
     expect(nc.author).toBe('Someone');
   });
 
+  it('PhyloPic search: asks for the build first, then the page with its items', async () => {
+    const image = { uuid: 'abc-1', attribution: 'Fred Wierum', build: 562, _links: { license: { href: 'https://creativecommons.org/licenses/by/4.0/' }, vectorFile: { href: 'https://images.phylopic.org/images/abc-1/vector.svg', sizes: '1536x876' }, specificNode: { title: 'Tyrannosaurus' }, contributor: { title: 'Aiden Gauthier' } } };
+    const found = await phylopic.search!('Tyrannosaurus', ctx([
+      // The API refuses page or embed_items without build (400), so a route for that would hide the bug.
+      [/images\?(?=.*build=562)(?=.*page=0)(?=.*embed_items=true)(?=.*filter_name=tyrannosaurus)/, { build: 562, _embedded: { items: [image] } }],
+      [/images\?(?!.*page)(?!.*embed_items)(?=.*filter_name=tyrannosaurus)/, { build: 562, totalItems: 1, _links: {} }],
+    ]), 5);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ author: 'Fred Wierum', license: 'CC-BY-4.0', width: 1536, height: 876, ref: { phylopic: 'abc-1' } });
+  });
+
   it('iNaturalist: the photo asked for, large, its own licence', async () => {
     const obs = { id: 99, user: { login: 'jd' }, taxon: { name: 'Amanita muscaria', preferred_common_name: 'Fly Agaric' }, photos: [
       { id: 1, license_code: 'cc-by-nc', attribution: '(c) jd, some rights reserved (CC BY-NC)', url: 'https://inaturalist-open-data.s3.amazonaws.com/photos/1/square.jpg', original_dimensions: { width: 2048, height: 1536 } },
@@ -172,13 +183,17 @@ describe('sources', () => {
   });
 
   it('Smithsonian: CC0 media only, the maker as author', async () => {
-    const row = { id: 'nmnh_1', title: 'Trilobite', content: { descriptiveNonRepeating: { record_link: 'http://n2t.net/ark:/65665/1', data_source: 'NMNH - Paleobiology Dept.', online_media: { media: [{ type: 'Images', idsId: 'NMNH-1', content: 'https://ids.si.edu/ids/deliveryService?id=NMNH-1', usage: { access: 'CC0' } }] } }, freetext: { name: [{ label: 'Collector', content: 'X' }, { label: 'Photographer', content: 'Chip Clark' }] } } };
+    const row = { id: 'nmnh_1', title: 'Trilobite', content: { descriptiveNonRepeating: { record_link: 'http://n2t.net/ark:/65665/1', data_source: 'NMNH - Paleobiology Dept.', online_media: { mediaCount: 1, media: [{ type: 'Images', idsId: 'NMNH-1', content: 'https://ids.si.edu/ids/deliveryService?id=NMNH-1', usage: { access: 'CC0' }, width: 8640, height: 5760 }] } }, indexedStructured: { online_media_type: ['Images'] }, freetext: { name: [{ label: 'Collector', content: 'X' }, { label: 'Photographer', content: 'Chip Clark' }] } } };
     const f = (await smithsonian.resolve({ id: 's', smithsonian: 'nmnh_1' }, ctx([[/content\/nmnh_1/, { response: row }]], { SI_API_KEY: 'k' })))!;
-    expect(f).toMatchObject({ license: 'CC0', author: 'Chip Clark', pageUrl: 'https://n2t.net/ark:/65665/1', imageUrl: 'https://ids.si.edu/ids/deliveryService?id=NMNH-1&max=1024', ref: { smithsonian: 'nmnh_1', media: 'NMNH-1' } });
+    expect(f).toMatchObject({ license: 'CC0', author: 'Chip Clark', pageUrl: 'https://n2t.net/ark:/65665/1', imageUrl: 'https://ids.si.edu/ids/deliveryService?id=NMNH-1&max=1024', ref: { smithsonian: 'nmnh_1', media: 'NMNH-1' }, width: 1024, height: 683 });
     const closed = { ...row, content: { ...row.content, descriptiveNonRepeating: { ...row.content.descriptiveNonRepeating, online_media: { media: [{ type: 'Images', idsId: 'Z', usage: { access: 'Usage conditions apply' } }] } }, freetext: {} } };
     const g = (await smithsonian.resolve({ id: 's', smithsonian: 'nmnh_1' }, ctx([[/content/, { response: closed }]], { SI_API_KEY: 'k' })))!;
     expect(g.license).toBeNull();
     expect(g.author).toBe('NMNH - Paleobiology Dept.');
+    // Search: the index says images, but NMNH often withholds them from the record; those are skipped.
+    const withheld = { id: 'nmnh_2', title: 'Trilobite', content: { descriptiveNonRepeating: { metadata_usage: { access: 'CC0' } }, indexedStructured: { online_media_type: ['Images'] }, freetext: {} } };
+    const search = ctx([[/search\?(?=.*rows=1000&)/, { response: { rowCount: 2, rows: [withheld, row] } }]], { SI_API_KEY: 'k' });
+    expect((await smithsonian.search!('trilobite', search, 5)).map((x) => x.ref.smithsonian)).toEqual(['nmnh_1']);
   });
 });
 
