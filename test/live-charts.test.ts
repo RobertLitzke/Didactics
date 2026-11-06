@@ -26,7 +26,7 @@ const OPTIONS = {
   compare: { frames: [{ image: 'a.jpg', width: 400, height: 300, label: '1900', text: 'Ice to the lake.' }, { image: 'b.jpg', width: 400, height: 300, label: '2000', credit: 'USGS' }] },
   'timeline-live': { title: 'Glaciers', events: [{ at: 1850, label: 'Ice at its furthest' }, { at: 1910, label: 'Retreat measured', text: 'Stakes in the ice.' }, { at: 2000, label: 'Lake left behind', color: 'leaf' }] },
   'scale-guess': { unit: 'm', items: [{ label: 'Person', value: 2 }, { label: 'Redwood', value: 115 }], guess: { item: 1, ask: 'How tall is the tallest redwood?', options: [30, 115, 400] } },
-  groups: { ask: 'Which family?', groups: [{ name: 'Oaks' }, { name: 'Maples', color: 'leaf' }], items: [{ name: 'Garry oak', group: 'Oaks', photo: 'oak-leaf' }, { name: 'Bigleaf maple', group: 1, why: 'Paired seeds.' }, { name: 'Vine maple', group: 'Maples' }] },
+  groups: { ask: 'Which family?', groups: [{ name: 'Oaks' }, { name: 'Maples', color: 'leaf' }], items: [{ name: 'Garry oak', group: 'Oaks', photo: 'oak-leaf' }, { name: 'Bigleaf maple', group: 1, why: 'Paired seeds.', clue: 'Seeds in winged pairs.' }, { name: 'Vine maple', group: 'Maples' }] },
   'id-key': {
     root: { ask: 'Leaves?', choices: [
       { text: 'Lobed', then: { choices: [{ text: 'Lobes rounded', name: 'Oak' }, { text: 'Lobes pointed', name: 'Maple', about: 'Leaves in pairs.' }] } },
@@ -190,7 +190,7 @@ describe('live charts', () => {
 
   it('groups: files each thing in its right group, ticked or crossed', async () => {
     const h = build('groups', 'sorted');
-    const buttons = [...h.node.querySelectorAll('.fig-row .btn')];
+    const buttons = [...h.node.querySelectorAll('.fig-row .chip')];
     expect(buttons.map((b) => b.textContent)).toEqual(['Oaks', 'Maples']);
     for (let k = 0; k < 3; k++) click(buttons[0]);
     const words = [...h.node.querySelectorAll('text')].map((t) => t.textContent);
@@ -207,7 +207,7 @@ describe('live charts', () => {
     expect(readout()).toMatch(/Leaves\? \(1 of 2/);
     choose('Lobed');
     choose('Lobes rounded');
-    expect(readout()).toMatch(/leads to Oak, which is not the one above/);
+    expect(readout()).toMatch(/leads to Oak, which is not this one/);
     click([...h.node.querySelectorAll('.btn')].find((b) => b.textContent === 'Back')!);
     choose('Lobes pointed');
     expect(readout()).toMatch(/Keyed out: Maple\.Leaves in pairs\./);

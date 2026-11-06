@@ -467,7 +467,7 @@ drawing without holding up the lesson.
 { "type": "interactive_diagram", "id": "groups", "caption": "…", "goal": "sorted", "task": "Sort all six.",
   "options": { "ask": "Sac or club?", "groups": [{ "name": "Sac fungi" }, { "name": "Club fungi", "color": "spore" }],
     "items": [{ "name": "Morel", "group": "Sac fungi", "photo": "morel", "why": "Spores in sacs in its pits." }] } }
-// "group" is a group's name or its index. Two to four groups.
+// "group" is a group's name or its index; "clue" is shown with the name while it waits. Two to four groups.
 
 { "type": "interactive_diagram", "id": "id-key", "caption": "…", "goal": "keyed", "task": "Key out both.",
   "options": { "root": { "ask": "Needles or scales?", "choices": [

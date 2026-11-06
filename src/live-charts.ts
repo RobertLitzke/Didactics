@@ -37,9 +37,9 @@ import { oneOf, shuffle } from './rng';
 export const LIVE_CHART_IDS = ['hotspots', 'compare', 'timeline-live', 'scale-guess', 'groups', 'id-key', 'id-drill'] as const;
 export type LiveChartId = (typeof LIVE_CHART_IDS)[number];
 
-export interface LiveChartsOptions extends ChartsOptions {
+export interface LiveChartsOptions<P extends Photo & { about?: string } = Photo & { about?: string }> extends ChartsOptions {
   /** The course's photos, so options can name a picture by `"photo": "<id>"`. */
-  photos?: PhotoLibrary<Photo & { about?: string }>;
+  photos?: PhotoLibrary<P>;
 }
 
 const W = 400;
@@ -75,7 +75,7 @@ interface Pic {
 interface Env {
   k: Kit;
   asset: (p: string) => string;
-  photos?: LiveChartsOptions['photos'];
+  photos?: PhotoLibrary<Photo & { about?: string }>;
 }
 
 function pictureOf(spec: PictureSpec, env: Env): Pic | null {
@@ -516,7 +516,7 @@ function timelineLive(env: Env): FigureFactory {
       return r;
     });
     const axisY = 44 + rows.length * 9;
-    const H = axisY + 52;
+    const H = axisY + 42;
     const titleLines = o.title ? wrap(o.title, W - 16, 'normal', true) : [];
     const top = titleLines.length ? titleLines.length * lineHeight('normal') + 8 : 0;
     const f = frame(W, H + top, o.textLines ?? 3);
@@ -542,11 +542,11 @@ function timelineLive(env: Env): FigureFactory {
         parts.push(svg('circle', { cx: xs[i], cy: axisY, r: i === current ? 7 : 5, fill: on ? colors[i] : k.paper, stroke: on ? k.paper : k.soft, 'stroke-width': on ? 1.5 : 1.2 }));
         if (order && on) parts.push(label(xs[i], axisY + 4 - 12, String(i + 1), { size: 'small', bold: true, anchor: 'middle' }));
       });
-      if (cursor !== undefined) parts.push(line(cursor, axisY - 30 - rows.length * 9, cursor, axisY + 12, k.ink, 1.5, { 'stroke-dasharray': '3 3' }));
+      if (cursor !== undefined) parts.push(line(cursor, axisY - 8 - rows.length * 9, cursor, axisY + 12, k.ink, 1.5, { 'stroke-dasharray': '3 3' }));
       if (current >= 0) {
         const x = xs[current];
         const anchor = x < 70 ? undefined : x > W - 70 ? 'end' : 'middle';
-        parts.push(...haloLabel(anchor === undefined ? x - 6 : anchor === 'end' ? x + 6 : x, axisY + 22, whens[current], k, { anchor, fill: events[current].color ? colors[current] : k.ink }));
+        parts.push(...haloLabel(anchor === undefined ? x - 6 : anchor === 'end' ? x + 6 : x, axisY - 14 - rows.length * 9, whens[current], k, { anchor, fill: events[current].color ? colors[current] : k.ink }));
       }
       g.replaceChildren(...parts);
     };
@@ -702,6 +702,8 @@ export interface GroupsOptions {
     name: string;
     /** Its group, by name or by index from 0. */
     group: string | number;
+    /** Words to sort it by, shown with its name: a clue to its group. */
+    clue?: string;
     /** Said once it is filed: why it belongs there. */
     why?: string;
   })[];
@@ -728,7 +730,7 @@ function checkGroups(env: Env) {
       if (!isStr(it.name)) out.push(`${at}: "name" should be text`);
       const ok = (isStr(it.group) && names.includes(it.group)) || (Number.isInteger(it.group) && (it.group as number) >= 0 && (it.group as number) < groups.length);
       if (!ok) out.push(`${at}: "group" should be one of the groups' names, or its index`);
-      if (it.why !== undefined && !isStr(it.why)) out.push(`${at}: "why" should be text`);
+      for (const key of ['why', 'clue'] as const) if (it[key] !== undefined && !isStr(it[key])) out.push(`${at}: "${key}" should be text`);
       out.push(...pictureProblems(it, env, at, false));
     });
     return out;
@@ -748,7 +750,8 @@ function groups(env: Env): FigureFactory {
     const groupOf = (it: GroupsOptions['items'][number]) => (typeof it.group === 'number' ? it.group : o.groups.findIndex((g) => g.name === it.group));
     const answers = o.items.map(groupOf);
     const pics = o.items.map((it) => (hasPicture(it as unknown as Record<string, unknown>) ? pictureOf(it, env) : null));
-    const picH = pics.some(Boolean) ? 170 : 56;
+    const clues = o.items.map((it) => (it.clue ? wrap(it.clue, W - 140, 'note') : []));
+    const picH = pics.some(Boolean) ? 170 : 44 + Math.max(0, ...clues.map((c) => c.length)) * lineHeight('note');
     const colW = (W - 16) / ng;
     const rowH = 15;
     const most = Math.max(...o.groups.map((_, g) => answers.filter((a) => a === g).length));
@@ -773,7 +776,14 @@ function groups(env: Env): FigureFactory {
         const i = order[at];
         const p = pics[i];
         if (p) parts.push(svg('rect', { x: 0, y: 0, width: W, height: picH, fill: k.grid }), image(p, 0, 0, W, picH, t, 'meet'));
-        else parts.push(svg('rect', { x: 60, y: 8, width: W - 120, height: picH - 16, rx: 8, fill: k.paper, stroke: k.soft, 'stroke-width': 1.2 }), label(W / 2, picH / 2 + 5, o.items[i].name, { bold: true, anchor: 'middle' }));
+        else {
+          const first = (picH - clues[i].length * lineHeight('note')) / 2 + (clues[i].length ? -2 : 5);
+          parts.push(
+            svg('rect', { x: 60, y: 6, width: W - 120, height: picH - 12, rx: 8, fill: k.paper, stroke: k.soft, 'stroke-width': 1.2 }),
+            label(W / 2, first, `${at + 1} of ${order.length}: ${o.items[i].name}`, { bold: true, anchor: 'middle' }),
+            ...block(W / 2, first + lineHeight('note') + 6, clues[i], 'note', { anchor: 'middle' }),
+          );
+        }
         if (p) parts.push(...haloLabel(8, 18, o.items[i].name, k));
       } else {
         parts.push(label(W / 2, picH / 2 + 5, `All ${order.length} sorted: ${picks.filter((g, j) => g === answers[order[j]]).length} right.`, { bold: true, anchor: 'middle' }));
@@ -800,7 +810,7 @@ function groups(env: Env): FigureFactory {
       buttons.forEach((b) => (b.disabled = at >= order.length));
     };
     const buttons = o.groups.map((g, gi) => {
-      const b = el('button.btn.btn-ghost', { type: 'button' }, g.name) as HTMLButtonElement;
+      const b = el('button.chip', { type: 'button' }, g.name) as HTMLButtonElement;
       b.addEventListener('click', () => file(gi));
       return b;
     });
@@ -816,7 +826,7 @@ function groups(env: Env): FigureFactory {
       f.readout.replaceChildren(verdict(right, right ? `Yes: ${it.name}, ${o.groups[gi].name}.` : `No: ${it.name} goes with ${o.groups[answers[i]].name}.`), it.why ?? '');
       if (picks.length === order.length) t.done();
     }
-    f.controls.append(el('p.fig-ask', {}, o.ask ?? 'Which group?'), el('div.fig-row', {}, buttons));
+    f.controls.append(el('p.fig-ask', {}, o.ask ?? 'Which group?'), el('div.chips.fig-row', {}, buttons));
     draw();
     if (picks.length < order.length) f.readout.textContent = `${order.length - picks.length} to sort. Pick the group for the one on top.`;
     creditUnder(f.svg, null);
@@ -966,7 +976,7 @@ function idKey(env: Env): FigureFactory {
         const right = !specimens.length || end.name === specimens[keyed]?.name;
         tp.push(...block(26, y + 12, [end.name], 'normal', { bold: true, fill: k.color(right ? 'good' : 'bad', 0) }));
       } else if (!path.length) {
-        tp.push(label(14, y + 12, specimens.length ? 'Answer each step for the one above.' : 'Answer each step to reach a name.', { size: 'note', soft: true }));
+        tp.push(label(14, y + 12, specimens.length ? `Answer each step for the one ${picH ? 'above' : 'described below'}.` : 'Answer each step to reach a name.', { size: 'note', soft: true }));
       }
       trailG.replaceChildren(...tp);
       back.disabled = !path.length;
@@ -999,7 +1009,7 @@ function idKey(env: Env): FigureFactory {
               if (t.goal) t.done();
             }
           } else {
-            f.readout.replaceChildren(verdict(false, `This leads to ${c.name}, which is not the one above.`), 'Step back and look again.');
+            f.readout.replaceChildren(verdict(false, `This leads to ${c.name}, which is not this one.`), 'Step back and look again.');
             show();
             again.style.display = 'none';
             return;
@@ -1102,8 +1112,10 @@ function idDrill(env: Env): FigureFactory {
  * with the charts, under the course's own figures, so a course figure of the
  * same id wins.
  */
-export function liveCharts(o: LiveChartsOptions = {}): Record<LiveChartId, FigureFactory> {
-  const env: Env = { k: kit(o.palette ?? {}), asset: o.asset ?? ((p: string) => p), photos: o.photos };
+export function liveCharts<P extends Photo & { about?: string }>(o: LiveChartsOptions<P> = {}): Record<LiveChartId, FigureFactory> {
+  const lib = o.photos;
+  const photos = lib && { find: (id: string) => lib.find(id), src: (p: Photo) => lib.src(p as P) };
+  const env: Env = { k: kit(o.palette ?? {}), asset: o.asset ?? ((p: string) => p), photos };
   return {
     hotspots: hotspots(env),
     compare: compare(env),

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.1 (2026-11-06)
+
+- `groups`: an item may carry a `"clue"`, shown with its name while it waits
+  to be sorted, for things sorted by a description rather than a picture.
+- `id-key`: specimens with no picture are "described below"; a walk to the
+  wrong name says "not this one".
+- `groups` picks are chips, as other figures' choices are; `timeline-live`
+  names the current year above the line, clear of the end dates.
+- `liveCharts` takes a course's own photo type (`liveCharts<P>`), so
+  `photos: { find: photoById, src: (p) => asset(p.file) }` type-checks.
+
 ## 0.28.0 (2026-11-06)
 
 - `live-charts` (new): live figures set up from a block's options with no
