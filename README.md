@@ -46,7 +46,8 @@ that brings the most together.
 **What belongs to the course, not here:** its interactive diagrams and live
 figures, simulation pages (like Clouds' sky lab or seeding game), drawing
 code for its subject (Clouds' cloud rendering), its palette and fonts, its
-home page, photos and their pipeline, and all of its content. If a piece of
+home page, its pictures (the pipeline that fetches and credits them is
+here, `picture-tools`), and all of its content. If a piece of
 course code turns out to be useful to a second course, move it here as its
 own small module with no knowledge of either.
 
@@ -165,7 +166,10 @@ pin back before committing.
 | `encyclopedia` | A site-wide encyclopedia of ideas, people, places and things, with a page per course (its one-page glossary): `useEncyclopedia`, `encyclopediaView`, `entryLink` (the `[[words]]` link in lesson text), `readEntries`, `entryIndex`, `encyclopediaProblems`, `entryLinkProblems`; the build serves the data (`vite` `encyclopediaModule`, `readEncyclopedia`) |
 | `glossary` | `glossaryFromLessons`, `glossaryFromFile`, `mergeGlossary`, `glossaryView({ entries, prose, lesson? })` (search, letter index, A to Z), `glossaryProblems` |
 | `reference` | `referenceView({ sections, store, prose, figures, lessons?, blocks?, glossary? })`, a reference page of sections tied to lessons (text, terms, tables, steps, live figures, the glossary, and the course's own block types); `referenceProblems` |
-| `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `photoFigure(photo, src, { alt?, mirrored?, aspect?, position? })` (the picture over its credit, styled by kit.css), `stillPhoto({ find, src })` (the figure a lesson names a photo in by id), `creditsView({ photos, name?, intro?, after? })`, `photoProblems` |
+| `photos` | The credit half of a photo library: `LICENSES`, the `Photo` fields every photo needs (a course extends it), `credit(photo)`, `photoFigure(photo, src, { alt?, mirrored?, aspect?, position? })` (the picture over its credit, styled by kit.css), `stillPhoto({ find, src })` (the figure a lesson names a photo in by id), `creditsView({ photos, name?, intro?, after? })`, `photoProblems`. A photo is one kind of picture: the record carries `kind` and `changes` (didactics/pictures) and the credit says both |
+| `pictures` | The picture record with no DOM, read by the app and the Node tools alike: `LICENSES`, `licenceFrom` (every spelling the sources use), `KINDS` (photo, painting, illustration, diagram, map, silhouette, reconstruction, scan) and the credit word for each, `CHANGES`, `Picture`, `pictureProblems`, `migratePicture`, `commonsTitle`, `paleoartFlags` |
+| `picture-sources` | Node: where pictures come from, each read for its file, page, author and licence at download time, most with a search: `commons`, `phylopic`, `inaturalist`, `bhl`, `smithsonian`, `direct` (any other URL), `sourceOf(pick)`, `politeFetch`, Commons' category and template readers |
+| `picture-tools` | Node: the pipeline, also `bin/didactics-pictures.mjs`: `fetchPictures`, `findCandidates` (a contact sheet), `fetchPaleoart`, `checkPictures`, `migrateFile` |
 | `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `release` | A course's version and stage (beta or released): `releaseSlip` for a course home (nothing once released), `releaseAbout` for Settings, `releaseProblems` to check a course.json's `release`, `BETA_TEXT`, `CourseRelease`; `defineCourse({ release })` uses both |
@@ -997,6 +1001,50 @@ score, so the questions come over the air without a second quiz. Give it two
 turns with no replies. Pass `them: stations.them` in `radio` to head it with
 the call sign. Pass `radio: { blurb }`
 to `settingsView` to show the on/off switch.
+
+### Pictures: where they come from and how they are credited
+
+A course keeps its pictures in `src/data/photos.json`, one record per
+picture, written by the pipeline from `tools/photo-picks.json`:
+
+```sh
+npx didactics-pictures find courses/fungi            # a contact sheet from tools/photo-search.json
+npx didactics-pictures fetch courses/fungi           # download, resize, credit (--all, --prune)
+npx didactics-pictures paleoart --out paleoart.json  # Commons' inaccurate-paleoart list, saved
+npx didactics-pictures check courses/* --paleoart paleoart.json
+npx didactics-pictures migrate courses/*/src/data/photos.json
+```
+
+A pick names its picture at one source, and every field the pipeline does
+not read (`about`, `genus`, `subject`, `noMirror`) is the course's own and is
+carried into the record:
+
+| Source | Pick | Notes |
+| --- | --- | --- |
+| Wikimedia Commons | `{ "id", "title": "File:…" }` | licence and author read from the file page; its categories too, so a file marked inaccurate paleoart is refused |
+| PhyloPic | `{ "id", "phylopic": "<image uuid>" }` | a silhouette, kept as SVG; `"fill": "#552255"` recolours it |
+| iNaturalist | `{ "id", "inaturalist": <observation>, "photo"?: <photo id> }` | each photo's own licence; CC BY, CC BY-SA, CC0 only |
+| Biodiversity Heritage Library | `{ "id", "bhl": <page id> }` | needs `BHL_API_KEY` to read the book's licence, else give `license` and `author` |
+| Smithsonian Open Access | `{ "id", "smithsonian": "<record id>", "media"?: "<ids id>" }` | CC0 media only; `SI_API_KEY` from api.data.gov (DEMO_KEY otherwise) |
+| anywhere else | `{ "id", "url", "page", "source", "author", "license" }` | NOAA, USGS, Flickr, an archive: a person read the licence on `page` |
+
+Any pick may add `kind` (default `photo`, or the source's: PhyloPic is a
+silhouette, BHL an illustration), `crop: [left, top, width, height]` in
+source pixels, and `changes` in plain words. The record says what was done:
+`crop` adds "cropped", `fill` "recoloured"; resizing is not listed. The
+credit under a picture leads with its kind ("Reconstruction: …") and ends
+with the changes, which CC BY and BY-SA ask for.
+
+A `reconstruction` (paleoart) is checked against Commons' reviewers: the
+fetch refuses a file in `Category:Inaccurate paleoart`, and `check` flags
+records on a saved list (`paleoart`), which a course's content test can read
+offline with `paleoartFlags`. `check --live` asks Commons again.
+
+`tools/photo-search.json` says where `find` looks: `categories` (Commons,
+per key), `sources` (`{ "amanita": { "inaturalist": "Amanita muscaria",
+"phylopic": "Amanita", "smithsonian": "fly agaric" } }`), `features`,
+`minWidth` and `field`. The sources must be reachable, so the pipeline runs
+on a person's own computer: Commons refuses shared cloud machines.
 
 ### Tests
 

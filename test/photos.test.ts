@@ -8,7 +8,7 @@ import { emptyProgress } from '../src/progress';
 import { credit, photoFigure, photoProblems, stillPhoto, type Photo } from '../src/photos';
 
 const p: Photo & { about: string; file: string } = {
-  id: 'cumulus-01', width: 800, height: 520, author: 'Ann', license: 'CC-BY-4.0',
+  id: 'cumulus-01', kind: 'photo', width: 800, height: 520, author: 'Ann', license: 'CC-BY-4.0',
   sourceUrl: 'https://commons.wikimedia.org/x', source: 'Wikimedia Commons', about: 'A cumulus over wheat', file: 'photos/cumulus-01.jpg',
 };
 const lib = { find: (id: string) => (id === p.id ? p : undefined), src: (x: typeof p) => `/clouds/${x.file}` };

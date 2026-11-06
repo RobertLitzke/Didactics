@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.27.0 (2026-11-06)
+
+- `pictures` (new): the picture record with no DOM. A photo is one kind of
+  picture: records carry `kind` (photo, painting, illustration, diagram,
+  map, silhouette, reconstruction, scan) and optional `changes` (cropped,
+  recoloured, ...). `pictureProblems` requires a kind; `migratePicture`
+  gives old records one (and turns a `crop` into "cropped"). `licenceFrom`
+  reads Commons' names, CC URLs and iNaturalist's codes. `paleoartFlags`
+  checks records against a saved list of Commons' inaccurate paleoart.
+- `photos`: `Photo` is `Picture`; `LICENSES` and the checks come from
+  `pictures`. `credit` leads with the kind and ends with the changes;
+  the Credits page says them too. **A course's records need `kind`**: run
+  `didactics-pictures migrate src/data/photos.json`.
+- `picture-sources` and `picture-tools` (new, Node), and
+  `bin/didactics-pictures.mjs`: the pipeline that was copied into the
+  courses, now with PhyloPic, iNaturalist, BHL and Smithsonian Open Access
+  beside Commons and direct links; `find`, `fetch`, `paleoart`, `check`,
+  `migrate`. sharp is an optional peer dependency, for `fetch`.
+
 ## 0.26.0 (2026-11-04)
 
 - `release` (new): a course's version and stage, beta or released.

@@ -136,7 +136,7 @@ describe('a figure that is ready later', () => {
 });
 
 describe('photo credits', () => {
-  const owl: Photo = { id: 'owl-01', width: 800, height: 600, author: 'A. Person', license: 'CC-BY-SA-4.0', sourceUrl: 'https://commons.wikimedia.org/x', source: 'Wikimedia Commons' };
+  const owl: Photo = { id: 'owl-01', kind: 'photo', width: 800, height: 600, author: 'A. Person', license: 'CC-BY-SA-4.0', sourceUrl: 'https://commons.wikimedia.org/x', source: 'Wikimedia Commons' };
 
   it('checks entries, writes the credit line and the Credits page', () => {
     expect(photoProblems(owl)).toEqual([]);

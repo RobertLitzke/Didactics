@@ -1,6 +1,6 @@
 {
   "name": "didactics",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "description": "Small composable libraries for interactive lesson apps: a JSON lesson format and player, live figures, checks, footnotes, a glossary, spaced-repetition review with an Anki export, a lesson tree, and an offline PWA shell and build.",
   "type": "module",
   "license": "UNLICENSED",
@@ -43,6 +43,9 @@
     "./offline": "./src/offline.ts",
     "./overflow": "./src/overflow.ts",
     "./photos": "./src/photos.ts",
+    "./pictures": { "node": "./lib/pictures.js", "default": "./src/pictures.ts" },
+    "./picture-sources": { "types": "./lib/picture-sources.d.ts", "default": "./lib/picture-sources.js" },
+    "./picture-tools": { "types": "./lib/picture-tools.d.ts", "default": "./lib/picture-tools.js" },
     "./place": "./src/place.ts",
     "./progress": "./src/progress.ts",
     "./quiz": "./src/quiz.ts",
@@ -86,6 +89,7 @@
     "test": "vitest run"
   },
   "peerDependencies": {
+    "sharp": ">=0.33.0",
     "typescript": "^5.0.0",
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^1.0.0",
@@ -93,6 +97,9 @@
   },
   "peerDependenciesMeta": {
     "typescript": {
+      "optional": true
+    },
+    "sharp": {
       "optional": true
     }
   },
@@ -107,7 +114,8 @@
     "vitest": "^3.0.0"
   },
   "bin": {
-    "didactics-course": "./bin/didactics-course.mjs"
+    "didactics-course": "./bin/didactics-course.mjs",
+    "didactics-pictures": "./bin/didactics-pictures.mjs"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",
