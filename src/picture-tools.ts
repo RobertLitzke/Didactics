@@ -136,7 +136,7 @@ export async function fetchPictures(o: FetchOptions): Promise<{ records: number;
     }
     if (!found) { fail(pick.id, `nothing at ${source.name} for this pick`); continue; }
     if (!found.license) { fail(pick.id, `licence "${found.licenseName}" not allowed`); continue; }
-    const marked = (found.categories ?? []).find(isPaleoartCategory) ?? (found.title && bad.has(normalTitle(found.title)) ? 'the saved inaccurate-paleoart list' : null);
+    const marked = pick.outdated ? null : (found.categories ?? []).find(isPaleoartCategory) ?? (found.title && bad.has(normalTitle(found.title)) ? 'the saved inaccurate-paleoart list' : null);
     if (marked) { fail(pick.id, `${found.title} is marked inaccurate paleoart (${marked})`); continue; }
     const res = await politeFetch(found.imageUrl, ctx);
     if (!res.ok) { fail(pick.id, `${res.status} from ${found.imageUrl}`); continue; }
@@ -230,8 +230,8 @@ export interface CheckResult {
 
 /**
  * Checks a course's records offline: every record's fields, and none on the
- * saved inaccurate-paleoart list. `live` also asks Commons for each Commons
- * reconstruction's categories, for a file marked since the list was saved.
+ * saved inaccurate-paleoart list. `live` also asks Commons for every Commons
+ * file's categories, for a file marked since the list was saved.
  */
 export async function checkPictures(records: Record<string, unknown>[], o: { paleoart?: PaleoartList; live?: SourceContext } = {}): Promise<CheckResult> {
   const problems = records.flatMap((r) => pictureProblems(r as Partial<Picture>).map((problem) => ({ id: String(r.id), problem })));
@@ -240,12 +240,12 @@ export async function checkPictures(records: Record<string, unknown>[], o: { pal
     const titles = new Map<string, string>();
     for (const r of records as unknown as Picture[]) {
       const m = /^https:\/\/commons\.wikimedia\.org\/wiki\/(File:.+)$/.exec(r.sourceUrl ?? '');
-      if (m && r.kind === 'reconstruction') titles.set(normalTitle(decodeURIComponent(m[1])), r.id);
+      if (m && !r.outdated) titles.set(normalTitle(decodeURIComponent(m[1])), r.id);
     }
     for (const f of await commonsFiles([...titles.keys()], 400, o.live)) {
       const cat = f.categories?.find(isPaleoartCategory);
       const id = titles.get(normalTitle(f.title!))!;
-      if (cat && !paleoart.some((x) => x.id === id)) paleoart.push({ id, title: f.title!, problem: `${f.title} is in ${cat} on Commons now: pick another reconstruction` });
+      if (cat && !paleoart.some((x) => x.id === id)) paleoart.push({ id, title: f.title!, problem: `${f.title} is in ${cat} on Commons now: pick another, or mark it outdated with the reason` });
     }
   }
   return { problems, paleoart };

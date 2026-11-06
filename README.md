@@ -1123,10 +1123,15 @@ source pixels, and `changes` in plain words. The record says what was done:
 credit under a picture leads with its kind ("Reconstruction: …") and ends
 with the changes, which CC BY and BY-SA ask for.
 
-A `reconstruction` (paleoart) is checked against Commons' reviewers: the
-fetch refuses a file in `Category:Inaccurate paleoart`, and `check` flags
-records on a saved list (`paleoart`), which a course's content test can read
-offline with `paleoartFlags`. `check --live` asks Commons again.
+Paleoart is checked against Commons' reviewers (`Category:Inaccurate
+paleoart` and its subcategories, about 3,200 files in November 2026, and the
+files tagged `{{Inaccurate paleoart}}`): the fetch refuses such a file, and
+`check` flags records on a saved list (`paleoart`), which a course's content
+test can read offline with `paleoartFlags`; `check --live` asks Commons
+again. Every kind is checked, since a photo of an old museum model misleads
+as much as a painting. A picture shown as out of date on purpose (a Crystal
+Palace dinosaur in a lesson on changing ideas) carries `"outdated": "<why>"`
+on its pick and record, and passes; the lesson must say it is wrong.
 
 `tools/photo-search.json` says where `find` looks: `categories` (Commons,
 per key), `sources` (`{ "amanita": { "inaturalist": "Amanita muscaria",

@@ -104,7 +104,8 @@ describe('inaccurate paleoart', () => {
   });
 
   it('flags a record on the saved list, by any spelling of its title', () => {
-    expect(paleoartFlags([base, { ...base, id: 'ok', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Good.jpg' }], list).map((f) => f.id)).toEqual(['trex-01']);
+    expect(paleoartFlags([base, { ...base, id: 'ok', sourceUrl: 'https://commons.wikimedia.org/wiki/File:Good.jpg' }, { ...base, id: 'old', outdated: 'the 1854 idea, shown as history' }], list).map((f) => f.id)).toEqual(['trex-01']);
+    expect(pictureProblems({ ...base, outdated: ' ' })).toEqual(['outdated should say why the picture is shown anyway']);
   });
 
   it('checks a course offline, and live against the file categories', async () => {

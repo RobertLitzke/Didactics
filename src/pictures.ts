@@ -114,6 +114,12 @@ export interface Picture {
   source: string;
   /** What was done to it beyond resizing (CHANGES, or plain words), for the credit. */
   changes?: string[];
+  /**
+   * Set, with the reason, on a picture shown as out of date on purpose: a
+   * Crystal Palace dinosaur in a lesson on how ideas changed. Such a picture
+   * passes the inaccurate-paleoart check; the lesson must say it is wrong.
+   */
+  outdated?: string;
 }
 
 /**
@@ -129,6 +135,7 @@ export function pictureProblems(p: Partial<Picture>): string[] {
   if (!p.sourceUrl?.startsWith('https://')) out.push('no https source link');
   if (!p.source?.trim()) out.push('no source name');
   if (!(p.width! > 0 && p.height! > 0)) out.push('no size');
+  if (p.outdated !== undefined && !(typeof p.outdated === 'string' && p.outdated.trim())) out.push('outdated should say why the picture is shown anyway');
   if (p.changes !== undefined) {
     if (!Array.isArray(p.changes) || !p.changes.length) out.push('changes should be a list of words, or left out');
     else for (const c of p.changes) if (typeof c !== 'string' || !/^[a-z]/.test(c.trim())) out.push(`change "${c}" should be words starting lower-case`);
@@ -185,13 +192,17 @@ export interface PaleoartList {
   files: string[];
 }
 
-/** The records whose Commons file is on the inaccurate-paleoart list, with the reason to show. */
-export function paleoartFlags<P extends Pick<Picture, 'id' | 'sourceUrl'>>(records: readonly P[], list: PaleoartList): { id: string; title: string; problem: string }[] {
+/**
+ * The records whose Commons file is on the inaccurate-paleoart list, with the
+ * reason to show. Any kind is checked (a photo of an old museum model misleads
+ * as much as a painting); a record marked `outdated` is shown so on purpose.
+ */
+export function paleoartFlags<P extends Pick<Picture, 'id' | 'sourceUrl'> & { outdated?: string }>(records: readonly P[], list: PaleoartList): { id: string; title: string; problem: string }[] {
   const bad = new Set(list.files.map(normalTitle));
   const out: { id: string; title: string; problem: string }[] = [];
   for (const r of records) {
     const title = commonsTitle(r.sourceUrl);
-    if (title && bad.has(title)) out.push({ id: r.id, title, problem: `${title} is on Commons' inaccurate-paleoart list (read ${list.fetched}): pick another reconstruction` });
+    if (title && bad.has(title) && !r.outdated) out.push({ id: r.id, title, problem: `${title} is on Commons' inaccurate-paleoart list (read ${list.fetched}): pick another, or mark it outdated with the reason` });
   }
   return out;
 }

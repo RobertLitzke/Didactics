@@ -96,6 +96,12 @@ export interface Picture {
     source: string;
     /** What was done to it beyond resizing (CHANGES, or plain words), for the credit. */
     changes?: string[];
+    /**
+     * Set, with the reason, on a picture shown as out of date on purpose: a
+     * Crystal Palace dinosaur in a lesson on how ideas changed. Such a picture
+     * passes the inaccurate-paleoart check; the lesson must say it is wrong.
+     */
+    outdated?: string;
 }
 /**
  * What is wrong with a record's own fields, or an empty list. A course adds
@@ -132,8 +138,14 @@ export interface PaleoartList {
     /** File titles, normalised ("File:Foo bar.jpg"). */
     files: string[];
 }
-/** The records whose Commons file is on the inaccurate-paleoart list, with the reason to show. */
-export declare function paleoartFlags<P extends Pick<Picture, 'id' | 'sourceUrl'>>(records: readonly P[], list: PaleoartList): {
+/**
+ * The records whose Commons file is on the inaccurate-paleoart list, with the
+ * reason to show. Any kind is checked (a photo of an old museum model misleads
+ * as much as a painting); a record marked `outdated` is shown so on purpose.
+ */
+export declare function paleoartFlags<P extends Pick<Picture, 'id' | 'sourceUrl'> & {
+    outdated?: string;
+}>(records: readonly P[], list: PaleoartList): {
     id: string;
     title: string;
     problem: string;

@@ -66,8 +66,8 @@ export interface CheckResult {
 }
 /**
  * Checks a course's records offline: every record's fields, and none on the
- * saved inaccurate-paleoart list. `live` also asks Commons for each Commons
- * reconstruction's categories, for a file marked since the list was saved.
+ * saved inaccurate-paleoart list. `live` also asks Commons for every Commons
+ * file's categories, for a file marked since the list was saved.
  */
 export declare function checkPictures(records: Record<string, unknown>[], o?: {
     paleoart?: PaleoartList;
