@@ -423,7 +423,7 @@ keep its own figure code for the simulations that need it:
 | `groups` | `interactive_diagram` | `sorted` | sorts things into two to four groups, one at a time, each ticked or crossed with why |
 | `id-key` | `interactive_diagram` | `keyed`, `every` | walks a key of paired choices to a name; with `specimens`, keys out each in turn. With `features` and `taxa` in place of `root`, a key entered anywhere: ticks features in any order until one candidate is left |
 | `id-drill` | `quiz` | | names what each picture shows from a few names; every answer joins the review deck, like the end check's |
-| `clue-board` | `interactive_diagram` | `clues` | turns on a mystery's clues in any order, each crossing out the ideas it rules out; with `guess`, picks the survivor first |
+| `clue-board` | `interactive_diagram` | `clues` | one step at a time: with `guess`, picks the survivor first; then one button shows the clues in turn, each crossing out the ideas it rules out, with the steps marked across the top and the clues still to come as dashed rows |
 | `loop` | `interactive_diagram` | `round`, `next` | steps round a cycle of stages (tap or Next), each told with how it becomes the next; or, with `next`, builds the loop arrow by arrow, picking what each stage becomes |
 | `regroup` | `interactive_diagram` | `switched` | switches between two or more trees of the same things (by looks, by genes); `follow` keeps one leaf and its closest kin bold; with `guess`, answers first |
 
@@ -489,10 +489,10 @@ drawing without holding up the lesson.
     "taxa": [{ "name": "Oak", "traits": { "Leaves": "lobed", "Seeds": "acorn" } }, { "name": "Birch", "traits": { "Leaves": "toothed", "Seeds": ["cone", "wing"] }, "photo": "birch" }] } }
 // A key entered anywhere. A trait may be a list where it varies; a feature left out fits any value. Up to 12 taxa; "specimens" as above.
 
-{ "type": "interactive_diagram", "id": "clue-board", "caption": "…", "goal": "clues", "task": "Turn on every clue.",
+{ "type": "interactive_diagram", "id": "clue-board", "caption": "…", "goal": "clues", "task": "Guess, then show the clues one by one.",
   "options": { "ideas": [{ "name": "A rotted conifer" }, { "name": "A fungus", "text": "…" }, { "name": "A lost lineage" }],
     "clues": [{ "name": "Tubes, not wood", "text": "Built of tangled tubes, no wood cells", "rules": ["A rotted conifer"] }],
-    "end": "Said once every clue is on.", "guess": "Which idea survives?" } }
+    "end": "Said once every clue is shown.", "guess": "Which idea survives?" } }
 // "rules" names the ideas a clue rules out (or their indexes). Two to six ideas and up to six clues; "guess" needs the clues to leave one.
 
 { "type": "interactive_diagram", "id": "loop", "caption": "…", "goal": "next", "task": "Build the loop.",

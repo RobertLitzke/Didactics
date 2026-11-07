@@ -321,27 +321,35 @@ describe('map-live', () => {
 });
 
 describe('live charts that reason', () => {
-  it('clue board: each clue crosses out its ideas, done once all are on', async () => {
+  it('clue board: one button shows the clues in turn, crossing out ideas, done once all are shown', async () => {
     const h = build('clue-board', 'clues');
     const readout = h.node.querySelector('.fig-readout')!;
-    const chips = [...h.node.querySelectorAll('button.chip')] as HTMLButtonElement[];
-    expect(chips.map((b) => b.textContent)).toEqual(['1. No wood', '2. On land']);
-    expect(readout.textContent).toMatch(/3 ideas/);
-    click(chips[0]);
-    expect(chips[0].getAttribute('aria-pressed')).toBe('true');
-    expect(h.node.textContent).toMatch(/ruled out by clue 1/);
-    expect(readout.textContent).toBe('2 ideas still fit the clues that are on.');
+    const next = () => [...h.node.querySelectorAll('button')].find((b) => /^(Show clue|Start the clues)/.test(b.textContent ?? '')) as HTMLButtonElement;
+    expect(next().textContent).toBe('Show clue 1: No wood');
+    expect(readout.textContent).toMatch(/2 clues one at a time/);
+    expect(h.node.textContent).toMatch(/0 of 2 shown/);
+    click(next());
+    expect(h.node.textContent).toMatch(/out: clue 1/);
+    expect(readout.textContent).toBe('Clue 1, No wood: rules out A tree. 2 ideas still fit. 1 more clue to show.');
+    expect(next().textContent).toBe('Show clue 2: On land');
     expect(await settled(h.done)).toBe(false);
-    click(chips[1]);
-    expect(readout.textContent).toBe('Only A fungus fits every clue.');
+    click(next());
+    expect(readout.textContent).toBe('Only A fungus still fits.');
     expect(await settled(h.done)).toBe(true);
+    expect(next().textContent).toBe('Start the clues again');
+    click(next());
+    expect(h.node.textContent).toMatch(/0 of 2 shown/);
   });
 
-  it('clue board: a guess comes first, and the clues must leave one idea for it', () => {
+  it('clue board: a guess comes first, the clue button waits for it, and the clues must leave one idea for it', () => {
     const h = build('clue-board', 'clues', { ...OPTIONS['clue-board'], guess: 'Which is it?' });
-    const clue = [...h.node.querySelectorAll('button.chip')].find((b) => b.textContent === '1. No wood') as HTMLButtonElement;
-    expect(clue.disabled).toBe(true);
-    expect(h.node.querySelector('.fig-readout')!.textContent).toBe('Which is it?');
+    const next = [...h.node.querySelectorAll('button')].find((b) => b.textContent === 'Show clue 1: No wood') as HTMLButtonElement;
+    expect(next.style.display).toBe('none');
+    expect(h.node.querySelector('.fig-readout')!.textContent).toBe('Step 1. Which is it? Tap the idea you think survives, then Lock it in.');
+    click([...h.node.querySelectorAll('button')].find((b) => b.textContent === 'A fungus')!);
+    click([...h.node.querySelectorAll('button')].find((b) => b.textContent === 'Lock it in')!);
+    expect(next.style.display).toBe('');
+    expect(h.node.textContent).toMatch(/your guess/);
     expect(LIVE['clue-board'].options!({ ...OPTIONS['clue-board'], clues: [OPTIONS['clue-board'].clues[0]], guess: 'Which?' })[0]).toMatch(/leave one idea standing; they leave 2/);
     expect(LIVE['clue-board'].options!({ ...OPTIONS['clue-board'], clues: [{ name: 'X', rules: ['A whale'] }] })[0]).toMatch(/not one of the ideas/);
   });

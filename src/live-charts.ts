@@ -1194,78 +1194,130 @@ function checkClueBoard(o: Record<string, unknown>): string[] {
 }
 
 /**
- * A mystery's ideas as cards, and the clues under them. Each clue is turned on
- * in any order; the ideas it rules out are crossed through, saying which clue
- * did it. "clues" is done once every clue is on. With "guess", the reader
- * first picks the idea they think survives.
+ * A mystery's ideas as cards, and the clues under them, worked one step at a
+ * time. With "guess", step 1 asks which idea survives (the reader taps a name,
+ * then locks it in, and the guessed card is marked). Then one button shows
+ * the next clue: its row opens in the list, the ideas it rules out are crossed
+ * through with the clue's name on them, and the text box says what it ruled
+ * out and how many ideas are left. Clues not yet shown sit as dashed rows, so
+ * the reader sees how many are to come. "clues" is done once every clue is
+ * shown; a last button starts the clues again.
  */
 function clueBoard(env: Env): FigureFactory {
   const { k } = env;
   return live<ClueBoardOptions>(['clues'], checkClueBoard, (o, t) => {
     const ni = o.ideas.length;
+    const nc = o.clues.length;
     const perRow = ni <= 4 ? ni : 3;
     const rows = Math.ceil(ni / perRow);
     const cardW = (W - 16 - (perRow - 1) * 8) / perRow;
     const nameLines = o.ideas.map((it) => wrap(it.name, cardW - 14, 'note', true));
     const textLines = o.ideas.map((it) => (it.text ? wrap(it.text, cardW - 14, 'small') : []));
-    const cardH = 20 + Math.max(...nameLines.map((l, i) => l.length * lineHeight('note') + textLines[i].length * lineHeight('small'))) + lineHeight('small') + 6;
-    const cluesY = 8 + rows * (cardH + 8) + 8;
-    const clueLines = o.clues.map((c, i) => wrap(`${i + 1}. ${c.text ?? c.name}`, W - 24, 'note'));
-    const H = cluesY + clueLines.reduce((a, l) => a + l.length * lineHeight('note') + 6, 0) + 4;
-    const f = frame(W, H, o.textLines ?? 3);
+    const stepY = 18;
+    const cardsY = 30;
+    const cardH = 24 + Math.max(...nameLines.map((l, i) => l.length * lineHeight('note') + textLines[i].length * lineHeight('small'))) + lineHeight('small') + 6;
+    const cluesY = cardsY + rows * (cardH + 8) + 10;
+    const rules = o.clues.map((c) => c.rules.map((r) => ideaIndex(o.ideas, r)));
+    const outNames = (c: number) => rules[c].map((i) => o.ideas[i].name);
+    const clueLines = o.clues.map((c, i) => wrap(`Clue ${i + 1}, ${c.name}${c.text ? `: ${c.text}` : ''}`, W - 40, 'note'));
+    const ruleLines = o.clues.map((_, c) => wrap(rules[c].length ? `Rules out ${joinNames(outNames(c))}` : 'Rules out nothing new', W - 40, 'small'));
+    const rowH = (c: number) => 12 + Math.max(clueLines[c].length * lineHeight('note') + ruleLines[c].length * lineHeight('small'), 2 * lineHeight('note'));
+    const H = cluesY + 18 + o.clues.reduce((a, _, c) => a + rowH(c) + 6, 0) + 4;
+    const f = frame(W, H, o.textLines ?? 4);
     const g = svg('g');
     f.svg.append(g);
-    const rules = o.clues.map((c) => c.rules.map((r) => ideaIndex(o.ideas, r)));
     const kept = Array.isArray(t.kept) ? t.kept : null;
-    const on = o.clues.map((_, i) => (kept ? kept.includes(i) : t.restored));
-    const ruledBy = (i: number) => o.clues.findIndex((_, c) => on[c] && rules[c].includes(i));
+    // How many clues are shown, in order. A save from the old board (any clues on) counts as that many.
+    let shown = kept ? Math.min(nc, kept.length) : t.restored ? nc : 0;
+    const ruledBy = (i: number) => o.clues.findIndex((_, c) => c < shown && rules[c].includes(i));
     const survivors = o.ideas.map((_, i) => i).filter((i) => !rules.some((r) => r.includes(i)));
+    let guessed = -1;
 
+    function joinNames(names: string[]): string {
+      return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    }
+
+    const step = () => (o.guess && !open() ? 0 : shown < nc ? 1 : 2);
     const paint = () => {
       const parts: SVGElement[] = [];
+      // Where the reader is: the steps across the top, the current one bold.
+      const steps = [...(o.guess ? ['Guess'] : []), 'Show the clues', 'What is left'];
+      const now = o.guess ? step() : step() - 1;
+      steps.forEach((name, i) => {
+        const x = 8 + i * (W - 16) / steps.length;
+        parts.push(svg('circle', { cx: x + 7, cy: stepY - 4, r: 7, fill: i === now ? k.ink : i < now ? k.color('good', 0) : k.paper, stroke: i <= now ? 'none' : k.soft, 'stroke-width': 1 }));
+        parts.push(label(x + 7, stepY, i < now ? '✓' : String(i + 1), { size: 'small', anchor: 'middle', bold: true, fill: i <= now ? k.paper : k.soft }));
+        parts.push(label(x + 19, stepY, name, { size: 'small', bold: i === now, fill: i === now ? k.ink : k.soft }));
+      });
       o.ideas.forEach((_, i) => {
         const x = 8 + (i % perRow) * (cardW + 8);
-        const y = 8 + Math.floor(i / perRow) * (cardH + 8);
+        const y = cardsY + Math.floor(i / perRow) * (cardH + 8);
         const by = ruledBy(i);
         const ok = by < 0;
-        parts.push(svg('rect', { x, y, width: cardW, height: cardH, rx: 6, fill: ok ? k.paper : k.grid, stroke: ok ? k.color('good', 0) : k.color('bad', 0), 'stroke-width': ok ? 2 : 1 }));
-        parts.push(...block(x + 7, y + 17, nameLines[i], 'note', { bold: true, fill: ok ? k.ink : k.soft }));
-        parts.push(...block(x + 7, y + 17 + nameLines[i].length * lineHeight('note'), textLines[i], 'small', { soft: true }));
-        parts.push(label(x + 7, y + cardH - 7, ok ? 'still fits' : `ruled out by clue ${by + 1}`, { size: 'small', bold: true, fill: k.color(ok ? 'good' : 'bad', 0) }));
+        const fresh = !ok && by === shown - 1;
+        parts.push(svg('rect', { x, y, width: cardW, height: cardH, rx: 6, fill: ok ? k.paper : k.grid, stroke: ok ? k.soft : k.color('bad', 0), 'stroke-width': fresh ? 2.5 : 1 }));
+        if (i === guessed) parts.push(label(x + cardW - 6, y + 12, 'your guess', { size: 'small', anchor: 'end', bold: true, fill: k.ink }));
+        const top = y + 17 + (i === guessed ? 8 : 0);
+        parts.push(...block(x + 7, top, nameLines[i], 'note', { bold: true, fill: ok ? k.ink : k.soft }));
+        parts.push(...block(x + 7, top + nameLines[i].length * lineHeight('note'), textLines[i], 'small', { soft: true }));
+        const tag = ok ? (shown ? 'still fits' : '') : `out: clue ${by + 1}`;
+        if (tag) parts.push(label(x + 7, y + cardH - 7, tag, { size: 'small', bold: true, fill: k.color(ok ? 'good' : 'bad', 0) }));
         if (!ok) parts.push(line(x + 5, y + 5, x + cardW - 5, y + cardH - 5, k.color('bad', 0), 1.5, { opacity: 0.5 }));
       });
-      let y = cluesY;
+      parts.push(label(8, cluesY + 6, `The clues, ${shown} of ${nc} shown`, { size: 'small', bold: true, fill: k.soft }));
+      let y = cluesY + 16;
       o.clues.forEach((_, c) => {
-        parts.push(...block(14, y + 10, clueLines[c], 'note', { bold: on[c], soft: !on[c] }));
-        y += clueLines[c].length * lineHeight('note') + 6;
+        const h = rowH(c);
+        const open_ = c < shown;
+        const newest = open_ && c === shown - 1;
+        parts.push(svg('rect', { x: 8, y, width: W - 16, height: h, rx: 6, fill: open_ ? k.paper : k.grid, 'fill-opacity': open_ ? 1 : 0.35, stroke: open_ ? k.ink : k.soft, 'stroke-width': newest ? 2 : 1, 'stroke-dasharray': open_ ? 'none' : '4 3' }));
+        if (newest) parts.push(label(W - 16, y + 14, 'new', { size: 'small', anchor: 'end', bold: true, fill: k.color('bad', 0) }));
+        if (open_) {
+          parts.push(...block(18, y + 16, clueLines[c], 'note', { bold: newest }));
+          parts.push(...block(18, y + 16 + clueLines[c].length * lineHeight('note'), ruleLines[c], 'small', { bold: true, fill: k.color('bad', 0) }));
+        } else {
+          parts.push(label(18, y + 16, `Clue ${c + 1}, ${o.clues[c].name}`, { size: 'note', fill: k.soft }));
+          parts.push(label(18, y + 16 + lineHeight('note'), c === shown && step() === 1 ? 'Next: tap the button below to show it' : 'Not shown yet', { size: 'small', fill: k.soft }));
+        }
+        y += h + 6;
       });
       g.replaceChildren(...parts);
-      buttons.forEach((b, c) => {
-        b.classList.toggle('on', on[c]);
-        b.setAttribute('aria-pressed', String(on[c]));
-      });
+      next.textContent = shown < nc ? `Show clue ${shown + 1}: ${o.clues[shown].name}` : 'Start the clues again';
       if (!open()) return;
       const left = o.ideas.filter((_, i) => ruledBy(i) < 0);
-      if (on.every((x) => !x)) f.readout.textContent = o.intro ?? `${ni} ideas. Turn on the clues, in any order, and see which survive.`;
-      else if (on.every(Boolean) && o.end) f.readout.textContent = o.end;
-      else if (!left.length) f.readout.textContent = 'Nothing fits every clue that is on.';
-      else if (left.length === 1) say(f.readout, `Only ${left[0].name} fits${on.every(Boolean) ? ' every clue' : ', so far'}.`, on.every(Boolean) ? '' : 'Is a clue still off?');
-      else f.readout.textContent = `${left.length} ideas still fit the clues that are on.`;
+      const fits = left.length === 1 ? `Only ${left[0].name} still fits` : left.length ? `${left.length} ideas still fit` : 'No idea fits every clue';
+      if (!shown) {
+        f.readout.textContent = o.intro ?? `Show the ${nc} clues one at a time with the button below. Each one crosses out the ideas it rules out.`;
+      } else if (shown === nc) {
+        if (o.end) f.readout.textContent = o.end;
+        else say(f.readout, `${fits}.`, guessed >= 0 ? (left.some((it) => o.ideas.indexOf(it) === guessed) ? 'Your guess stands.' : 'Your guess is crossed out.') : '');
+      } else {
+        const c = shown - 1;
+        say(f.readout, `Clue ${c + 1}, ${o.clues[c].name}: ${rules[c].length ? `rules out ${joinNames(outNames(c))}` : 'rules out nothing new'}.`, `${fits}. ${nc - shown} more ${nc - shown === 1 ? 'clue' : 'clues'} to show.`);
+      }
     };
-    const buttons = o.clues.map((c, i) => {
-      const b = el('button.chip', { type: 'button', 'aria-pressed': 'false' }, `${i + 1}. ${c.name}`) as HTMLButtonElement;
-      b.addEventListener('click', () => {
-        on[i] = !on[i];
-        t.keep(on.flatMap((x, j) => (x ? [j] : [])));
-        paint();
-        if (on.every(Boolean)) t.done();
-      });
-      return b;
+    const next = el('button.btn.btn-small', { type: 'button' }, '') as HTMLButtonElement;
+    next.addEventListener('click', () => {
+      shown = shown < nc ? shown + 1 : 0;
+      t.keep(Array.from({ length: shown }, (_, j) => j));
+      paint();
+      if (shown === nc) t.done();
     });
-    f.controls.append(el('div.chips.fig-row', {}, buttons));
+    f.controls.append(next);
     let open = () => true;
     if (o.guess && !t.restored && !Array.isArray(t.kept)) {
-      open = guessFirst(t, f, { ask: o.guess, options: o.ideas.map((it) => it.name), answer: survivors[0], sliders: [], buttons, reveal: t.goal ? 'done' : 'lock', after: () => paint() });
+      open = guessFirst(t, f, {
+        ask: `Step 1. ${o.guess} Tap the idea you think survives, then Lock it in.`,
+        options: o.ideas.map((it) => it.name),
+        answer: survivors[0],
+        sliders: [],
+        hidden: [next],
+        reveal: t.goal ? 'done' : 'lock',
+        after: (pick) => {
+          guessed = pick;
+          paint();
+        },
+      });
     }
     paint();
     return f.node;

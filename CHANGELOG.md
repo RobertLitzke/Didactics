@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.1 (2026-11-07)
+
+- `clue-board` is worked one step at a time, after Rob found it hard to see
+  how to use: the steps (guess, show the clues, what is left) are marked
+  across the top; the guess asks the reader to tap an idea and lock it in,
+  and marks the guessed card; then a single button names and shows the next
+  clue, its row opens in the list with what it rules out, the ideas it rules
+  out are crossed with the clue's number, and the text box says what changed
+  and how many clues are left. Clues not yet shown are dashed rows. A last
+  button starts the clues again. Saves from 0.29.0 still load (a kept list of
+  clues on counts as that many shown).
+
 ## 0.29.0 (2026-11-06)
 
 Three more live charts from JSON, and a second kind of key (README "Live
