@@ -1657,8 +1657,11 @@ function regroup(env: Env): FigureFactory {
         b.setAttribute('aria-pressed', String(i === view));
       });
       if (!open()) return;
-      say(f.readout, `${v.label}.`, v.text ?? '');
+      seen.add(view);
+      const unseen = o.views.findIndex((_, i) => !seen.has(i));
+      say(f.readout, `${v.label}.`, [v.text ?? '', unseen >= 0 ? `Tap “${o.views[unseen].label}” below to see them grouped another way.` : ''].filter(Boolean).join(' '));
     };
+    const seen = new Set<number>();
     const buttons = o.views.map((v, i) => {
       const b = el('button.chip', { type: 'button', 'aria-pressed': 'false' }, v.label) as HTMLButtonElement;
       b.addEventListener('click', () => {
@@ -1669,10 +1672,11 @@ function regroup(env: Env): FigureFactory {
       });
       return b;
     });
-    f.controls.append(el('div.chips.fig-row', {}, buttons));
+    const row = el('div.chips.fig-row', {}, el('span.chip-label', {}, 'Group:'), ...buttons);
+    f.controls.append(row);
     let open = () => true;
     if (o.guess && !t.restored && !isRecord(t.kept)) {
-      open = guessFirst(t, f, { ask: o.guess.ask, options: o.guess.options, answer: o.guess.answer, sliders: [], buttons, reveal: t.goal ? 'done' : 'lock', after: () => paint() });
+      open = guessFirst(t, f, { ask: o.guess.ask, options: o.guess.options, answer: o.guess.answer, sliders: [], hidden: [row], reveal: t.goal ? 'done' : 'lock', after: () => paint() });
     }
     paint();
     return f.node;

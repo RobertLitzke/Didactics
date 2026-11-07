@@ -698,6 +698,7 @@ body.radio-up main { padding-bottom: 50vh; }
 /* A guess locked in: the pick stands out as the reader's guess, the rest step
    back; once marked, green with a tick or red with a cross, the right one ringed. */
 .fig-choices.frozen .chip { cursor: default; }
+.fig-choices .chip { white-space: normal; max-width: 100%; text-align: left; line-height: 1.25; }
 .fig-choices.frozen .chip:not(.on):not(.answer) { opacity: 0.4; }
 .fig-choices.frozen .chip.on { opacity: 1; font-weight: 700; box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--ink); }
 .fig-choices.frozen .chip.on::before { content: 'Your guess: '; font-weight: 500; opacity: 0.8; }

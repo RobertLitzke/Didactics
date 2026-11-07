@@ -543,7 +543,7 @@ export interface GuessFirstOptions {
   options: readonly string[];
   /** Locked until the guess is in. */
   sliders: readonly Slider[];
-  /** Other controls disabled until the guess is in. */
+  /** Other controls kept out of sight until the guess is in, so they are not mistaken for the guess's own chips. */
   buttons?: readonly HTMLButtonElement[];
   /** Controls hidden until the guess is in. */
   hidden?: readonly HTMLElement[];
@@ -586,8 +586,7 @@ export function guessFirst(t: Task, f: { controls: HTMLElement; readout: HTMLEle
     pick.freeze(true);
     go.remove();
     lock(o.sliders, false);
-    for (const b of o.buttons ?? []) b.disabled = false;
-    for (const h of o.hidden ?? []) h.style.display = '';
+    for (const h of [...(o.buttons ?? []), ...(o.hidden ?? [])]) h.style.display = '';
     open = true;
     o.after(guess);
     if (o.reveal === 'done' && !t.card && !t.restored) void t.promise.then(reveal);
@@ -595,8 +594,7 @@ export function guessFirst(t: Task, f: { controls: HTMLElement; readout: HTMLEle
   });
   go.disabled = true;
   lock(o.sliders, true);
-  for (const b of o.buttons ?? []) b.disabled = true;
-  for (const h of o.hidden ?? []) h.style.display = 'none';
+  for (const h of [...(o.buttons ?? []), ...(o.hidden ?? [])]) h.style.display = 'none';
   f.controls.prepend(pick.node, go);
   f.readout.textContent = o.ask;
   queueMicrotask(() => {

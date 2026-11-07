@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.29.2 (2026-11-07)
+
+- `guessFirst` hides the controls passed as `buttons` until the guess is in
+  (it used to leave them showing, disabled, where they read as more guess
+  chips).
+- The locked "Your guess" chip wraps instead of pushing a phone page wider.
+- `regroup` hides its view buttons until the guess is in, labels them
+  "Group:", and says which view to tap next until every view is seen.
+
 ## 0.29.1 (2026-11-07)
 
 - `clue-board` is worked one step at a time, after Rob found it hard to see

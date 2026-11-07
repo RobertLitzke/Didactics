@@ -387,7 +387,7 @@ describe('live charts that reason', () => {
     const h = build('regroup', 'switched');
     const readout = h.node.querySelector('.fig-readout')!;
     const bold = () => [...h.node.querySelectorAll('text')].filter((t) => t.classList.contains('bold')).map((t) => t.textContent);
-    expect(readout.textContent).toBe('By looks. Fungi stand still.');
+    expect(readout.textContent).toBe('By looks. Fungi stand still. Tap “By genes” below to see them grouped another way.');
     expect(bold()).toEqual(expect.arrayContaining(['Moss', 'Fungi']));
     expect(bold()).not.toContain('Horse');
     click([...h.node.querySelectorAll('button.chip')][1]);
