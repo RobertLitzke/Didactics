@@ -25,7 +25,6 @@ bin/                didactics-course: new, export, import, upgrade;
                     didactics-pictures: find, fetch, check, paleoart, migrate
 styles/             kit.css and friends, themed by CSS custom properties
 test/               vitest + happy-dom, one file per module or feature
-docs/topics.md      ideas for future courses
 README.md           the full guide: modules, lesson JSON, figures, charts,
                     maps, app, tree, review, tests, conventions
 CHANGELOG.md        one entry per version

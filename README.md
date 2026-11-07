@@ -1218,5 +1218,3 @@ document.getElementById('app')!.append(g.node); // [data-ready] once every figur
    to main. Tag it too if you like (`git tag v0.2.0 && git push --tags`).
 5. In each course, run `npm install github:RobertLitzke/Didactics#<new sha or tag>`,
    then its tests and build.
-
-More ideas for courses are in [docs/topics.md](docs/topics.md).
