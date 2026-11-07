@@ -1255,7 +1255,7 @@ function clueBoard(env: Env): FigureFactory {
         const by = ruledBy(i);
         const ok = by < 0;
         const fresh = !ok && by === shown - 1;
-        parts.push(svg('rect', { x, y, width: cardW, height: cardH, rx: 6, fill: ok ? k.paper : k.grid, stroke: ok ? k.soft : k.color('bad', 0), 'stroke-width': fresh ? 2.5 : 1 }));
+        parts.push(svg('rect', { x, y, width: cardW, height: cardH, rx: 6, fill: ok ? k.paper : k.grid, stroke: ok ? (shown === nc ? k.color('good', 0) : k.soft) : k.color('bad', 0), 'stroke-width': fresh || (ok && shown === nc) ? 2.5 : 1 }));
         if (i === guessed) parts.push(label(x + cardW - 6, y + 12, 'your guess', { size: 'small', anchor: 'end', bold: true, fill: k.ink }));
         const top = y + 17 + (i === guessed ? 8 : 0);
         parts.push(...block(x + 7, top, nameLines[i], 'note', { bold: true, fill: ok ? k.ink : k.soft }));
