@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.0 (2026-11-08)
+
+- A lesson ends with Next lesson beside Back to the lessons, and with a
+  "Start the X branch" button for each branch that forks off it, all stacked
+  so they fit a phone. `onward(lessons, branches, id, save)` in `tree` says
+  where each goes; `lessonView` takes `branches` and `lessonPath` for it, and
+  `defineCourse` passes them. The same buttons end a lesson opened again.
+
 ## 0.30.0 (2026-11-08)
 
 - Maps draw lakes: `"lakes": [{ "lon", "lat" }]` on a `map` or `map-live`

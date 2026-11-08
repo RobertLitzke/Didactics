@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { el } from '../src/dom';
 import { emptyProgress, finishLesson, skipLesson, type Progress } from '../src/progress';
-import { lessonCodes, nextLesson, treeProblems, treeStates, treeView, type TreeBranch, type TreeLesson } from '../src/tree';
+import { lessonCodes, nextLesson, onward, treeProblems, treeStates, treeView, type TreeBranch, type TreeLesson } from '../src/tree';
 
 const LESSONS: TreeLesson[] = [
   { id: 'a', n: 1 },
@@ -67,5 +67,24 @@ describe('lesson tree', () => {
     const view = treeView({ lessons: LESSONS, branches: BRANCHES, save: emptyProgress(), card: () => null });
     expect(view.querySelector('.tree-pill')!.getAttribute('aria-expanded')).toBe('false');
     expect(view.querySelector('.is-next .tree-dot')!.textContent).toBe('1');
+  });
+
+  it('says where to go from the end of a lesson: the next on its line, and the branches that fork there', () => {
+    const go = (id: string, save: Progress = emptyProgress(), open?: (l: TreeLesson) => boolean) => {
+      const o = onward(LESSONS, BRANCHES, id, save, open);
+      return { next: o.next?.id, branches: o.branches.map((f) => `${f.branch.id}:${f.first.id}`) };
+    };
+    expect(go('a', done(emptyProgress(), 'a'))).toEqual({ next: 'b', branches: ['x:x1'] });
+    expect(go('b', done(emptyProgress(), 'a', 'b'))).toEqual({ next: 'c', branches: [] });
+    // Along a branch, then off its end (x3 is not written) to the tree's Next.
+    expect(go('x1')).toEqual({ next: 'x2', branches: [] });
+    expect(go('x2', done(emptyProgress(), 'a', 'x1', 'x2'))).toEqual({ next: 'b', branches: [] });
+    // The trunk's end: the leaf is offered as a branch, so it is not Next as well.
+    expect(go('c', done(emptyProgress(), 'a', 'b', 'c', 'x1', 'x2'))).toEqual({ next: undefined, branches: ['l:leaf'] });
+    // Everything done: nowhere further.
+    expect(go('leaf', done(emptyProgress(), 'a', 'b', 'c', 'x1', 'x2', 'leaf'))).toEqual({ next: undefined, branches: [] });
+    // A lesson the app cannot open is not offered.
+    expect(go('a', done(emptyProgress(), 'a'), (l) => l.id !== 'x1')).toEqual({ next: 'b', branches: [] });
+    expect(go('nope')).toEqual({ next: undefined, branches: [] });
   });
 });

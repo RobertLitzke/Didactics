@@ -108,6 +108,38 @@ export function nextLesson<L extends TreeLesson>(lessons: readonly L[], save: Pr
   return [...treeStates(lessons, save).values()].find((n) => n.state === 'next')?.lesson;
 }
 
+/** Where a reader can go from the end of a lesson: the next lesson on its line, and each branch that forks off it. */
+export interface Onward<L extends TreeLesson> {
+  next?: L;
+  branches: { branch: TreeBranch; first: L }[];
+}
+
+/**
+ * Where to go after lesson `id`. On the trunk, next is the trunk lesson after
+ * it, and each branch that forks off it is offered by its first lesson. On a
+ * branch, next is the branch's following lesson. Where the line ends, or
+ * goes on to a lesson not written yet (`coming`, or turned down by `open`),
+ * next is the tree's Next lesson for `save` instead, unless that is this
+ * lesson or a branch already offered.
+ */
+export function onward<L extends TreeLesson>(lessons: readonly L[], branches: readonly TreeBranch[], id: string, save: Progress, open: (l: L) => boolean = () => true): Onward<L> {
+  const lesson = lessons.find((l) => l.id === id);
+  if (!lesson) return { branches: [] };
+  const ok = (l: L | undefined): L | undefined => (l && !l.coming && open(l) ? l : undefined);
+  const line = lessons.filter((l) => l.branch === lesson.branch);
+  const after = line[line.indexOf(lesson) + 1];
+  const forks = lesson.branch ? [] : branches
+    .filter((b) => b.from === id)
+    .map((branch) => ({ branch, first: ok(lessons.find((l) => l.branch === branch.id)) }))
+    .filter((f): f is { branch: TreeBranch; first: L } => f.first !== undefined);
+  let next = ok(after);
+  if (!next) {
+    const tree = ok(nextLesson(lessons, save));
+    if (tree && tree.id !== id && !forks.some((f) => f.first.id === tree.id)) next = tree;
+  }
+  return { next, branches: forks };
+}
+
 export interface TreeOptions<L extends TreeLesson> {
   lessons: readonly L[];
   branches: readonly TreeBranch[];

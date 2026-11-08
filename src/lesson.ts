@@ -37,6 +37,7 @@ import type { Cue, Talk } from './radio';
 import { blockKey, emptyResume, lessonSignature, resumeFor, type LessonResume } from './resume';
 import type { View } from './router';
 import type { Store } from './store';
+import { onward, type TreeBranch } from './tree';
 
 export { BLOCK_TYPES, DIAGRAM_TYPES, isDiagram, lessonShapeProblems, type Block, type BlockType, type DiagramBlock, type DiagramType } from './blocks.ts';
 
@@ -132,6 +133,14 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
   radio?: { talks: (lessonId: string) => readonly Talk[]; play: (talk: Talk) => Promise<boolean>; clear: () => void; them?: { call: string; place: string } };
   /** Where the back arrow and the summary's button go. Default /home. */
   home?: string;
+  /**
+   * The course's branches, for the buttons at a lesson's end: Next lesson,
+   * and Start the X branch for each branch that forks off it (tree.ts onward).
+   * Lessons carry `branch` as TreeLesson does; left out, they are one line.
+   */
+  branches?: readonly TreeBranch[];
+  /** Where a lesson opens, for the Next lesson button. Default /lesson. */
+  lessonPath?: string;
   /** What a lesson is called in the headings. Default "Lesson". */
   noun?: string;
   /**
@@ -156,6 +165,7 @@ export interface LessonViewOptions<L extends Lesson, S extends Progress> {
 /** The view for a route like /lesson/:id. */
 export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOptions<L, S>): View {
   const home = o.home ?? '/home';
+  const lessonPath = o.lessonPath ?? '/lesson';
   const noun = o.noun ?? 'Lesson';
   const written = o.lessons.filter((l) => !l.coming && l.parts.length > 0).length;
   const total = o.countComing ? o.lessons.length : written;
@@ -385,6 +395,25 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       }));
     };
 
+    /**
+     * The way on from the lesson's end: Next lesson, Start the X branch for
+     * each branch that forks here, and Back to the lessons. Worked out from
+     * the save as it is now, so a lesson just finished counts as passed.
+     */
+    const onwardButtons = (): HTMLElement => {
+      const go = onward(o.lessons, o.branches ?? [], lesson.id, o.store.get(), (l) => l.parts.length > 0);
+      const href = (l: L) => `#${lessonPath}/${l.id}`;
+      return el('div.gate.onward', {},
+        go.next ? el('a.btn.btn-big', { href: href(go.next), title: go.next.title }, 'Next lesson') : null,
+        ...go.branches.map(({ branch, first }) => el('a.btn.btn-big.btn-ghost.btn-branch', {
+          href: href(first),
+          title: first.title,
+          style: branch.color ? `--branch: ${branch.color}` : '',
+        }, `Start the ${branch.title} branch`)),
+        el('a.btn.btn-big', { className: go.next || go.branches.length ? 'btn btn-big btn-ghost' : 'btn btn-big', href: `#${home}` }, 'Back to the lessons'),
+      );
+    };
+
     /** The lesson's main points, under a line on the check. */
     const summary = (scoreLine: string | null): HTMLElement =>
       el('section.summary', { 'aria-label': 'Summary' },
@@ -404,7 +433,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
       o.store.update((s) => finishLesson({ ...s, resume: { ...s.resume, [lesson.id]: structuredClone(here) } }, lesson.id, score.right, score.of, new Date()));
       const section = el('section.part.summary-end', {},
         summary(score.of ? `Check: ${score.right} of ${score.of} right` : null),
-        el('div.gate', {}, el('a.btn.btn-big', { href: `#${home}` }, 'Back to the lessons')),
+        onwardButtons(),
       );
       article.append(section);
       section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -424,7 +453,7 @@ export function lessonView<L extends Lesson, S extends Progress>(o: LessonViewOp
         article.before(summary(best?.of ? `Best check: ${best.best} of ${best.of} right` : null));
         lesson.parts.forEach((p, i) => void renderPart(p, i));
         reached(total);
-        article.append(el('div.gate', {}, el('a.btn.btn-big', { href: `#${home}` }, 'Back to the lessons')));
+        article.append(onwardButtons());
         return;
       }
       const opening = waiting('start');

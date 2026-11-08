@@ -85,6 +85,57 @@ describe('Didactics', () => {
     expect(store.get().lessons.push).toMatchObject({ done: true, best: 1, of: 1 });
   });
 
+  it('ends a lesson with Next lesson, a button for each branch that forks there, and the way back', async () => {
+    globalThis.IntersectionObserver ??= class { observe() {} disconnect() {} } as unknown as typeof IntersectionObserver;
+    type L = Lesson & { branch?: string };
+    const one = (id: string, n: number, more: Partial<L> = {}): L => ({
+      id, n, title: `Lesson ${id}`, teaches: 'Something', summary: ['A point'],
+      parts: [{ title: 'Read', blocks: [{ type: 'text', text: 'Words.' }] }], ...more,
+    });
+    const lessons: L[] = [
+      one('push', 1), one('pull', 2), one('lift', 3, { parts: [], coming: true }),
+      one('side', 101, { branch: 'side' }),
+    ];
+    const branches = [{ id: 'side', title: 'Side trip', promise: '', from: 'push', color: 'red' }];
+    localStorage.clear();
+    const store = createStore({ key: 'onward-test', empty: emptyProgress, migrate: migrateProgress });
+    const view = (id: string) => {
+      const root = el('div');
+      document.body.replaceChildren(root);
+      lessonView({ lessons, branches, figures: {}, store, prose: (t) => prose(t, { ink: '#000' }), lessonPath: '/l' })(root, { params: { id }, navigate: () => {}, replace: () => {} });
+      return root;
+    };
+    const buttons = (root: HTMLElement) => [...root.querySelectorAll('.onward a')].map((a) => `${a.textContent} ${a.getAttribute('href')}`);
+
+    // Finished just now: the trunk goes on, and a branch forks here.
+    let root = view('push');
+    await new Promise((r) => setTimeout(r));
+    (root.querySelector('.gate button') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    expect(buttons(root)).toEqual(['Next lesson #/l/pull', 'Start the Side trip branch #/l/side', 'Back to the lessons #/home']);
+    expect(root.querySelector<HTMLElement>('.btn-branch')!.getAttribute('style')).toContain('--branch: red');
+
+    // Opened again once done: the same way on, at the foot of the page.
+    root = view('push');
+    await new Promise((r) => setTimeout(r));
+    expect(buttons(root)[0]).toBe('Next lesson #/l/pull');
+
+    // The trunk's last written lesson (the next is still coming): Next is the branch still to do.
+    root = view('pull');
+    await new Promise((r) => setTimeout(r));
+    (root.querySelector('.gate button') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    expect(buttons(root)).toEqual(['Next lesson #/l/side', 'Back to the lessons #/home']);
+
+    // Everything done: only the way back, as the main button.
+    root = view('side');
+    await new Promise((r) => setTimeout(r));
+    (root.querySelector('.gate button') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r));
+    expect(buttons(root)).toEqual(['Back to the lessons #/home']);
+    expect(root.querySelector('.onward a')!.classList.contains('btn-ghost')).toBe(false);
+  });
+
   it('numbers footnotes in reading order and opens one at a time', () => {
     const notes = {
       b: { kind: 'digression' as const, title: 'Side', text: 'A *side* trip.' },

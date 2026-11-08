@@ -174,7 +174,7 @@ pin back before committing.
 | `gallery` | `galleryPage({ figures, lessons, save })`, every figure on one page with its lesson caption, `data-ready` once all are drawn |
 | `frozen` | Imported first on a gallery page, `?frozen` seeds `Math.random` and fakes the clock, for screenshot diffs; `freezeClock()` |
 | `release` | A course's version and stage (beta or released): `releaseSlip` for a course home (nothing once released), `releaseAbout` for Settings, `releaseProblems` to check a course.json's `release`, `BETA_TEXT`, `CourseRelease`; `defineCourse({ release })` uses both |
-| `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
+| `tree` | The home page's lesson tree: `treeView`, `treeStates`, `nextLesson`, `onward`, `lessonCodes`, `treeProblems`, `TreeLesson`, `TreeBranch` |
 | `status` | Where the reader stands with a lesson: `lessonStatus` (`'new'`, `'started'`, `'done'`), `placeKept`, `progressLine` ("In progress: part 2 of 5"), `lessonGo(href, status)`, the Start / Continue / Again button in its own colour and mark |
 | `place` | `keepPlace(root, key)`: a page of lessons comes back scrolled where it was left, after a lesson, Back or a reload; `restorePlace` |
 | **Practice** | |
@@ -955,6 +955,16 @@ the URL hash; save anything else, such as the step a lesson is on, in
 - `radio`: the lesson's talks (see below).
 - `home`: the route the back arrow goes to.
 - `noun`: what a lesson is called. The default is "Lesson".
+- `branches` and `lessonPath`: for the buttons at the lesson's end (see
+  below). `defineCourse` passes both.
+
+A lesson ends, under its summary, with Next lesson, a "Start the X branch"
+button for each branch that forks off it, and Back to the lessons. They come
+from `onward(lessons, branches, id, save)` in `tree`: next is the following
+lesson on the lesson's own line (trunk or branch); where the line ends, or
+runs into a lesson not written yet, it is the tree's Next lesson instead. A
+lesson that is `coming` or has no parts is never offered. With nowhere
+further to go, Back to the lessons is the only button.
 
 A lesson marked `coming`, or with no parts, is not written yet: opening it
 goes back to `home`, so a tree or list can show it without a guard of its own.

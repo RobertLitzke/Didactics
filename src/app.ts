@@ -308,6 +308,8 @@ export function defineCourse<L extends Lesson, S extends Progress = Progress, C 
       view: lessonView({
         ...o.lesson,
         lessons: o.lessons,
+        branches: o.branches,
+        lessonPath,
         figures: o.figures,
         store,
         prose: o.prose,
