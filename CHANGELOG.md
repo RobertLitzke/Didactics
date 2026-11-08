@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.3 (2026-11-08)
+
+- The footnote legend is shorter: "Tap for note: 1 A hidden technical term
+  2 A side trip". It stays on one line down to a 320px phone (smaller type
+  on narrow screens, no wrapping).
+
 ## 0.29.2 (2026-11-07)
 
 - `guessFirst` hides the controls passed as `buttons` until the guess is in

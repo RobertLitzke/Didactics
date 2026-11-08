@@ -759,7 +759,7 @@ body.radio-up main { padding-bottom: 50vh; }
 button.fn::before { content: ''; position: absolute; inset: -12px -8px; }
 button.fn:hover, button.fn.on { background: var(--fn-color); color: var(--paper); }
 button.fn:focus-visible { outline: 2px solid var(--fn-color); outline-offset: 2px; }
-.fn-legend { font-size: 0.86rem; line-height: 1.6; color: var(--ink-soft); margin: 4px 0 8px; }
+.fn-legend { font-size: min(0.86rem, 3.5vw); white-space: nowrap; line-height: 1.6; color: var(--ink-soft); margin: 4px 0 8px; }
 .fn-legend .fn { top: -0.1em; font-size: 0.78em; }
 
 .fn-pop {

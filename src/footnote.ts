@@ -34,8 +34,8 @@ export type Footnotes = Readonly<Record<string, Footnote>>;
 
 /** What each kind is called, on the popup and in the legend. */
 export const FOOTNOTE_KINDS: Readonly<Record<FootnoteKind, { label: string; blurb: string }>> = {
-  technical: { label: 'Technical note', blurb: 'a technical term or detail' },
-  digression: { label: 'Side trip', blurb: 'a side trip off the main line' },
+  technical: { label: 'Technical note', blurb: 'A hidden technical term' },
+  digression: { label: 'Side trip', blurb: 'A side trip' },
 };
 
 /** The marker in lesson text: [^id]. */
@@ -176,13 +176,12 @@ export function footnoteLegend(kinds: Iterable<FootnoteKind>): HTMLElement | nul
   if (!have.size) return null;
   const parts = (['technical', 'digression'] as const).filter((k) => have.has(k));
   return el('p.fn-legend', {},
-    'Tap a raised number for a note: ',
+    'Tap for note: ',
     ...parts.flatMap((k, i) => [
-      i ? ', ' : '',
+      i ? ' ' : '',
       el(`span.fn.fn-${k}.fn-sample`, { 'aria-hidden': 'true' }, String(i + 1)),
       ` ${FOOTNOTE_KINDS[k].blurb}`,
     ]),
-    '.',
   );
 }
 
