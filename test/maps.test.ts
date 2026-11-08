@@ -3,7 +3,7 @@
 // rock meeting the ground, and the map chart's options.
 
 import { describe, expect, it } from 'vitest';
-import { cellSize, decodeTerrarium, encodeTerrarium, fromCell, heightAt, hillshade, makeRelief, mapOptionsProblems, maps, mercator, outcrops, paintRelief, profile, reliefProblems, toCell, unmercator, type Relief } from '../src/maps';
+import { cellSize, decodeTerrarium, lakeMask, encodeTerrarium, fromCell, heightAt, hillshade, makeRelief, mapOptionsProblems, maps, mercator, outcrops, paintRelief, profile, reliefProblems, toCell, unmercator, type Relief } from '../src/maps';
 import { emptyProgress } from '../src/progress';
 import { testContext } from '../src/figure';
 
@@ -69,6 +69,33 @@ describe('shading', () => {
     expect(at(5)).toEqual([0, 0, 255]);
     expect(at(35)[0]).toBeGreaterThan(200);
     expect(at(35)[2]).toBe(0);
+  });
+});
+
+describe('lakes', () => {
+  // Ground at 500 m with two flat lakes: one at 425 m on the left, one at 372 m on the right,
+  // and a valley falling below 372 m along the bottom row.
+  const r = grid((c, row) => (row === 40 ? 300 : c > 5 && c < 15 && row > 5 && row < 15 ? 425 : c > 25 && c < 35 && row > 25 && row < 35 ? 372 : 500));
+
+  it('fills each lake from a point on it, and nothing else', () => {
+    const m = lakeMask(r, [{ lon: fromCell(r, 10, 10)[0], lat: fromCell(r, 10, 10)[1] }, { lon: fromCell(r, 30, 30)[0], lat: fromCell(r, 30, 30)[1] }]);
+    expect(m.reduce((a, b) => a + b, 0)).toBe(81 * 2);
+    expect(m[10 * 41 + 10]).toBe(1);
+    expect(m[30 * 41 + 30]).toBe(1);
+    expect(m[40 * 41 + 10]).toBe(0);
+    expect(m[20 * 41 + 20]).toBe(0);
+    // A point off the grid draws nothing.
+    expect(lakeMask(r, [{ lon: 10, lat: 10 }]).some((v) => v)).toBe(false);
+  });
+
+  it('paints lakes as water, where one level would flood the valley', () => {
+    const wet = lakeMask(r, [{ lon: fromCell(r, 10, 10)[0], lat: fromCell(r, 10, 10)[1] }]);
+    const px = paintRelief(r, { wet, waterColor: '#0000ff', ground: '#ff0000' });
+    const at = (c: number, row: number) => Array.from(px.slice((row * 41 + c) * 4, (row * 41 + c) * 4 + 3));
+    expect(at(10, 10)).toEqual([0, 0, 255]);
+    expect(at(10, 40)[2]).toBe(0);
+    expect(mapOptionsProblems({ relief: 'maps/x', lakes: [{ lon: 6.85, lat: 46.9 }] })).toEqual([]);
+    expect(mapOptionsProblems({ relief: 'maps/x', lakes: [{ lon: 'x' }] })).toContain('lake 1: "lon" and "lat" should be degrees');
   });
 });
 

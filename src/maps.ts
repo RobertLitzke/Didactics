@@ -266,6 +266,8 @@ export interface PaintOptions {
   ground?: string | Ramp;
   /** Everything at or below this height is under water (sea level is 0). */
   water?: number;
+  /** Cells drawn as water whatever their height, such as lakes from `lakeMask` (1 for water). */
+  wet?: Uint8Array;
   waterColor?: string;
   /** How strongly the shading shows, 0 to 1 (default 0.75). */
   relief?: number;
@@ -288,7 +290,7 @@ export function paintRelief(r: Relief, o: PaintOptions = {}): Uint8ClampedArray<
   for (let i = 0; i < r.z.length; i++) {
     const z = r.z[i];
     let c: readonly number[];
-    const wet = o.water !== undefined && z <= o.water;
+    const wet = (o.water !== undefined && z <= o.water) || o.wet?.[i] === 1;
     if (wet) c = water;
     else c = o.colorAt?.(i, z) ?? plain ?? rampAt(stops!, z);
     // Lit relative to flat ground, so flat ground keeps its colour.
@@ -297,6 +299,44 @@ export function paintRelief(r: Relief, o: PaintOptions = {}): Uint8ClampedArray<
     out[i * 4 + 1] = c[1] * light;
     out[i * 4 + 2] = c[2] * light;
     out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+// ---- Lakes ---------------------------------------------------------------------------
+
+/** A lake on a map: a point on its water. */
+export interface MapLake {
+  lon: number;
+  lat: number;
+  /** How far, in metres, a cell may lie from the height at the point and still be lake; default 1. */
+  tolerance?: number;
+}
+
+/**
+ * Which cells are lake (1) and which are not (0). A lake's surface is flat in
+ * the heights, so each lake is the flat ground joined to its point. One water
+ * level for a whole map can't draw two lakes at different heights, and a level
+ * high enough for the upper lake floods the low valleys around the lower one.
+ */
+export function lakeMask(r: Relief, lakes: readonly MapLake[]): Uint8Array {
+  const out = new Uint8Array(r.width * r.height);
+  for (const l of lakes) {
+    const [c0, r0] = toCell(r, l.lon, l.lat).map(Math.round);
+    if (c0 < 0 || r0 < 0 || c0 >= r.width || r0 >= r.height) continue;
+    const level = r.z[r0 * r.width + c0];
+    const tol = l.tolerance ?? 1;
+    const stack = [r0 * r.width + c0];
+    while (stack.length) {
+      const i = stack.pop()!;
+      if (out[i] || Math.abs(r.z[i] - level) > tol) continue;
+      out[i] = 1;
+      const col = i % r.width;
+      if (col > 0) stack.push(i - 1);
+      if (col < r.width - 1) stack.push(i + 1);
+      if (i >= r.width) stack.push(i - r.width);
+      if (i + r.width < out.length) stack.push(i + r.width);
+    }
   }
   return out;
 }
@@ -541,6 +581,8 @@ export interface MapOptions {
   exaggeration?: number;
   /** Water up to this height in metres; sea level is 0. */
   water?: number;
+  /** Lakes, each a point on its water, drawn by `lakeMask`: for lakes above the "water" level. */
+  lakes?: MapLake[];
   /** "plain" (default) or "height", a ramp from low to high. */
   ground?: 'plain' | 'height';
   labels?: MapLabel[];
@@ -576,6 +618,13 @@ export function mapOptionsProblems(o: Options | undefined): string[] {
     if (!isNum(s?.azimuth) || !isNum(s?.altitude)) out.push('"sun" should be { "azimuth", "altitude" } in degrees');
   }
   if (o.water !== undefined && !isNum(o.water)) out.push('"water" should be a height in metres');
+  if (o.lakes !== undefined) {
+    if (!Array.isArray(o.lakes)) out.push('"lakes" should be a list of { "lon", "lat" }');
+    else o.lakes.forEach((l: Record<string, unknown>, i) => {
+      if (!isNum(l?.lon) || !isNum(l?.lat) || Math.abs(l.lon) > 180 || Math.abs(l.lat) > 90) out.push(`lake ${i + 1}: "lon" and "lat" should be degrees`);
+      if (l?.tolerance !== undefined && !(isNum(l.tolerance) && l.tolerance >= 0)) out.push(`lake ${i + 1}: "tolerance" should be metres, 0 or more`);
+    });
+  }
   if (o.ground !== undefined && o.ground !== 'plain' && o.ground !== 'height') out.push('"ground" should be "plain" or "height"');
   if (o.scale !== undefined && o.scale !== 'left' && o.scale !== 'right') out.push('"scale" should be "left" or "right"');
   const place = (p: unknown) => Array.isArray(p) && p.length === 2 && isNum(p[0]) && isNum(p[1]) && Math.abs(p[0]) <= 180 && Math.abs(p[1]) <= 90;
@@ -626,7 +675,8 @@ function drawMap(r: Relief, o: MapOptions, units: Units, pal: Record<string, str
   const ink = pal.ink ?? '#2a2547';
   const paper = pal.paper ?? '#fffaf0';
   const v = mapView(r, { alt: o.alt });
-  v.paint({ sun: o.sun, exaggeration: o.exaggeration, water: o.water, ground: o.ground === 'height' ? heightRamp(r) : undefined });
+  const wet = o.lakes?.length ? lakeMask(r, o.lakes) : undefined;
+  v.paint({ sun: o.sun, exaggeration: o.exaggeration, water: o.water, wet, ground: o.ground === 'height' ? heightRamp(r) : undefined });
   const color = (c?: string) => (c ? (pal[c] ?? c) : undefined);
   v.svg.append(
     ...mapAreas(v, (o.areas ?? []).map((a) => ({ ...a, color: color(a.color) })), ink),
@@ -778,17 +828,18 @@ function mapLive(pal: Record<string, string>, load: (path: string) => Promise<Re
       const v = mapView(r, { alt: o.alt });
       const shade = hillshade(r, o.sun, o.exaggeration ?? 1);
       const ground = o.ground === 'height' ? heightRamp(r) : undefined;
+      const wet = o.lakes?.length ? lakeMask(r, o.lakes) : undefined;
       let pending: number | undefined;
       let painted = false;
       const paint = (water: number | undefined) => {
         // One repaint a frame while a slider moves.
         const first = !painted;
         painted = true;
-        if (first || typeof requestAnimationFrame === 'undefined') return void v.paint({ sun: o.sun, shade, ground, water });
+        if (first || typeof requestAnimationFrame === 'undefined') return void v.paint({ sun: o.sun, shade, ground, water, wet });
         if (pending !== undefined) cancelAnimationFrame(pending);
         pending = requestAnimationFrame(() => {
           pending = undefined;
-          v.paint({ sun: o.sun, shade, ground, water });
+          v.paint({ sun: o.sun, shade, ground, water, wet });
         });
       };
       paint(o.flood ? (o.flood.start ?? o.flood.from) : o.water);

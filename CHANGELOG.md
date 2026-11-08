@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.30.0 (2026-11-08)
+
+- Maps draw lakes: `"lakes": [{ "lon", "lat" }]` on a `map` or `map-live`
+  fills each lake from a point on its water, and `lakeMask` gives the same
+  cells to a figure (pass them to `paintRelief` as `wet`). One `water` level
+  could not show Lake Neuchâtel (429 m) beside Lake Geneva (372 m) without
+  flooding the valleys around the lower lake.
+
 ## 0.29.3 (2026-11-08)
 
 - The footnote legend is shorter: "Tap for note: 1 A hidden technical term
