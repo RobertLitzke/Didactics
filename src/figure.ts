@@ -263,9 +263,31 @@ export function canvasFrame(w: number, h: number, lines = 3, o: { scale?: number
   return { ...f, ctx };
 }
 
+/**
+ * A readout that only ever grows: `--lines` is a guess, and a figure whose text runs longer than it
+ * (a narrow phone, a long state) would push the controls below it up and down as the text changes.
+ * Once a longer text has been seen the box stays that tall, until the column's width changes.
+ */
+function keepTallest(readout: HTMLElement) {
+  if (typeof ResizeObserver === 'undefined') return;
+  let width = 0;
+  new ResizeObserver(() => {
+    const w = readout.clientWidth;
+    if (!w) return;
+    if (w !== width) {
+      width = w;
+      readout.style.minHeight = '';
+      return;
+    }
+    const h = readout.offsetHeight;
+    if (h > (parseFloat(readout.style.minHeight) || 0)) readout.style.minHeight = `${h}px`;
+  }).observe(readout);
+}
+
 /** The box a figure's text lives in, `lines` lines of readout tall. */
 export function textBox(readout: HTMLElement, lines = 3): HTMLElement {
   readout.style.setProperty('--lines', String(lines));
+  keepTallest(readout);
   return el('div.fig-text', {}, readout);
 }
 

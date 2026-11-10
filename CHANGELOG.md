@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.32.0 (2026-11-10)
+
+- A figure's readout box no longer jumps: `--lines` is still the starting
+  height, but the box now stays as tall as the longest text it has shown
+  (until the column changes width), so the controls and text below a live
+  figure stay put on a phone, where the same words take more lines.
+
 ## 0.31.0 (2026-11-08)
 
 - A lesson ends with Next lesson beside Back to the lessons, and with a
